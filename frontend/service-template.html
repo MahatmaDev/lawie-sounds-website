@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title id="pageTitle">Loading... | LAWIE SOUNDS</title>
+  <meta name="description" id="metaDescription" content="Professional event services in Kenya">
+  
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- LightGallery -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css" />
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 1rem;
+    }
+    
+    .btn-touch {
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .price-card {
+      transition: all 0.3s ease;
+    }
+    .price-card:hover {
+      transform: translateY(-4px);
+    }
+    
+    .feature-card {
+      transition: all 0.2s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    *:focus-visible {
+      outline: 2px solid #eab308;
+      outline-offset: 2px;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Same header as services.html -->
+  <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex flex-wrap items-center justify-between">
+        <div class="flex items-center gap-3">
+          <img src="IMAGES/LOGO/1.jpg" alt="Lawie Sounds Logo" class="h-11 w-11 rounded-full object-cover border-2 border-yellow-400">
+          <h1 class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+        </div>
+        <nav class="hidden md:flex gap-8 text-sm font-semibold">
+          <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
+          <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
+          <a href="gallery.html" class="hover:text-yellow-400 transition">Gallery</a>
+          <a href="booking.html" class="hover:text-yellow-400 transition">Booking</a>
+          <a href="index.html#contact" class="hover:text-yellow-400 transition">Contact</a>
+        </nav>
+        <div class="flex items-center gap-3">
+          <a href="booking.html" class="bg-yellow-400 text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+            <i class="fas fa-calendar-check mr-2"></i>Book Now
+          </a>
+          <button id="mobile-menu-btn" class="md:hidden text-white focus:outline-none btn-touch"><i class="fas fa-bars text-xl"></i></button>
+        </div>
+      </div>
+      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
+        <a href="index.html" class="block py-3 hover:text-yellow-400">Home</a>
+        <a href="services.html" class="block py-3 hover:text-yellow-400">Services</a>
+        <a href="gallery.html" class="block py-3 hover:text-yellow-400">Gallery</a>
+        <a href="booking.html" class="block py-3 hover:text-yellow-400">Booking</a>
+        <a href="index.html#contact" class="block py-3 hover:text-yellow-400">Contact</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== SERVICE CONTENT (Dynamic) ==================== -->
+  <main id="serviceContent">
+    <!-- Loading State -->
+    <div class="container mx-auto px-4 py-12">
+      <div class="skeleton h-[400px] rounded-2xl mb-8"></div>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div><div class="skeleton h-96 rounded-xl"></div></div>
+        <div><div class="skeleton h-96 rounded-xl"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Same footer as services.html -->
+  <footer class="bg-gray-900 text-white mt-16">
+    <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
+      <div><img src="IMAGES/LOGO/1.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md"><p class="text-sm text-gray-400">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p></div>
+      <div><h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h3><ul class="space-y-2 text-sm"><li><a href="index.html" class="text-gray-400 hover:text-yellow-400">Home</a></li><li><a href="services.html" class="text-gray-400 hover:text-yellow-400">Services</a></li><li><a href="gallery.html" class="text-gray-400 hover:text-yellow-400">Gallery</a></li><li><a href="booking.html" class="text-gray-400 hover:text-yellow-400">Booking</a></li></ul></div>
+      <div><h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h3><div class="flex space-x-6 text-2xl"><a href="https://instagram.com/lawie_sounds" target="_blank" class="text-gray-400 hover:text-yellow-400"><i class="fab fa-instagram"></i></a><a href="https://facebook.com/lawie.sounds" target="_blank" class="text-gray-400 hover:text-yellow-400"><i class="fab fa-facebook"></i></a><a href="https://wa.me/254703925826" target="_blank" class="text-gray-400 hover:text-yellow-400"><i class="fab fa-whatsapp"></i></a></div></div>
+    </div>
+    <div class="bg-gray-800 text-center text-sm py-4 text-gray-400">Made with ❤️ for unforgettable events.</div>
+  </footer>
+
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110 btn-touch"><i class="fas fa-phone-alt text-xl"></i></a>
+    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110 btn-touch"><i class="fab fa-whatsapp text-xl"></i></a>
+    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110 btn-touch"><i class="fas fa-arrow-up text-xl"></i></button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.min.js"></script>
+
+  <script>
+    // ==================== COMPLETE SERVICE DATA (Clean Architecture) ====================
+    const SERVICES_DETAIL = {
+      "dj-mc-services": {
+        name: "DJ & MC Services", icon: "fa-headphones", price: 25000, priceSuffix: "/event",
+        shortDesc: "Professional DJ and Master of Ceremonies for high-energy events.",
+        longDesc: "Elevate your event with our professional DJ & MC services! From wedding receptions, corporate events, to club gigs, we deliver vibrant, seamless entertainment that keeps your guests dancing all night long. Our experienced MCs ensure smooth transitions between speeches, cake cutting, and special moments.",
+        mainImage: "IMAGES/DJ and MC Services/1.jpg",
+        galleryImages: ["IMAGES/DJ and MC Services/1.jpg", "IMAGES/DJ and MC Services/2.jpg", "IMAGES/DJ and MC Services/3.jpg", "IMAGES/DJ and MC Services/4.jpg", "IMAGES/DJ and MC Services/5.jpg", "IMAGES/DJ and MC Services/6.jpg"],
+        packages: [
+          { name: "Basic DJ", price: 25000, duration: "Up to 4 hours", features: ["Professional DJ", "Sound system", "Basic lighting", "100+ song playlist"], popular: false },
+          { name: "DJ + MC Combo", price: 45000, duration: "Up to 6 hours", features: ["Professional DJ + MC", "Premium sound system", "Full lighting setup", "Unlimited requests", "Event coordination"], popular: true },
+          { name: "Elite Full Day", price: 70000, duration: "Full day (8+ hours)", features: ["Everything in Premium", "Extra DJ/MC backup", "LED screen included", "Pre-event consultation", "15% off next booking"], popular: false }
+        ],
+        features: [
+          { icon: "fa-headphones", title: "Professional DJ", desc: "High-energy sets, seamless transitions" },
+          { icon: "fa-microphone-alt", title: "MC Services", desc: "Professional emcee to keep flow" },
+          { icon: "fa-database", title: "Music Library", desc: "Access to thousands of songs" },
+          { icon: "fa-headset", title: "Wireless Mics", desc: "Crystal clear audio for speeches" }
+        ],
+        faqs: [
+          { q: "How long does the DJ/MC perform?", a: "Packages range from 4 hours (basic) to full day (8+ hours)." },
+          { q: "Can we request specific songs?", a: "Yes! We send a playlist form before the event." },
+          { q: "Do you provide sound equipment?", a: "Yes! All packages include professional sound system." },
+          { q: "Do you travel outside Nairobi?", a: "Yes! Travel costs apply for locations outside Nairobi." }
+        ]
+      },
+      "led-screens": {
+        name: "LED Screens", icon: "fa-tv", price: 15000, priceSuffix: "/day",
+        shortDesc: "High-resolution LED screens for stunning visuals and branding.",
+        longDesc: "High-resolution LED screens for stunning visuals at your event. Perfect for branding, lyrics display, live feeds, and presentations. Indoor and outdoor options available with full technical support.",
+        mainImage: "IMAGES/LED Screens/2.jpg",
+        galleryImages: ["IMAGES/LED Screens/1.jpg", "IMAGES/LED Screens/2.jpg", "IMAGES/LED Screens/3.jpg", "IMAGES/LED Screens/4.jpg"],
+        packages: [
+          { name: "Standard Screen", price: 15000, duration: "Per day", features: ["6ft x 4ft screen", "Basic content setup", "HD resolution", "Technical support"], popular: false },
+          { name: "Premium Package", price: 30000, duration: "Per day", features: ["12ft x 8ft screen", "Custom content design", "4K resolution", "Dedicated technician", "Live feed capable"], popular: true },
+          { name: "Wall Package", price: 60000, duration: "Per day", features: ["Custom size wall", "Multi-screen setup", "Video wall processing", "2 technicians", "Backup system"], popular: false }
+        ],
+        features: [
+          { icon: "fa-desktop", title: "High Resolution", desc: "Crystal clear 4K displays" },
+          { icon: "fa-chalkboard", title: "Custom Content", desc: "Branding, lyrics, live feeds" },
+          { icon: "fa-tools", title: "Full Setup", desc: "Cables, mounting, technician" },
+          { icon: "fa-sun", title: "Indoor/Outdoor", desc: "Works in any lighting" }
+        ],
+        faqs: [
+          { q: "What sizes are available?", a: "From 6ft to 20ft wide. Contact us for your specific needs." },
+          { q: "Can you play videos from a phone?", a: "Yes, we support HDMI, USB, and wireless casting." }
+        ]
+      },
+      "power-lighting": {
+        name: "Power & Lighting", icon: "fa-lightbulb", price: 18000, priceSuffix: "/event",
+        shortDesc: "Professional lighting design and power distribution for any venue.",
+        longDesc: "Professional lighting design and power distribution for any venue size. Create the perfect atmosphere with our comprehensive lighting solutions including LED par cans, moving heads, spotlights, and full generator backup.",
+        mainImage: "IMAGES/Power & Lighting/1.jpg",
+        galleryImages: ["IMAGES/Power & Lighting/1.jpg", "IMAGES/Power & Lighting/2.jpg", "IMAGES/Power & Lighting/3.jpg", "IMAGES/Power & Lighting/4.jpg"],
+        packages: [
+          { name: "Basic Lighting", price: 18000, duration: "Per event", features: ["LED par cans (8)", "Basic color washing", "Dimmer control", "Standard power"], popular: false },
+          { name: "Premium Lighting", price: 35000, duration: "Per event", features: ["Moving heads (4)", "LED par cans (12)", "Spotlights (2)", "Generator backup", "Lighting operator"], popular: true },
+          { name: "Concert Package", price: 65000, duration: "Per event", features: ["Full concert rig", "Truss system", "Laser effects", "Certified electrician", "Pre-programmed show"], popular: false }
+        ],
+        features: [
+          { icon: "fa-lightbulb", title: "LED Par Cans", desc: "Colorful ambient lighting" },
+          { icon: "fa-sync-alt", title: "Moving Heads", desc: "Dynamic light shows" },
+          { icon: "fa-bolt", title: "Generator Backup", desc: "No power interruptions" },
+          { icon: "fa-shield-alt", title: "Certified Electrician", desc: "Safe professional setup" }
+        ],
+        faqs: [
+          { q: "Do you provide generators?", a: "Yes, backup generators included for all events." },
+          { q: "Can you do outdoor lighting?", a: "Absolutely! We specialize in outdoor events." }
+        ]
+      },
+      "pyrotechnics": {
+        name: "Pyrotechnics", icon: "fa-fire", price: 35000, priceSuffix: "/event",
+        shortDesc: "Spectacular fire effects, confetti, and CO2 cannons.",
+        longDesc: "Spectacular fire effects, confetti blasts, and CO2 cannons for dramatic moments. Perfect for grand entrances, cake cutting, and special performances. Safety certified operators with full insurance.",
+        mainImage: "IMAGES/Pyrotechnics/1.jpg",
+        galleryImages: ["IMAGES/Pyrotechnics/1.jpg", "IMAGES/Pyrotechnics/2.jpg", "IMAGES/Pyrotechnics/3.jpg", "IMAGES/Pyrotechnics/4.jpg"],
+        packages: [
+          { name: "Confetti Package", price: 25000, duration: "Per event", features: ["Confetti cannons (4)", "Colorful confetti", "Manual trigger", "Safety certified"], popular: false },
+          { name: "CO2 Package", price: 35000, duration: "Per event", features: ["CO2 jets (4)", "Cryo fog effects", "DMX controlled", "Crowd engagement"], popular: true },
+          { name: "Full Effects", price: 65000, duration: "Per event", features: ["CO2 + Confetti", "Sparkular machines", "Flame effects", "Choreographed show", "Safety crew"], popular: false }
+        ],
+        features: [
+          { icon: "fa-fire", title: "CO2 Jets", desc: "Dramatic fog effects" },
+          { icon: "fa-tint", title: "Confetti Cannons", desc: "Colorful celebration blasts" },
+          { icon: "fa-star", title: "Sparkular Machines", desc: "Cold spark fireworks" },
+          { icon: "fa-shield-alt", title: "Safety Certified", desc: "Licensed operators" }
+        ],
+        faqs: [
+          { q: "Is pyrotechnics safe indoors?", a: "Yes, our cold spark machines are safe for indoor use." },
+          { q: "Do you need special permits?", a: "We handle all necessary permits for your event." }
+        ]
+      },
+      "photography": {
+        name: "Photography", icon: "fa-camera", price: 20000, priceSuffix: "/event",
+        shortDesc: "Professional photography for weddings and events.",
+        longDesc: "Professional photography coverage for weddings, corporate events, and parties. Capture every special moment with our team of experienced photographers. High-resolution edited photos delivered within 7 days.",
+        mainImage: "IMAGES/Photography/1.jpg",
+        galleryImages: ["IMAGES/Photography/1.jpg", "IMAGES/Photography/2.jpg", "IMAGES/Photography/3.jpg", "IMAGES/Photography/4.jpg"],
+        packages: [
+          { name: "Single Photographer", price: 20000, duration: "4 hours", features: ["1 photographer", "100+ edited photos", "Online gallery", "Print rights"], popular: false },
+          { name: "Dual Photographer", price: 35000, duration: "6 hours", features: ["2 photographers", "250+ edited photos", "Online gallery", "USB drive", "Print rights"], popular: true },
+          { name: "Full Coverage", price: 55000, duration: "10+ hours", features: ["2 photographers", "500+ edited photos", "Photo album", "All raw files", "Pre-wedding shoot"], popular: false }
+        ],
+        features: [
+          { icon: "fa-camera-retro", title: "2 Photographers", desc: "Multiple angles captured" },
+          { icon: "fa-edit", title: "Edited Photos", desc: "High-res professionally edited" },
+          { icon: "fa-cloud-upload-alt", title: "Online Gallery", desc: "Easy sharing with guests" },
+          { icon: "fa-tachometer-alt", title: "Fast Delivery", desc: "Photos in 7 days" }
+        ],
+        faqs: [
+          { q: "How many photos do you deliver?", a: "300-500 edited photos for a standard event." },
+          { q: "Do you do engagement shoots?", a: "Yes, engagement shoots available at KES 10,000." }
+        ]
+      },
+      "live-streaming": {
+        name: "Live Streaming", icon: "fa-video", price: 30000, priceSuffix: "/event",
+        shortDesc: "Broadcast your event live to remote audiences.",
+        longDesc: "Broadcast your event live to remote audiences with professional streaming setup. Multi-camera production, live switching, and stream to YouTube, Facebook, or custom platform.",
+        mainImage: "IMAGES/Live Streaming & Media/1.jpg",
+        galleryImages: ["IMAGES/Live Streaming & Media/1.jpg", "IMAGES/Live Streaming & Media/2.jpg", "IMAGES/Live Streaming & Media/3.jpg", "IMAGES/Live Streaming & Media/4.jpg"],
+        packages: [
+          { name: "Single Camera", price: 30000, duration: "Per event", features: ["1 camera", "Basic switching", "Stream to 1 platform", "Recording archive"], popular: false },
+          { name: "Multi-Camera", price: 55000, duration: "Per event", features: ["3 cameras", "Live switching", "Stream to 2 platforms", "Graphics overlays", "Recording archive"], popular: true },
+          { name: "Full Production", price: 95000, duration: "Per event", features: ["5 cameras", "Full control room", "Stream to unlimited", "Custom graphics", "Remote guests", "Replay system"], popular: false }
+        ],
+        features: [
+          { icon: "fa-video", title: "Multi-Camera", desc: "Professional camera setup" },
+          { icon: "fa-sliders-h", title: "Live Switching", desc: "Seamless scene transitions" },
+          { icon: "fa-youtube", title: "Stream Anywhere", desc: "YouTube, Facebook, Zoom" },
+          { icon: "fa-hdd", title: "Recording Archive", desc: "Keep a permanent copy" }
+        ],
+        faqs: [
+          { q: "What internet speed is needed?", a: "We bring our own 4G/5G backup connection." },
+          { q: "Can remote guests participate?", a: "Yes, with live chat and Q&A features." }
+        ]
+      },
+      "360-booth": {
+        name: "360 Booth", icon: "fa-cube", price: 22000, priceSuffix: "/event",
+        shortDesc: "Immersive 360 photo and video experience for guests.",
+        longDesc: "Capture every angle of your special moments with our 360 Booth service! Perfect for weddings, parties, and corporate events. Guests receive instant shareable videos via WhatsApp or QR code.",
+        mainImage: "IMAGES/360 Booth/1.jpg",
+        galleryImages: ["IMAGES/360 Booth/1.jpg", "IMAGES/360 Booth/2.jpg", "IMAGES/360 Booth/3.jpg", "IMAGES/360 Booth/4.jpg"],
+        packages: [
+          { name: "Standard", price: 22000, duration: "4 hours", features: ["360 video capture", "Instant sharing", "Basic props", "Digital gallery"], popular: false },
+          { name: "Premium", price: 35000, duration: "6 hours", features: ["360 video + photos", "Custom branding", "Premium props", "Social media booth", "On-site attendant"], popular: true },
+          { name: "Ultimate", price: 55000, duration: "Full day", features: ["Everything in Premium", "Slow-motion effects", "Green screen", "Photo prints", "Highlight reel"], popular: false }
+        ],
+        features: [
+          { icon: "fa-video", title: "360° Video", desc: "Immersive slow-motion videos" },
+          { icon: "fa-share-alt", title: "Instant Sharing", desc: "Share via WhatsApp/QR" },
+          { icon: "fa-palette", title: "Custom Branding", desc: "Add your event logo" },
+          { icon: "fa-clock", title: "Flexible Duration", desc: "Hourly or full-day" }
+        ],
+        faqs: [
+          { q: "How many guests per session?", a: "1-8 people per session. Unlimited sessions." },
+          { q: "Do you provide props?", a: "Yes! Props, hats, glasses, and signs included." }
+        ]
+      },
+      "drone-services": {
+        name: "Drone Services", icon: "fa-drone", price: 28000, priceSuffix: "/event",
+        shortDesc: "Aerial cinematography for stunning establishing shots.",
+        longDesc: "Capture stunning aerial footage with our professional drone services! Licensed pilots, 4K Ultra HD, and fully insured. Perfect for weddings, real estate, events, and inspections.",
+        mainImage: "IMAGES/Drone/1.jpg",
+        galleryImages: ["IMAGES/Drone/1.jpg", "IMAGES/Drone/2.jpg"],
+        packages: [
+          { name: "Aerial Photos", price: 20000, duration: "2 hours", features: ["50+ edited photos", "4K resolution", "Online gallery", "Licensed pilot"], popular: false },
+          { name: "Photo + Video", price: 35000, duration: "4 hours", features: ["100+ photos + video", "Professional editing", "Drone + ground", "Music background", "Same-day preview"], popular: true },
+          { name: "Commercial", price: 50000, duration: "Full day", features: ["Full property survey", "3D mapping", "Commercial rights", "48hr delivery", "Raw footage"], popular: false }
+        ],
+        features: [
+          { icon: "fa-id-card", title: "Licensed Pilot", desc: "KCAA certified & insured" },
+          { icon: "fa-video", title: "4K Ultra HD", desc: "Crystal clear footage" },
+          { icon: "fa-shield-alt", title: "Full Insurance", desc: "Liability coverage" },
+          { icon: "fa-edit", title: "Professional Editing", desc: "Color grading & music" }
+        ],
+        faqs: [
+          { q: "Is drone flying legal at my venue?", a: "We handle all permits and clearances." },
+          { q: "What if it rains?", a: "We reschedule at no extra cost or provide ground photography." }
+        ]
+      },
+      "public-address": {
+        name: "Public Address Systems", icon: "fa-volume-up", price: 20000, priceSuffix: "/event",
+        shortDesc: "Crystal-clear audio for speeches and announcements.",
+        longDesc: "Crystal-clear audio for speeches, announcements, and background music. Professional sound system with line array speakers, wireless microphones, and dedicated sound engineer.",
+        mainImage: "IMAGES/Public Address Systems/3.jpg",
+        galleryImages: ["IMAGES/Public Address Systems/1.jpg", "IMAGES/Public Address Systems/2.jpg", "IMAGES/Public Address Systems/3.jpg", "IMAGES/Public Address Systems/4.jpg"],
+        packages: [
+          { name: "Basic PA", price: 20000, duration: "Per event", features: ["2 speakers", "2 wireless mics", "Basic mixer", "Sound engineer"], popular: false },
+          { name: "Premium PA", price: 35000, duration: "Per event", features: ["Line array (4)", "4 wireless mics", "Digital mixer", "Dedicated engineer", "Coverage up to 2000 pax"], popular: true },
+          { name: "Large Event", price: 60000, duration: "Per event", features: ["Line array (8)", "6 wireless mics", "Full monitoring", "2 engineers", "Coverage up to 5000 pax"], popular: false }
+        ],
+        features: [
+          { icon: "fa-volume-up", title: "Line Array", desc: "Professional sound" },
+          { icon: "fa-microphone", title: "Wireless Mics", desc: "4 wireless microphones" },
+          { icon: "fa-user-cog", title: "Sound Engineer", desc: "Professional on-site" },
+          { icon: "fa-users", title: "Large Coverage", desc: "Up to 5000 pax" }
+        ],
+        faqs: [
+          { q: "Can you handle outdoor events?", a: "Yes, systems designed for indoor/outdoor." },
+          { q: "Do you provide a sound check?", a: "Yes, we arrive early for full sound testing." }
+        ]
+      }
+    };
+
+    // ==================== PAGE RENDERER ====================
+    function getServiceFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('service') || 'dj-mc-services';
+    }
+
+    function renderServicePage() {
+      const slug = getServiceFromUrl();
+      const service = SERVICES_DETAIL[slug];
+      
+      if (!service) {
+        window.location.href = 'services.html';
+        return;
+      }
+      
+      // Update meta tags
+      document.title = `${service.name} | LAWIE SOUNDS`;
+      document.getElementById('metaDescription').setAttribute('content', service.shortDesc);
+      
+      // Render full page
+      const container = document.getElementById('serviceContent');
+      container.innerHTML = `
+        <!-- Hero Section -->
+        <section class="relative bg-gradient-to-r from-gray-900 to-black text-white py-12">
+          <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center gap-8">
+              <div class="flex-1 text-center md:text-left">
+                <div class="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ Professional</span>
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ Insured</span>
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ 500+ Events</span>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4"><span class="text-yellow-400">${service.name}</span></h1>
+                <p class="text-gray-300 text-lg mb-6">${service.longDesc}</p>
+                <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                  <a href="booking.html?service=${slug}" class="bg-yellow-400 text-black px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+                    <i class="fas fa-calendar-check mr-2"></i>Book This Service
+                  </a>
+                  <a href="#pricing" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white hover:text-black transition btn-touch">
+                    <i class="fas fa-tag mr-2"></i>View Pricing
+                  </a>
+                </div>
+              </div>
+              <div class="flex-1">
+                <img src="${service.mainImage}" alt="${service.name}" class="rounded-2xl shadow-2xl w-full max-h-80 object-cover" onerror="this.src='https://placehold.co/600x400'">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pricing Section (Anchoring Psychology) -->
+        <section id="pricing" class="py-12 bg-white">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-10">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Investment</span>
+              <h2 class="text-3xl font-bold mt-2">Pricing Packages</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              ${service.packages.map(pkg => `
+                <div class="price-card border ${pkg.popular ? 'border-yellow-400 shadow-xl relative' : 'border-gray-200'} rounded-xl p-6 text-center hover:shadow-xl transition">
+                  ${pkg.popular ? '<div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black px-4 py-1 rounded-full text-xs font-bold">🔥 MOST POPULAR</div>' : ''}
+                  <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas ${service.icon} text-2xl text-yellow-600"></i>
+                  </div>
+                  <h3 class="text-xl font-bold mb-2">${pkg.name}</h3>
+                  <p class="text-3xl font-bold text-yellow-600 mb-2">KES ${pkg.price.toLocaleString()}</p>
+                  <p class="text-sm text-gray-500 mb-4">${pkg.duration}</p>
+                  <ul class="text-sm text-left space-y-2 mb-6">
+                    ${pkg.features.map(f => `<li><i class="fas fa-check-circle text-green-500 mr-2"></i> ${f}</li>`).join('')}
+                  </ul>
+                  <a href="booking.html?service=${slug}&package=${encodeURIComponent(pkg.name)}" class="block ${pkg.popular ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-white'} py-2 rounded-full font-semibold hover:bg-yellow-500 transition btn-touch">Select Package</a>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- Features Section (Miller's Law: Chunked) -->
+        <section class="py-12 bg-gray-100">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-10">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Why Choose Us</span>
+              <h2 class="text-3xl font-bold mt-2">What's Included</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6">
+              ${service.features.map(f => `
+                <div class="feature-card bg-white p-6 rounded-xl text-center">
+                  <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas ${f.icon} text-2xl text-yellow-600"></i>
+                  </div>
+                  <h3 class="text-lg font-bold mb-2">${f.title}</h3>
+                  <p class="text-gray-600 text-sm">${f.desc}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section class="py-12 bg-white">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-10">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Moments Captured</span>
+              <h2 class="text-3xl font-bold mt-2">Service Gallery</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div id="lightgallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              ${service.galleryImages.map(img => `
+                <a href="${img}" class="rounded-xl overflow-hidden shadow-md">
+                  <img src="${img}" class="w-full h-56 object-cover transition hover:scale-105 duration-300" onerror="this.src='https://placehold.co/400x300'">
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="py-12 bg-gray-100">
+          <div class="container mx-auto px-4 max-w-3xl">
+            <div class="text-center mb-10">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Common Questions</span>
+              <h2 class="text-3xl font-bold mt-2">Frequently Asked Questions</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="space-y-4">
+              ${service.faqs.map((faq, idx) => `
+                <div class="border rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition" onclick="this.querySelector('.faq-answer-${idx}').classList.toggle('hidden')">
+                  <div class="flex justify-between items-center">
+                    <h3 class="font-semibold">${faq.q}</h3>
+                    <i class="fas fa-chevron-down text-yellow-500"></i>
+                  </div>
+                  <div class="faq-answer-${idx} hidden mt-2 text-gray-600 text-sm">${faq.a}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="py-16 bg-gradient-to-r from-gray-900 to-black text-white text-center">
+          <div class="container mx-auto px-4">
+            <div class="inline-block bg-yellow-400 text-black px-4 py-1 rounded-full text-sm font-bold mb-4 animate-pulse-slow">⏰ Limited Availability</div>
+            <h2 class="text-3xl font-bold mb-4">Ready to Book ${service.name}?</h2>
+            <p class="text-gray-300 mb-8 max-w-xl mx-auto">Get a custom quote for your event. We respond within <strong class="text-yellow-400">2 hours</strong>.</p>
+            <div class="flex flex-wrap gap-4 justify-center">
+              <a href="booking.html?service=${slug}" class="bg-yellow-400 text-black px-8 py-3 rounded-full font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+                <i class="fas fa-calendar-check mr-2"></i>Request Quote
+              </a>
+              <a href="https://wa.me/254703925826" target="_blank" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition btn-touch">
+                <i class="fab fa-whatsapp mr-2"></i>Chat on WhatsApp
+              </a>
+            </div>
+          </div>
+        </section>
+      `;
+      
+      // Initialize LightGallery after content loads
+      if (typeof lightGallery !== 'undefined' && document.getElementById('lightgallery')) {
+        lightGallery(document.getElementById('lightgallery'), {
+          plugins: [lgZoom, lgThumbnail],
+          speed: 500,
+          thumbnail: true,
+          zoom: true
+        });
+      }
+    }
+
+    // ==================== INITIALIZE ====================
+    document.addEventListener('DOMContentLoaded', renderServicePage);
+    
+    // Mobile menu
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+  </script>
+  
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+  </style>
+</body>
+</html>

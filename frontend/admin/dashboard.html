@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | Lawie Sounds</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e1e2a; }
+    ::-webkit-scrollbar-thumb { background: #7c4dff; border-radius: 3px; }
+    
+    .table-row:hover { background-color: rgba(124, 77, 255, 0.05); }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(124, 77, 255, 0.2);
+      border-top-color: #7c4dff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .tab-active {
+      border-bottom-color: #7c4dff !important;
+      color: #7c4dff !important;
+    }
+    
+    .modal-enter { animation: modalFadeIn 0.2s ease-out; }
+    @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    
+    .logo-img { transition: transform 0.3s ease; }
+    .logo-img:hover { transform: scale(1.05); }
+    
+    .value-card { transition: all 0.3s ease; }
+    .value-card:hover { transform: translateY(-4px); }
+    
+    .welcome-banner {
+      background: linear-gradient(135deg, #1e1e2a 0%, #2d2d3a 100%);
+    }
+    /* Employee Card Styles */
+.employee-card {
+  transition: all 0.3s ease;
+}
+.employee-card:hover {
+  transform: translateY(-4px);
+}
+
+.rating-stars {
+  color: #fbbf24;
+}
+
+.leaderboard-item {
+  transition: all 0.2s ease;
+}
+.leaderboard-item:hover {
+  background-color: rgba(124, 77, 255, 0.1);
+}
+
+/* Payroll Table Styles */
+.payroll-table th {
+  background-color: #2d2d3a;
+}
+
+/* Employee Avatar */
+.employee-avatar {
+  background: linear-gradient(135deg, #7c4dff, #b87cff);
+}
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-200">
+
+  <!-- ==================== SESSION CHECK ==================== -->
+  <script>
+    function getTimeBasedGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return { text: "Good Morning ☀️", emoji: "🌅" };
+      if (hour < 17) return { text: "Good Afternoon 🌤️", emoji: "☀️" };
+      if (hour < 21) return { text: "Good Evening 🌙", emoji: "✨" };
+      return { text: "Good Night 🌟", emoji: "🌙" };
+    }
+
+    function checkAdminSession() {
+      let session = localStorage.getItem('lawie_admin_session');
+      if (!session) session = sessionStorage.getItem('lawie_admin_session');
+      
+      console.log('🔐 Session check - found:', session ? 'YES' : 'NO');
+      
+      if (!session) {
+        console.log('❌ No session, redirecting to login');
+        window.location.href = 'login.html';
+        return false;
+      }
+      
+      try {
+        const sessionData = JSON.parse(atob(session));
+        console.log('📋 Session data:', sessionData);
+        
+        if (sessionData.expires < Date.now()) {
+          console.log('⏰ Session expired');
+          localStorage.removeItem('lawie_admin_session');
+          sessionStorage.removeItem('lawie_admin_session');
+          window.location.href = 'login.html';
+          return false;
+        }
+        
+        // Store admin info
+        const greeting = getTimeBasedGreeting();
+        sessionStorage.setItem('adminName', sessionData.name || 'Administrator');
+        sessionStorage.setItem('adminGreeting', greeting.text);
+        sessionStorage.setItem('adminEmoji', greeting.emoji);
+        
+        console.log('✅ Session valid! Admin:', sessionData.name, '|', greeting.text);
+        return true;
+      } catch (e) {
+        console.error('❌ Session parse error:', e);
+        localStorage.removeItem('lawie_admin_session');
+        sessionStorage.removeItem('lawie_admin_session');
+        window.location.href = 'login.html';
+        return false;
+      }
+    }
+    
+    checkAdminSession();
+  </script>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
+    <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="../IMAGES/LOGO/2.jpg" alt="Logo" class="logo-img w-10 h-10 rounded-full border-2 border-purple-500 object-cover" onerror="this.src='https://placehold.co/40x40?text=LS'">
+        <div>
+          <h1 class="text-xl font-bold">LAWIE <span class="text-purple-400">SOUNDS</span></h1>
+          <p class="text-xs text-gray-400">Admin Dashboard</p>
+        </div>
+      </div>
+      
+      <div class="flex gap-3">
+        <div class="bg-gray-800 rounded-xl px-4 py-2 text-center min-w-[70px]">
+          <p class="text-2xl font-bold text-purple-400" id="statEvents">0</p>
+          <p class="text-xs text-gray-400">Events</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl px-4 py-2 text-center min-w-[70px]">
+          <p class="text-2xl font-bold text-purple-400" id="statBookings">0</p>
+          <p class="text-xs text-gray-400">Bookings</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl px-4 py-2 text-center min-w-[70px]">
+          <p class="text-2xl font-bold text-purple-400" id="statGallery">0</p>
+          <p class="text-xs text-gray-400">Images</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl px-4 py-2 text-center min-w-[70px]">
+          <p class="text-2xl font-bold text-purple-400" id="statReviews">0</p>
+          <p class="text-xs text-gray-400">Reviews</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-xs text-gray-400" id="adminGreetingDisplay">Welcome</p>
+          <p class="text-sm font-semibold" id="adminNameDisplay">Administrator</p>
+        </div>
+        <button id="logoutBtn" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
+          <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="px-6 border-t border-gray-800 flex flex-wrap gap-1">
+      <button data-tab="dashboard" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">📊 Dashboard</button>
+      <button data-tab="events" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">📅 Events</button>
+      <button data-tab="gallery" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">🖼️ Gallery</button>
+      <button data-tab="reviews" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">⭐ Reviews</button>
+      <button data-tab="marketing" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">📢 Marketing</button>
+      <button data-tab="bookings" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">📋 Bookings</button>
+      <button data-tab="employees" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">👥 Employees</button>
+      <button data-tab="payroll" class="tab-btn px-5 py-3 text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent">💰 Payroll</button>
+    </div>
+  </header>
+
+  <main class="p-6">
+    <div id="sectionContent" class="fade-in">
+      <div class="flex justify-center py-12">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="formModal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-800 modal-enter">
+      <div class="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+        <h3 id="modalTitle" class="text-xl font-bold">Add Item</h3>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+      </div>
+      <form id="modalForm" class="p-6 space-y-4"></form>
+      <div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3">
+        <button id="cancelModalBtn" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition">Cancel</button>
+        <button id="saveModalBtn" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 transition">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== DATA STORE ====================
+    let store = {
+      events: [
+        { id: '1', title: 'Afrobeat Night', date: '2026-05-15', venue: 'Club Volume, Nairobi', price: 1500, seatsLeft: 45, image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7', isActive: true },
+        { id: '2', title: 'Corporate Gala', date: '2026-05-20', venue: 'KICC, Nairobi', price: 5000, seatsLeft: 120, image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622', isActive: true },
+        { id: '3', title: 'Wedding Expo', date: '2026-06-10', venue: 'Sarit Centre', price: 2000, seatsLeft: 200, image: 'https://images.unsplash.com/photo-1519741497674-611481863552', isActive: true }
+      ],
+      gallery: [
+        { id: '1', title: 'DJ Performance', category: 'Audio', imageUrl: 'https://images.unsplash.com/photo-1593642532973-d31b6557fa68', createdAt: new Date().toISOString() },
+        { id: '2', title: 'Wedding Setup', category: 'Weddings', imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552', createdAt: new Date().toISOString() },
+        { id: '3', title: 'LED Wall', category: 'Visual', imageUrl: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3', createdAt: new Date().toISOString() }
+      ],
+      reviews: [
+        { id: '1', clientName: 'Sarah & James', rating: 5, comment: 'Amazing service! Highly recommend.', eventType: 'Wedding', isApproved: true, createdAt: new Date().toISOString() },
+        { id: '2', clientName: 'Tech Corp', rating: 5, comment: 'Professional and reliable team.', eventType: 'Corporate', isApproved: false, createdAt: new Date().toISOString() },
+        { id: '3', clientName: 'Michael O.', rating: 4, comment: 'Great energy, crowd loved it!', eventType: 'Birthday', isApproved: true, createdAt: new Date().toISOString() }
+      ],
+      marketing: [
+        { id: '1', type: 'banner', message: '🎉 Special Offer: 15% off April bookings!', ctaText: 'Claim Offer', ctaLink: '/booking.html', isActive: true, startDate: '2026-04-01', endDate: '2026-04-30' }
+      ],
+      bookings: [
+        { id: '1', name: 'John Doe', email: 'john@example.com', phone: '0712345678', eventDate: '2026-06-01', eventType: 'Wedding', guestCount: '101-250', budget: '100k-200k', venue: 'Nairobi', status: 'pending', createdAt: new Date().toISOString() },
+        { id: '2', name: 'Jane Smith', email: 'jane@example.com', phone: '0723456789', eventDate: '2026-05-25', eventType: 'Corporate', guestCount: '51-100', budget: '50k-100k', venue: 'Westlands', status: 'confirmed', createdAt: new Date().toISOString() }
+      ]
+    };
+
+    // Add to existing store object
+    store.employees = [
+      { id: '1', name: 'John Kamau', role: 'Senior DJ', phone: '0712345678', email: 'john@lawiesounds.com', hireDate: '2024-01-15', status: 'active', totalEvents: 45, avgRating: 4.8 },
+      { id: '2', name: 'Mary Wanjiku', role: 'Lighting Technician', phone: '0723456789', email: 'mary@lawiesounds.com', hireDate: '2024-03-20', status: 'active', totalEvents: 32, avgRating: 4.9 },
+      { id: '3', name: 'Peter Omondi', role: 'Sound Engineer', phone: '0734567890', email: 'peter@lawiesounds.com', hireDate: '2024-02-10', status: 'active', totalEvents: 38, avgRating: 4.7 },
+      { id: '4', name: 'Grace Muthoni', role: 'MC/Host', phone: '0745678901', email: 'grace@lawiesounds.com', hireDate: '2024-04-05', status: 'active', totalEvents: 28, avgRating: 4.9 },
+      { id: '5', name: 'James Kariuki', role: 'Pyro Technician', phone: '0756789012', email: 'james@lawiesounds.com', hireDate: '2024-01-30', status: 'active', totalEvents: 25, avgRating: 4.6 }
+    ];
+
+    store.payroll = [
+      { id: '1', employeeId: '1', employeeName: 'John Kamau', eventName: 'Afrobeat Night', eventDate: '2026-05-15', amount: 15000, status: 'paid', paymentDate: '2026-05-16', rating: 5 },
+      { id: '2', employeeId: '2', employeeName: 'Mary Wanjiku', eventName: 'Corporate Gala', eventDate: '2026-05-20', amount: 12000, status: 'paid', paymentDate: '2026-05-21', rating: 5 },
+      { id: '3', employeeId: '3', employeeName: 'Peter Omondi', eventName: 'Wedding Expo', eventDate: '2026-06-10', amount: 14000, status: 'pending', paymentDate: null, rating: 4 }
+    ];
+
+    store.employeeOfMonth = null;
+
+    let currentTab = 'dashboard';
+    let currentEditId = null;
+    let bookingsChart = null;
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    function updateStats() {
+      document.getElementById('statEvents').textContent = store.events.length;
+      document.getElementById('statBookings').textContent = store.bookings.filter(b => b.status === 'pending').length;
+      document.getElementById('statGallery').textContent = store.gallery.length;
+      document.getElementById('statReviews').textContent = store.reviews.filter(r => !r.isApproved).length;
+    }
+
+    function updateGreetingDisplay() {
+      const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome';
+      const emoji = sessionStorage.getItem('adminEmoji') || '👋';
+      const adminName = sessionStorage.getItem('adminName') || 'Administrator';
+      
+      document.getElementById('adminGreetingDisplay').textContent = `${greeting} ${emoji}`;
+      document.getElementById('adminNameDisplay').textContent = adminName;
+    }
+
+    // ==================== DASHBOARD ====================
+    function renderDashboard() {
+      const container = document.getElementById('sectionContent');
+      const recentBookings = store.bookings.slice(0, 5);
+      const pendingReviews = store.reviews.filter(r => !r.isApproved);
+      const totalRevenue = store.bookings.reduce((sum, b) => {
+        const budgets = { '10k-30k': 20000, '30k-50k': 40000, '50k-100k': 75000, '100k-200k': 150000, '200k+': 250000 };
+        return sum + (budgets[b.budget] || 0);
+      }, 0);
+      const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome';
+      const emoji = sessionStorage.getItem('adminEmoji') || '👋';
+      const adminName = sessionStorage.getItem('adminName') || 'Administrator';
+      
+      container.innerHTML = `
+        <!-- Welcome Banner with Time-Based Greeting -->
+        <div class="welcome-banner rounded-2xl p-6 mb-8 border border-gray-800">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 class="text-2xl font-bold text-white">${greeting}, <span id="adminNameDisplay" class="text-purple-400">${adminName}</span>! ${emoji}</h2>
+              <p class="text-gray-400 mt-1">Here's what's happening with your business today.</p>
+            </div>
+            <div class="flex gap-3">
+              <div class="bg-purple-600/20 rounded-xl px-4 py-2 text-center">
+                <p class="text-xl font-bold text-purple-400">${totalRevenue.toLocaleString()} KES</p>
+                <p class="text-xs text-gray-400">Total Value</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick Stats Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.events.length}</p></div>
+              <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt text-purple-400"></i></div>
+            </div>
+            <div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +12% from last month</div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Total Bookings</p><p class="text-2xl font-bold text-white">${store.bookings.length}</p></div>
+              <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-ticket-alt text-blue-400"></i></div>
+            </div>
+            <div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +8 new this week</div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Pending Reviews</p><p class="text-2xl font-bold text-yellow-400">${pendingReviews.length}</p></div>
+              <div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div>
+            </div>
+            <div class="mt-2 text-xs text-yellow-400"><i class="fas fa-clock mr-1"></i> Awaiting approval</div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Conversion Rate</p><p class="text-2xl font-bold text-white">68%</p></div>
+              <div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div>
+            </div>
+            <div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +5% from last month</div>
+          </div>
+        </div>
+      
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+          <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+            <h3 class="font-semibold mb-4">📊 Monthly Bookings</h3>
+            <canvas id="bookingsChart" height="200"></canvas>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+            <h3 class="font-semibold mb-4">⚡ Quick Actions</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">+ Add Event</button>
+              <button onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📸 Upload Image</button>
+              <button onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📢 Create Banner</button>
+              <button onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📋 View Bookings</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-gray-900 rounded-xl border border-gray-800 mb-6">
+          <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+            <h3 class="font-semibold">📋 Recent Bookings</h3>
+            <button onclick="switchTab('bookings')" class="text-purple-400 text-sm hover:underline">View all →</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-800/50">
+                <tr><th class="px-4 py-3 text-left text-xs">Name</th><th class="px-4 py-3 text-left text-xs">Event</th><th class="px-4 py-3 text-left text-xs">Date</th><th class="px-4 py-3 text-left text-xs">Status</th><th class="px-4 py-3 text-left text-xs">Actions</th></tr>
+              </thead>
+              <tbody>${recentBookings.map(booking => `
+                <tr class="table-row border-t border-gray-800">
+                  <td class="px-4 py-3">${escapeHtml(booking.name)}</td>
+                  <td class="px-4 py-3">${escapeHtml(booking.eventType)}</td>
+                  <td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td>
+                  <td class="px-4 py-3"><span class="badge-${booking.status}">${booking.status}</span></td>
+                  <td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 hover:text-purple-300 text-sm">View</button></td>
+                </tr>
+              `).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+        
+        ${pendingReviews.length > 0 ? `
+          <div class="bg-gray-900 rounded-xl border border-gray-800">
+            <div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div>
+            <div class="divide-y divide-gray-800">
+              ${pendingReviews.map(review => `
+                <div class="p-4 flex justify-between items-center">
+                  <div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div>
+                  <div class="flex gap-2"><button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      `;
+      
+      const chartCanvas = document.getElementById('bookingsChart');
+      if (chartCanvas) {
+        if (bookingsChart) bookingsChart.destroy();
+        bookingsChart = new Chart(chartCanvas, {
+          type: 'line',
+          data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], datasets: [{ label: 'Bookings', data: [12, 19, 15, 27, 24, 32], borderColor: '#7c4dff', backgroundColor: 'rgba(124, 77, 255, 0.1)', fill: true, tension: 0.4 }] },
+          options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } } }
+        });
+      }
+    }
+
+    // ==================== EVENTS MANAGEMENT ====================
+    function renderEvents() {
+      const container = document.getElementById('sectionContent');
+      container.innerHTML = `
+        <div class="flex justify-end mb-4"><button onclick="openEventForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add Event</button></div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Title</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Venue</th><th class="px-4 py-3 text-left">Price</th><th class="px-4 py-3 text-left">Seats</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Actions</th></tr></thead>
+              <tbody>${store.events.map(event => `
+                <tr class="table-row border-t border-gray-800">
+                  <td class="px-4 py-3">${escapeHtml(event.title)}</td>
+                  <td class="px-4 py-3">${new Date(event.date).toLocaleDateString()}</td>
+                  <td class="px-4 py-3">${escapeHtml(event.venue)}</td>
+                  <td class="px-4 py-3">KES ${event.price.toLocaleString()}</td>
+                  <td class="px-4 py-3">${event.seatsLeft}</td>
+                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${event.isActive ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">${event.isActive ? 'Active' : 'Inactive'}</span></td>
+                  <td class="px-4 py-3"><button onclick="editEvent('${event.id}')" class="text-purple-400 mr-2">Edit</button><button onclick="deleteEvent('${event.id}')" class="text-red-400">Delete</button></td>
+                </tr>
+              `).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+        <div class="mt-4 text-center text-gray-500 text-sm">${store.events.length} events total</div>
+      `;
+    }
+
+    function openEventForm(id = null) {
+      currentEditId = id;
+      const event = id ? store.events.find(e => e.id === id) : null;
+      document.getElementById('modalTitle').textContent = id ? 'Edit Event' : 'Add Event';
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="eventTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(event?.title || '')}" required></div>
+        <div><label class="block text-sm mb-1">Date *</label><input type="date" id="eventDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${event?.date || ''}" required></div>
+        <div><label class="block text-sm mb-1">Venue *</label><input type="text" id="eventVenue" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(event?.venue || '')}" required></div>
+        <div><label class="block text-sm mb-1">Price (KES) *</label><input type="number" id="eventPrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${event?.price || ''}" required></div>
+        <div><label class="block text-sm mb-1">Seats Left</label><input type="number" id="eventSeats" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${event?.seatsLeft || 100}"></div>
+        <div><label class="flex items-center gap-2"><input type="checkbox" id="eventActive" ${event?.isActive !== false ? 'checked' : ''}> <span class="text-sm">Active</span></label></div>
+      `;
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function saveEvent() {
+      const newEvent = {
+        id: currentEditId || Date.now().toString(),
+        title: document.getElementById('eventTitle').value,
+        date: document.getElementById('eventDate').value,
+        venue: document.getElementById('eventVenue').value,
+        price: parseInt(document.getElementById('eventPrice').value),
+        seatsLeft: parseInt(document.getElementById('eventSeats').value),
+        image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7',
+        isActive: document.getElementById('eventActive').checked
+      };
+      if (currentEditId) {
+        store.events = store.events.map(e => e.id === currentEditId ? newEvent : e);
+      } else {
+        store.events.push(newEvent);
+      }
+      closeModal();
+      renderEvents();
+      updateStats();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    async function deleteEvent(id) {
+      const result = await Swal.fire({ title: 'Delete event?', text: 'This action cannot be undone', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        store.events = store.events.filter(e => e.id !== id);
+        renderEvents();
+        updateStats();
+        Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+      }
+    }
+
+    // ==================== GALLERY MANAGEMENT ====================
+    function renderGallery() {
+      const container = document.getElementById('sectionContent');
+      container.innerHTML = `
+        <div class="flex justify-end mb-4"><button onclick="openGalleryForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add Image</button></div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          ${store.gallery.map(img => `
+            <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              <img src="${img.imageUrl}" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/400x300'">
+              <div class="p-3"><p class="text-sm font-medium truncate">${escapeHtml(img.title)}</p><p class="text-xs text-gray-400">${escapeHtml(img.category)}</p><button onclick="deleteImage('${img.id}')" class="mt-2 w-full bg-red-600/20 text-red-400 py-1 rounded-lg text-sm hover:bg-red-600/30 transition">Delete</button></div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function openGalleryForm() {
+      currentEditId = null;
+      document.getElementById('modalTitle').textContent = 'Add Gallery Image';
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required></div>
+        <div><label class="block text-sm mb-1">Category</label><select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option>Weddings</option><option>Corporate</option><option>Equipment</option><option>Ruracio</option><option>Audio</option><option>Visual</option></select></div>
+        <div><label class="block text-sm mb-1">Image URL *</label><input type="url" id="galleryUrl" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required></div>
+        <div class="bg-gray-800/50 rounded-lg p-4 text-center"><p class="text-sm text-gray-400">Preview:</p><img id="imagePreview" class="mx-auto max-h-32 rounded-lg hidden"><p class="text-xs text-gray-500 mt-2">Enter URL to see preview</p></div>
+      `;
+      const urlInput = document.getElementById('galleryUrl');
+      if (urlInput) {
+        urlInput.addEventListener('input', () => {
+          const preview = document.getElementById('imagePreview');
+          if (urlInput.value && preview) { preview.src = urlInput.value; preview.classList.remove('hidden'); }
+          else if (preview) { preview.classList.add('hidden'); }
+        });
+      }
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function saveGallery() {
+      store.gallery.push({
+        id: Date.now().toString(),
+        title: document.getElementById('galleryTitle').value,
+        category: document.getElementById('galleryCategory').value,
+        imageUrl: document.getElementById('galleryUrl').value,
+        createdAt: new Date().toISOString()
+      });
+      closeModal();
+      renderGallery();
+      updateStats();
+      Swal.fire({ icon: 'success', title: 'Image added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    async function deleteImage(id) {
+      const result = await Swal.fire({ title: 'Delete image?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        store.gallery = store.gallery.filter(i => i.id !== id);
+        renderGallery();
+        updateStats();
+      }
+    }
+
+    // ==================== REVIEWS MANAGEMENT ====================
+    function renderReviews() {
+      const container = document.getElementById('sectionContent');
+      container.innerHTML = `
+        <div class="space-y-3">
+          ${store.reviews.map(review => `
+            <div class="bg-gray-900 rounded-xl p-4 border ${review.isApproved ? 'border-gray-800' : 'border-yellow-500/30'}">
+              <div class="flex justify-between items-start">
+                <div><div class="flex text-yellow-400 mb-1">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div><h3 class="font-semibold">${escapeHtml(review.clientName)}</h3><p class="text-sm text-gray-400">${escapeHtml(review.eventType)} • ${new Date(review.createdAt).toLocaleDateString()}</p><p class="mt-2">${escapeHtml(review.comment)}</p></div>
+                <div class="flex gap-2">${!review.isApproved ? `<button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button>` : ''}<button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function approveReview(id) {
+      store.reviews = store.reviews.map(r => r.id === id ? { ...r, isApproved: true } : r);
+      renderReviews();
+      updateStats();
+      Swal.fire({ icon: 'success', title: 'Review approved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    async function deleteReview(id) {
+      const result = await Swal.fire({ title: 'Delete review?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        store.reviews = store.reviews.filter(r => r.id !== id);
+        renderReviews();
+        updateStats();
+      }
+    }
+
+    // ==================== MARKETING MANAGEMENT ====================
+    function renderMarketing() {
+      const container = document.getElementById('sectionContent');
+      container.innerHTML = `
+        <div class="space-y-4">
+          ${store.marketing.map(banner => `
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+              <div class="flex justify-between items-start">
+                <div><div class="flex items-center gap-2 mb-2"><span class="px-2 py-1 rounded-full text-xs ${banner.isActive ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">${banner.isActive ? 'Active' : 'Inactive'}</span><span class="text-xs text-gray-500">${banner.type}</span></div><p class="font-medium">${escapeHtml(banner.message)}</p><p class="text-sm text-gray-400 mt-1">CTA: ${escapeHtml(banner.ctaText)} → ${escapeHtml(banner.ctaLink)}</p><p class="text-xs text-gray-500 mt-2">${banner.startDate} to ${banner.endDate}</p></div>
+                <div class="flex gap-2"><button onclick="toggleBanner('${banner.id}')" class="px-3 py-1 bg-purple-600 rounded-lg text-sm">${banner.isActive ? 'Deactivate' : 'Activate'}</button><button onclick="deleteBanner('${banner.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button onclick="openMarketingForm()" class="mt-4 w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl transition">+ Create New Banner</button>
+      `;
+    }
+
+    function openMarketingForm() {
+      currentEditId = null;
+      document.getElementById('modalTitle').textContent = 'Create Marketing Banner';
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1">Message *</label><textarea id="bannerMessage" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" rows="2" required placeholder="🎉 Special offer..."></textarea></div>
+        <div><label class="block text-sm mb-1">CTA Text</label><input type="text" id="bannerCtaText" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="Learn More"></div>
+        <div><label class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="/booking.html"></div>
+        <div><label class="block text-sm mb-1">Start Date</label><input type="date" id="bannerStartDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${new Date().toISOString().split('T')[0]}"></div>
+        <div><label class="block text-sm mb-1">End Date</label><input type="date" id="bannerEndDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]}"></div>
+      `;
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function saveMarketing() {
+      store.marketing.push({
+        id: Date.now().toString(),
+        type: 'banner',
+        message: document.getElementById('bannerMessage').value,
+        ctaText: document.getElementById('bannerCtaText').value,
+        ctaLink: document.getElementById('bannerCtaLink').value,
+        isActive: true,
+        startDate: document.getElementById('bannerStartDate').value,
+        endDate: document.getElementById('bannerEndDate').value
+      });
+      closeModal();
+      renderMarketing();
+      Swal.fire({ icon: 'success', title: 'Banner created!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    function toggleBanner(id) {
+      store.marketing = store.marketing.map(b => b.id === id ? { ...b, isActive: !b.isActive } : b);
+      renderMarketing();
+    }
+
+    async function deleteBanner(id) {
+      const result = await Swal.fire({ title: 'Delete banner?', icon: 'warning', showCancelButton: true, background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        store.marketing = store.marketing.filter(b => b.id !== id);
+        renderMarketing();
+      }
+    }
+
+    // ==================== BOOKINGS MANAGEMENT ====================
+    function renderBookings() {
+      const container = document.getElementById('sectionContent');
+      container.innerHTML = `
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Contact</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Budget</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Actions</th></tr></thead>
+              <tbody>${store.bookings.map(booking => `
+                <tr class="table-row border-t border-gray-800">
+                  <td class="px-4 py-3">${escapeHtml(booking.name)}</td>
+                  <td class="px-4 py-3">${escapeHtml(booking.phone)}<br><span class="text-xs text-gray-500">${escapeHtml(booking.email)}</span></td>
+                  <td class="px-4 py-3">${escapeHtml(booking.eventType)}</td>
+                  <td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td>
+                  <td class="px-4 py-3">${escapeHtml(booking.budget)}</td>
+                  <td class="px-4 py-3">
+                    <select onchange="updateBookingStatus('${booking.id}', this.value)" class="bg-gray-800 rounded-lg px-2 py-1 text-sm">
+                      <option ${booking.status === 'pending' ? 'selected' : ''}>pending</option>
+                      <option ${booking.status === 'confirmed' ? 'selected' : ''}>confirmed</option>
+                      <option ${booking.status === 'completed' ? 'selected' : ''}>completed</option>
+                      <option ${booking.status === 'cancelled' ? 'selected' : ''}>cancelled</option>
+                    </select>
+                  </td>
+                  <td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 text-sm">View</button></td>
+                </tr>
+              `).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateBookingStatus(id, status) {
+      store.bookings = store.bookings.map(b => b.id === id ? { ...b, status } : b);
+      updateStats();
+      Swal.fire({ icon: 'success', title: `Status updated to ${status}`, timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    function viewBookingDetails(id) {
+      const booking = store.bookings.find(b => b.id === id);
+      if (!booking) return;
+      Swal.fire({
+        title: 'Booking Details',
+        html: `<div class="text-left"><p><strong>Name:</strong> ${escapeHtml(booking.name)}</p><p><strong>Email:</strong> ${escapeHtml(booking.email)}</p><p><strong>Phone:</strong> ${escapeHtml(booking.phone)}</p><p><strong>Event:</strong> ${escapeHtml(booking.eventType)}</p><p><strong>Date:</strong> ${new Date(booking.eventDate).toLocaleDateString()}</p><p><strong>Guests:</strong> ${escapeHtml(booking.guestCount)}</p><p><strong>Budget:</strong> ${escapeHtml(booking.budget)}</p><p><strong>Venue:</strong> ${escapeHtml(booking.venue)}</p></div>`,
+        icon: 'info',
+        background: '#1e1e2a',
+        color: '#fff',
+        confirmButtonColor: '#7c4dff'
+      });
+    }
+
+    // ==================== EMPLOYEE MANAGEMENT ====================
+    function calculateLeaderboard(period = 'month') {
+      const now = new Date();
+      const employees = store.employees.map(emp => {
+        const employeePayments = store.payroll.filter(p => p.employeeId === emp.id);
+        
+        let filteredPayments = employeePayments;
+        if (period === 'month') {
+          filteredPayments = employeePayments.filter(p => {
+            const paymentDate = new Date(p.paymentDate);
+            return paymentDate.getMonth() === now.getMonth() && paymentDate.getFullYear() === now.getFullYear();
+          });
+        } else if (period === 'year') {
+          filteredPayments = employeePayments.filter(p => {
+            const paymentDate = new Date(p.paymentDate);
+            return paymentDate.getFullYear() === now.getFullYear();
+          });
+        }
+        
+        const totalRatings = filteredPayments.reduce((sum, p) => sum + (p.rating || 0), 0);
+        const avgRating = filteredPayments.length > 0 ? totalRatings / filteredPayments.length : 0;
+        const eventCount = filteredPayments.length;
+        
+        const score = (avgRating * 20) + (eventCount * 2);
+        
+        return { ...emp, score, avgRating, eventCount };
+      });
+      
+      return employees.sort((a, b) => b.score - a.score);
+    }
+
+    function renderEmployees() {
+      const container = document.getElementById('sectionContent');
+      const leaderboard = calculateLeaderboard('month');
+      const employeeOfMonth = leaderboard[0];
+      
+      container.innerHTML = `
+        ${employeeOfMonth ? `
+          <div class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-6 mb-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center">
+                  <i class="fas fa-crown text-4xl text-yellow-500"></i>
+                </div>
+                <div>
+                  <p class="text-black/70 text-sm font-semibold">🏆 EMPLOYEE OF THE MONTH</p>
+                  <h2 class="text-3xl font-bold text-black">${employeeOfMonth.name}</h2>
+                  <p class="text-black/70">${employeeOfMonth.role} • ⭐ ${employeeOfMonth.avgRating.toFixed(1)} rating • ${employeeOfMonth.eventCount} events</p>
+                </div>
+              </div>
+              <div class="bg-black/20 rounded-xl px-6 py-3 text-center">
+                <p class="text-2xl font-bold text-black">KES ${(employeeOfMonth.score * 1000).toLocaleString()}</p>
+                <p class="text-xs text-black/70">Bonus Reward</p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
+        <div class="grid md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Total Employees</p><p class="text-2xl font-bold text-white">${store.employees.length}</p></div>
+              <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-users text-purple-400"></i></div>
+            </div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Active Technicians</p><p class="text-2xl font-bold text-white">${store.employees.filter(e => e.status === 'active').length}</p></div>
+              <div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-400"></i></div>
+            </div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.employees.reduce((sum, e) => sum + e.totalEvents, 0)}</p></div>
+              <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-check text-blue-400"></i></div>
+            </div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <div class="flex items-center justify-between">
+              <div><p class="text-gray-400 text-sm">Avg Rating</p><p class="text-2xl font-bold text-white">${(store.employees.reduce((sum, e) => sum + e.avgRating, 0) / store.employees.length).toFixed(1)} ⭐</p></div>
+              <div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-gray-900 rounded-xl border border-gray-800 mb-8">
+          <div class="px-6 py-4 border-b border-gray-800">
+            <h3 class="font-semibold">🏆 Monthly Leaderboard</h3>
+            <p class="text-xs text-gray-400 mt-1">Top performers based on ratings and events</p>
+          </div>
+          <div class="divide-y divide-gray-800">
+            ${leaderboard.slice(0, 5).map((emp, idx) => `
+              <div class="leaderboard-item p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="w-8 text-center">
+                    ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}th`}
+                  </div>
+                  <div>
+                    <p class="font-medium">${emp.name}</p>
+                    <p class="text-xs text-gray-400">${emp.role}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-6">
+                  <div class="text-center">
+                    <p class="text-sm font-semibold">${emp.eventCount}</p>
+                    <p class="text-xs text-gray-400">Events</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-sm font-semibold text-yellow-400">${emp.avgRating.toFixed(1)} ⭐</p>
+                    <p class="text-xs text-gray-400">Rating</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-sm font-semibold text-green-400">${emp.score.toFixed(0)}</p>
+                    <p class="text-xs text-gray-400">Score</p>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        
+        <div class="flex justify-end mb-4"><button onclick="openEmployeeForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add Employee</button></div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-800/50">
+                <tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Role</th><th class="px-4 py-3 text-left">Phone</th><th class="px-4 py-3 text-left">Events</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Actions</th></tr>
+              </thead>
+              <tbody>
+                ${store.employees.map(emp => `
+                  <tr class="table-row border-t border-gray-800">
+                    <td class="px-4 py-3">${escapeHtml(emp.name)}</td>
+                    <td class="px-4 py-3">${escapeHtml(emp.role)}</td>
+                    <td class="px-4 py-3">${escapeHtml(emp.phone)}</td>
+                    <td class="px-4 py-3">${emp.totalEvents}</td>
+                    <td class="px-4 py-3"><span class="text-yellow-400">${emp.avgRating} ⭐</span></td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">${emp.status}</span></td>
+                    <td class="px-4 py-3"><button onclick="editEmployee('${emp.id}')" class="text-purple-400 mr-2">Edit</button><button onclick="deleteEmployee('${emp.id}')" class="text-red-400">Delete</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function openEmployeeForm(id = null) {
+      currentEditId = id;
+      const emp = id ? store.employees.find(e => e.id === id) : null;
+      document.getElementById('modalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1">Full Name *</label><input type="text" id="empName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.name || '')}" required></div>
+        <div><label class="block text-sm mb-1">Role *</label><input type="text" id="empRole" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.role || '')}" placeholder="e.g., Senior DJ, Sound Engineer" required></div>
+        <div><label class="block text-sm mb-1">Phone</label><input type="tel" id="empPhone" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.phone || '')}"></div>
+        <div><label class="block text-sm mb-1">Email</label><input type="email" id="empEmail" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.email || '')}"></div>
+        <div><label class="block text-sm mb-1">Hire Date</label><input type="date" id="empHireDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${emp?.hireDate || ''}"></div>
+        <div><label class="block text-sm mb-1">Status</label><select id="empStatus" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${emp?.status === 'active' ? 'selected' : ''}>active</option><option ${emp?.status === 'inactive' ? 'selected' : ''}>inactive</option></select></div>
+      `;
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function saveEmployee() {
+      const newEmployee = {
+        id: currentEditId || Date.now().toString(),
+        name: document.getElementById('empName').value,
+        role: document.getElementById('empRole').value,
+        phone: document.getElementById('empPhone').value,
+        email: document.getElementById('empEmail').value,
+        hireDate: document.getElementById('empHireDate').value,
+        status: document.getElementById('empStatus').value,
+        totalEvents: currentEditId ? store.employees.find(e => e.id === currentEditId)?.totalEvents || 0 : 0,
+        avgRating: currentEditId ? store.employees.find(e => e.id === currentEditId)?.avgRating || 0 : 0
+      };
+      if (currentEditId) {
+        store.employees = store.employees.map(e => e.id === currentEditId ? newEmployee : e);
+      } else {
+        store.employees.push(newEmployee);
+      }
+      closeModal();
+      renderEmployees();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    async function deleteEmployee(id) {
+      const result = await Swal.fire({ title: 'Delete employee?', text: 'This will remove all payroll records too', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        store.employees = store.employees.filter(e => e.id !== id);
+        store.payroll = store.payroll.filter(p => p.employeeId !== id);
+        renderEmployees();
+        Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+      }
+    }
+
+    function editEmployee(id) {
+      openEmployeeForm(id);
+    }
+
+    // ==================== PAYROLL MANAGEMENT ====================
+    function renderPayroll() {
+      const container = document.getElementById('sectionContent');
+      const totalPaid = store.payroll.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+      const totalPending = store.payroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+      
+      container.innerHTML = `
+        <div class="grid md:grid-cols-3 gap-4 mb-8">
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p class="text-gray-400 text-sm">Total Paid</p>
+            <p class="text-2xl font-bold text-green-400">KES ${totalPaid.toLocaleString()}</p>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p class="text-gray-400 text-sm">Pending Payments</p>
+            <p class="text-2xl font-bold text-yellow-400">KES ${totalPending.toLocaleString()}</p>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p class="text-gray-400 text-sm">Total Transactions</p>
+            <p class="text-2xl font-bold text-white">${store.payroll.length}</p>
+          </div>
+        </div>
+        
+        <div class="flex justify-end mb-4"><button onclick="openPayrollForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add Payment</button></div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full payroll-table">
+              <thead class="bg-gray-800/50">
+                <tr><th class="px-4 py-3 text-left">Employee</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Actions</th></tr>
+              </thead>
+              <tbody>
+                ${store.payroll.map(p => `
+                  <tr class="table-row border-t border-gray-800">
+                    <td class="px-4 py-3">${escapeHtml(p.employeeName)}</td>
+                    <td class="px-4 py-3">${escapeHtml(p.eventName)}</td>
+                    <td class="px-4 py-3">${new Date(p.eventDate).toLocaleDateString()}</td>
+                    <td class="px-4 py-3">KES ${p.amount.toLocaleString()}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${p.status}</span></td>
+                    <td class="px-4 py-3"><span class="text-yellow-400">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td>
+                    <td class="px-4 py-3"><button onclick="editPayroll('${p.id}')" class="text-purple-400 mr-2">Edit</button><button onclick="deletePayroll('${p.id}')" class="text-red-400">Delete</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function openPayrollForm(id = null) {
+      currentEditId = id;
+      const payroll = id ? store.payroll.find(p => p.id === id) : null;
+      document.getElementById('modalTitle').textContent = id ? 'Edit Payment' : 'Add Payment';
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1">Employee *</label><select id="payrollEmployee" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required>
+          <option value="">Select Employee</option>
+          ${store.employees.map(emp => `<option value="${emp.id}|${emp.name}" ${payroll?.employeeId === emp.id ? 'selected' : ''}>${emp.name} (${emp.role})</option>`).join('')}
+        </select></div>
+        <div><label class="block text-sm mb-1">Event Name *</label><input type="text" id="payrollEvent" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(payroll?.eventName || '')}" required></div>
+        <div><label class="block text-sm mb-1">Event Date *</label><input type="date" id="payrollDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.eventDate || ''}" required></div>
+        <div><label class="block text-sm mb-1">Amount (KES) *</label><input type="number" id="payrollAmount" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.amount || ''}" required></div>
+        <div><label class="block text-sm mb-1">Rating (1-5)</label><select id="payrollRating" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.rating === 5 ? 'selected' : ''}>5 - Excellent</option><option ${payroll?.rating === 4 ? 'selected' : ''}>4 - Very Good</option><option ${payroll?.rating === 3 ? 'selected' : ''}>3 - Good</option><option ${payroll?.rating === 2 ? 'selected' : ''}>2 - Fair</option><option ${payroll?.rating === 1 ? 'selected' : ''}>1 - Poor</option></select></div>
+        <div><label class="block text-sm mb-1">Status</label><select id="payrollStatus" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.status === 'paid' ? 'selected' : ''}>paid</option><option ${payroll?.status === 'pending' ? 'selected' : ''}>pending</option></select></div>
+      `;
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function savePayroll() {
+      const employeeSelect = document.getElementById('payrollEmployee').value;
+      const [empId, empName] = employeeSelect.split('|');
+      const ratingMap = { '5 - Excellent': 5, '4 - Very Good': 4, '3 - Good': 3, '2 - Fair': 2, '1 - Poor': 1 };
+      const ratingValue = ratingMap[document.getElementById('payrollRating').value] || 0;
+      
+      const newPayroll = {
+        id: currentEditId || Date.now().toString(),
+        employeeId: empId,
+        employeeName: empName,
+        eventName: document.getElementById('payrollEvent').value,
+        eventDate: document.getElementById('payrollDate').value,
+        amount: parseInt(document.getElementById('payrollAmount').value),
+        status: document.getElementById('payrollStatus').value,
+        paymentDate: document.getElementById('payrollStatus').value === 'paid' ? new Date().toISOString().split('T')[0] : null,
+        rating: ratingValue
+      };
+      
+      if (currentEditId) {
+        store.payroll = store.payroll.map(p => p.id === currentEditId ? newPayroll : p);
+      } else {
+        store.payroll.push(newPayroll);
+      }
+      
+      const employeePayments = store.payroll.filter(p => p.employeeId === empId && p.rating > 0);
+      const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0);
+      const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0;
+      const totalEvents = employeePayments.length;
+      
+      store.employees = store.employees.map(e => e.id === empId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e);
+      
+      closeModal();
+      renderPayroll();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    }
+
+    async function deletePayroll(id) {
+      const result = await Swal.fire({ title: 'Delete payment record?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
+      if (result.isConfirmed) {
+        const deleted = store.payroll.find(p => p.id === id);
+        store.payroll = store.payroll.filter(p => p.id !== id);
+        const employeePayments = store.payroll.filter(p => p.employeeId === deleted.employeeId && p.rating > 0);
+        const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0);
+        const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0;
+        const totalEvents = employeePayments.length;
+        store.employees = store.employees.map(e => e.id === deleted.employeeId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e);
+        renderPayroll();
+        Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+      }
+    }
+
+    function editPayroll(id) {
+      openPayrollForm(id);
+    }
+
+    // ==================== UTILITIES ====================
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400');
+        btn.classList.add('border-transparent');
+      });
+      const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+      if (activeBtn) {
+        activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400');
+        activeBtn.classList.remove('border-transparent');
+      }
+      
+      if (tab === 'dashboard') renderDashboard();
+      else if (tab === 'events') renderEvents();
+      else if (tab === 'gallery') renderGallery();
+      else if (tab === 'reviews') renderReviews();
+      else if (tab === 'marketing') renderMarketing();
+      else if (tab === 'bookings') renderBookings();
+      else if (tab === 'employees') renderEmployees();
+      else if (tab === 'payroll') renderPayroll();
+    }
+
+    function closeModal() {
+      document.getElementById('formModal').classList.add('hidden');
+      currentEditId = null;
+    }
+
+    function logout() {
+      localStorage.removeItem('lawie_admin_session');
+      sessionStorage.removeItem('lawie_admin_session');
+      localStorage.removeItem('adminName');
+      sessionStorage.removeItem('adminName');
+      sessionStorage.removeItem('adminGreeting');
+      sessionStorage.removeItem('adminEmoji');
+      window.location.href = 'login.html';
+    }
+
+    // ==================== INITIALIZE ====================
+    function init() {
+      updateStats();
+      updateGreetingDisplay();
+      switchTab('dashboard');
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+      
+      const closeBtn = document.getElementById('closeModalBtn');
+      const cancelBtn = document.getElementById('cancelModalBtn');
+      const saveBtn = document.getElementById('saveModalBtn');
+      
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          if (document.getElementById('eventTitle')) saveEvent();
+          else if (document.getElementById('galleryTitle')) saveGallery();
+          else if (document.getElementById('bannerMessage')) saveMarketing();
+          else if (document.getElementById('empName')) saveEmployee();
+          else if (document.getElementById('payrollEmployee')) savePayroll();
+        });
+      }
+      
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) logoutBtn.addEventListener('click', logout);
+    }
+    
+    init();
+
+    window.switchTab = switchTab;
+    window.openEventForm = openEventForm;
+    window.editEvent = openEventForm;
+    window.deleteEvent = deleteEvent;
+    window.openGalleryForm = openGalleryForm;
+    window.deleteImage = deleteImage;
+    window.approveReview = approveReview;
+    window.deleteReview = deleteReview;
+    window.openMarketingForm = openMarketingForm;
+    window.toggleBanner = toggleBanner;
+    window.deleteBanner = deleteBanner;
+    window.updateBookingStatus = updateBookingStatus;
+    window.viewBookingDetails = viewBookingDetails;
+    window.openEmployeeForm = openEmployeeForm;
+    window.editEmployee = editEmployee;
+    window.deleteEmployee = deleteEmployee;
+    window.openPayrollForm = openPayrollForm;
+    window.editPayroll = editPayroll;
+    window.deletePayroll = deletePayroll;
+  </script>
+
+  <style>
+    .badge-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; }
+    .badge-confirmed { background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; }
+    .badge-completed { background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; }
+    .badge-cancelled { background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; }
+  </style>
+</body>
+</html>

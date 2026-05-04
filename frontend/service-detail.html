@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title id="pageTitle">Loading... | LAWIE SOUNDS</title>
+  <meta name="description" id="metaDescription" content="Professional event services in Kenya">
+  
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- LightGallery -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css" />
+  <!-- SweetAlert2 for admin edits -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-pulse-slow { animation: pulse 2s ease-in-out infinite; }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 1rem;
+    }
+    
+    .btn-touch {
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .price-card {
+      transition: all 0.3s ease;
+    }
+    .price-card:hover {
+      transform: translateY(-6px);
+    }
+    
+    .feature-card {
+      transition: all 0.2s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Admin edit button */
+    .admin-edit-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 100;
+      background: #7c4dff;
+      color: white;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    .admin-edit-btn:hover {
+      transform: scale(1.1);
+      background: #6c3ce0;
+    }
+    
+    *:focus-visible {
+      outline: 2px solid #eab308;
+      outline-offset: 2px;
+      border-radius: 0.5rem;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex flex-wrap items-center justify-between">
+        <div class="flex items-center gap-3">
+          <img src="IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="h-11 w-11 rounded-full object-cover border-2 border-yellow-400">
+          <h1 class="text-xl font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+        </div>
+        
+        <nav class="hidden md:flex gap-8 text-sm font-semibold">
+          <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
+          <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
+          <a href="gallery.html" class="hover:text-yellow-400 transition">Gallery</a>
+          <a href="booking.html" class="hover:text-yellow-400 transition">Booking</a>
+          <a href="index.html#contact" class="hover:text-yellow-400 transition">Contact</a>
+        </nav>
+        
+        <div class="flex items-center gap-3">
+          <a href="booking.html" class="bg-yellow-400 text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+            <i class="fas fa-calendar-check mr-2"></i>Book Now
+          </a>
+          <button id="mobile-menu-btn" class="md:hidden text-white focus:outline-none btn-touch" aria-label="Menu">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
+        <a href="index.html" class="block py-3 hover:text-yellow-400 transition">Home</a>
+        <a href="services.html" class="block py-3 hover:text-yellow-400 transition">Services</a>
+        <a href="gallery.html" class="block py-3 hover:text-yellow-400 transition">Gallery</a>
+        <a href="booking.html" class="block py-3 hover:text-yellow-400 transition">Booking</a>
+        <a href="index.html#contact" class="block py-3 hover:text-yellow-400 transition">Contact</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT (Dynamic) ==================== -->
+  <main id="serviceContent">
+    <div class="container mx-auto px-4 py-8">
+      <div class="skeleton h-[400px] rounded-2xl mb-8"></div>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div><div class="skeleton h-96 rounded-xl"></div></div>
+        <div><div class="skeleton h-96 rounded-xl"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-gray-900 text-white mt-16">
+    <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
+      <div>
+        <img src="IMAGES/LOGO/2.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
+        <p class="text-sm text-gray-400">&copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="index.html" class="text-gray-400 hover:text-yellow-400 transition">Home</a></li>
+          <li><a href="services.html" class="text-gray-400 hover:text-yellow-400 transition">Services</a></li>
+          <li><a href="gallery.html" class="text-gray-400 hover:text-yellow-400 transition">Gallery</a></li>
+          <li><a href="booking.html" class="text-gray-400 hover:text-yellow-400 transition">Booking</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h3>
+        <div class="flex space-x-6 text-2xl">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-facebook"></i></a>
+          <a href="https://wa.me/254703925826" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+    <div class="bg-gray-800 text-center text-sm py-4 text-gray-400">Made with ❤️ for unforgettable events.</div>
+  </footer>
+
+  <!-- Floating Action Buttons -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110 btn-touch"><i class="fas fa-phone-alt text-xl"></i></a>
+    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110 btn-touch"><i class="fab fa-whatsapp text-xl"></i></a>
+    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110 btn-touch"><i class="fas fa-arrow-up text-xl"></i></button>
+  </div>
+
+  <!-- Admin Edit Button (visible only when logged in) -->
+  <div id="adminEditBtn" class="admin-edit-btn hidden" onclick="openAdminEditModal()">
+    <i class="fas fa-edit text-xl"></i>
+  </div>
+
+  <!-- Admin Edit Modal -->
+  <div id="adminModal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this) closeAdminModal()">
+    <div class="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-700">
+      <div class="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+        <h3 class="text-xl font-bold text-white">Edit Service: <span id="modalServiceName"></span></h3>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+      </div>
+      <div class="p-6">
+        <form id="adminEditForm" class="space-y-6">
+          <!-- Basic Info -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Service Name</label><input type="text" id="editName" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"></div>
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Icon Class</label><input type="text" id="editIcon" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white" placeholder="fa-headphones"></div>
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Short Description</label><textarea id="editShortDesc" rows="2" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Long Description</label><textarea id="editLongDesc" rows="2" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"></textarea></div>
+          </div>
+          
+          <!-- Packages Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Packages (JSON format)</label>
+            <textarea id="editPackages" rows="8" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Format: [{"name":"Basic","price":25000,"duration":"4 hours","features":["item1","item2"],"popular":false}]</p>
+          </div>
+          
+          <!-- Features Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Features (JSON format)</label>
+            <textarea id="editFeatures" rows="6" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Format: [{"icon":"fa-headphones","title":"Professional DJ","desc":"Description"}]</p>
+          </div>
+          
+          <!-- FAQs Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">FAQs (JSON format)</label>
+            <textarea id="editFaqs" rows="6" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Format: [{"q":"Question?","a":"Answer"}]</p>
+          </div>
+          
+          <!-- Testimonials Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Testimonials (JSON format)</label>
+            <textarea id="editTestimonials" rows="6" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Format: [{"clientName":"Name","rating":5,"comment":"Comment","eventType":"Wedding"}]</p>
+          </div>
+          
+          <!-- Gallery Images -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Gallery Images (JSON array)</label>
+            <textarea id="editGalleryImages" rows="4" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm"></textarea>
+          </div>
+          
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
+            <button type="button" onclick="closeAdminModal()" class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 transition">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.min.js"></script>
+  
+  <script>
+    // ==================== API CONFIGURATION ====================
+    const API_BASE_URL = 'http://localhost:5000/api';
+    let currentServiceData = null;
+    let currentServiceSlug = null;
+    let isAdminLoggedIn = false;
+
+    // Check admin session
+    function checkAdminSession() {
+      const session = localStorage.getItem('lawie_admin_session') || sessionStorage.getItem('lawie_admin_session');
+      if (session) {
+        try {
+          const sessionData = JSON.parse(atob(session));
+          if (sessionData.expires > Date.now()) {
+            isAdminLoggedIn = true;
+            document.getElementById('adminEditBtn').classList.remove('hidden');
+          }
+        } catch(e) {}
+      }
+    }
+
+    // ==================== FETCH SERVICE FROM SUPABASE ====================
+    async function fetchServiceFromAPI(slug) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/services?slug=eq.${slug}&select=*`);
+        if (!response.ok) throw new Error('API error');
+        const data = await response.json();
+        return data[0] || null;
+      } catch (error) {
+        console.error('API fetch failed, using fallback:', error);
+        return null;
+      }
+    }
+
+    // ==================== UPDATE SERVICE IN SUPABASE ====================
+    async function updateServiceInAPI(id, serviceData) {
+      try {
+        const session = localStorage.getItem('lawie_admin_session') || sessionStorage.getItem('lawie_admin_session');
+        if (!session) throw new Error('Not authenticated');
+        
+        const response = await fetch(`${API_BASE_URL}/services?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${JSON.parse(atob(session)).token}`
+          },
+          body: JSON.stringify(serviceData)
+        });
+        
+        if (!response.ok) throw new Error('Update failed');
+        return await response.json();
+      } catch (error) {
+        console.error('Update failed:', error);
+        throw error;
+      }
+    }
+
+    // ==================== GET SERVICE FROM URL ====================
+    function getServiceFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('service') || 'dj-mc-services';
+    }
+
+    // ==================== RENDER SERVICE PAGE ====================
+    async function renderServicePage() {
+      currentServiceSlug = getServiceFromUrl();
+      
+      // Try to fetch from API first
+      let service = await fetchServiceFromAPI(currentServiceSlug);
+      
+      if (!service) {
+        // Fallback to localStorage cache
+        const cached = localStorage.getItem(`service_${currentServiceSlug}`);
+        if (cached) {
+          service = JSON.parse(cached);
+        } else {
+          window.location.href = 'services.html';
+          return;
+        }
+      }
+      
+      currentServiceData = service;
+      
+      // Cache for offline
+      localStorage.setItem(`service_${currentServiceSlug}`, JSON.stringify(service));
+      
+      document.title = `${service.name} | LAWIE SOUNDS`;
+      document.getElementById('metaDescription').setAttribute('content', service.shortDesc || '');
+      
+      const container = document.getElementById('serviceContent');
+      const packages = service.packages || [];
+      const features = service.features || [];
+      const galleryImages = service.gallery_images || service.galleryImages || [];
+      const testimonials = service.testimonials || [];
+      const faqs = service.faqs || [];
+      
+      container.innerHTML = `
+        <section class="relative bg-gradient-to-r from-gray-900 to-black text-white py-12">
+          <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center gap-8">
+              <div class="flex-1 text-center md:text-left">
+                <div class="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ 500+ Events</span>
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ 98% Satisfaction</span>
+                  <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold">✅ Professional Team</span>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4"><span class="text-yellow-400">${service.name}</span></h1>
+                <p class="text-gray-300 text-lg mb-6">${service.long_desc || service.longDesc || service.shortDesc || ''}</p>
+                <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                  <a href="booking.html?service=${currentServiceSlug}" class="bg-yellow-400 text-black px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+                    <i class="fas fa-calendar-check mr-2"></i>Book This Service
+                  </a>
+                  <a href="#pricing" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white hover:text-black transition btn-touch">
+                    <i class="fas fa-tag mr-2"></i>View Pricing
+                  </a>
+                </div>
+              </div>
+              <div class="flex-1">
+                <img src="${service.main_image || service.mainImage || 'https://placehold.co/600x400'}" alt="${service.name}" class="rounded-2xl shadow-2xl w-full max-h-80 object-cover" onerror="this.src='https://placehold.co/600x400'">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" class="py-16 bg-white">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Investment</span>
+              <h2 class="text-3xl font-bold mt-2">Pricing Packages</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              ${packages.map(pkg => `
+                <div class="price-card border ${pkg.popular ? 'border-yellow-400 shadow-xl relative' : 'border-gray-200'} rounded-xl p-6 text-center hover:shadow-xl transition bg-white">
+                  ${pkg.popular ? '<div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black px-4 py-1 rounded-full text-xs font-bold animate-pulse-slow">🔥 MOST POPULAR</div>' : ''}
+                  <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas ${service.icon || 'fa-star'} text-2xl text-yellow-600"></i>
+                  </div>
+                  <h3 class="text-xl font-bold mb-2">${pkg.name}</h3>
+                  <p class="text-3xl font-bold text-yellow-600 mb-2">KES ${pkg.price.toLocaleString()}</p>
+                  <p class="text-sm text-gray-500 mb-4">${pkg.duration}</p>
+                  <ul class="text-sm text-left space-y-2 mb-6">
+                    ${(pkg.features || []).map(f => `<li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500 w-4"></i> ${f}</li>`).join('')}
+                  </ul>
+                  <a href="booking.html?service=${currentServiceSlug}&package=${encodeURIComponent(pkg.name)}" class="block ${pkg.popular ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-white hover:bg-yellow-400 hover:text-black'} py-2 rounded-full font-semibold transition btn-touch">Select Package <i class="fas fa-arrow-right ml-1"></i></a>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <section class="py-16 bg-gray-100">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Why Choose Us</span>
+              <h2 class="text-3xl font-bold mt-2">What's Included</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6">
+              ${features.map(f => `
+                <div class="feature-card bg-white p-6 rounded-xl text-center shadow-md">
+                  <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas ${f.icon} text-2xl text-yellow-600"></i>
+                  </div>
+                  <h3 class="text-lg font-bold mb-2">${f.title}</h3>
+                  <p class="text-gray-600 text-sm">${f.desc}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <section id="gallery" class="py-16 bg-white">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Moments Captured</span>
+              <h2 class="text-3xl font-bold mt-2">Service Gallery</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div id="lightgallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              ${galleryImages.map(img => `
+                <a href="${img}" class="rounded-xl overflow-hidden shadow-md gallery-item">
+                  <img src="${img}" class="w-full h-56 object-cover transition hover:scale-105 duration-300" onerror="this.src='https://placehold.co/400x300'">
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <section class="py-16 bg-gray-100">
+          <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Client Love</span>
+              <h2 class="text-3xl font-bold mt-2">What Our Clients Say</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              ${testimonials.map(t => `
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                  <div class="flex text-yellow-400 mb-3">${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</div>
+                  <p class="text-gray-600 text-sm italic">"${t.comment}"</p>
+                  <div class="mt-4 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-500"></i></div>
+                    <div><p class="font-semibold text-sm">${t.clientName}</p><p class="text-xs text-gray-400">${t.eventType}</p></div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <section class="py-16 bg-white">
+          <div class="container mx-auto px-4 max-w-3xl">
+            <div class="text-center mb-12">
+              <span class="text-yellow-600 font-bold uppercase tracking-wider">Common Questions</span>
+              <h2 class="text-3xl font-bold mt-2">Frequently Asked Questions</h2>
+              <div class="w-20 h-1 bg-yellow-400 mx-auto mt-4"></div>
+            </div>
+            <div class="space-y-4">
+              ${faqs.map((faq, idx) => `
+                <div class="border rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition" onclick="this.querySelector('.faq-answer-${idx}').classList.toggle('hidden')">
+                  <div class="flex justify-between items-center"><h3 class="font-semibold">${faq.q}</h3><i class="fas fa-chevron-down text-yellow-500"></i></div>
+                  <div class="faq-answer-${idx} hidden mt-2 text-gray-600 text-sm">${faq.a}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <section class="py-20 bg-gradient-to-r from-gray-900 to-black text-white text-center">
+          <div class="container mx-auto px-4">
+            <div class="inline-block bg-yellow-400 text-black px-4 py-1 rounded-full text-sm font-bold mb-4 animate-pulse-slow">⏰ Limited Availability - Book Early!</div>
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to Book ${service.name}?</h2>
+            <p class="text-gray-300 mb-8 max-w-xl mx-auto">Get a custom quote for your event. We respond within <strong class="text-yellow-400">2 hours</strong>.</p>
+            <div class="flex flex-wrap gap-4 justify-center">
+              <a href="booking.html?service=${currentServiceSlug}" class="bg-yellow-400 text-black px-8 py-3 rounded-full font-bold hover:bg-yellow-300 transition shadow-lg btn-touch"><i class="fas fa-calendar-check mr-2"></i>Request Quote</a>
+              <a href="https://wa.me/254703925826" target="_blank" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition btn-touch"><i class="fab fa-whatsapp mr-2"></i>Chat on WhatsApp</a>
+            </div>
+          </div>
+        </section>
+      `;
+      
+      if (typeof lightGallery !== 'undefined' && document.getElementById('lightgallery')) {
+        lightGallery(document.getElementById('lightgallery'), { plugins: [lgZoom, lgThumbnail], speed: 500 });
+      }
+    }
+
+    // ==================== ADMIN EDIT MODAL ====================
+    function openAdminEditModal() {
+      if (!currentServiceData) return;
+      
+      document.getElementById('modalServiceName').textContent = currentServiceData.name;
+      document.getElementById('editName').value = currentServiceData.name || '';
+      document.getElementById('editIcon').value = currentServiceData.icon || 'fa-star';
+      document.getElementById('editShortDesc').value = currentServiceData.short_desc || currentServiceData.shortDesc || '';
+      document.getElementById('editLongDesc').value = currentServiceData.long_desc || currentServiceData.longDesc || '';
+      document.getElementById('editPackages').value = JSON.stringify(currentServiceData.packages || [], null, 2);
+      document.getElementById('editFeatures').value = JSON.stringify(currentServiceData.features || [], null, 2);
+      document.getElementById('editFaqs').value = JSON.stringify(currentServiceData.faqs || [], null, 2);
+      document.getElementById('editTestimonials').value = JSON.stringify(currentServiceData.testimonials || [], null, 2);
+      document.getElementById('editGalleryImages').value = JSON.stringify(currentServiceData.gallery_images || currentServiceData.galleryImages || [], null, 2);
+      
+      document.getElementById('adminModal').classList.remove('hidden');
+      document.getElementById('adminModal').classList.add('flex');
+    }
+    
+    function closeAdminModal() {
+      document.getElementById('adminModal').classList.add('hidden');
+      document.getElementById('adminModal').classList.remove('flex');
+    }
+    
+    // Save admin edits
+    document.getElementById('adminEditForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const updatedData = {
+        name: document.getElementById('editName').value,
+        icon: document.getElementById('editIcon').value,
+        short_desc: document.getElementById('editShortDesc').value,
+        long_desc: document.getElementById('editLongDesc').value,
+        packages: JSON.parse(document.getElementById('editPackages').value),
+        features: JSON.parse(document.getElementById('editFeatures').value),
+        faqs: JSON.parse(document.getElementById('editFaqs').value),
+        testimonials: JSON.parse(document.getElementById('editTestimonials').value),
+        gallery_images: JSON.parse(document.getElementById('editGalleryImages').value),
+        updated_at: new Date().toISOString()
+      };
+      
+      Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      
+      try {
+        await updateServiceInAPI(currentServiceData.id, updatedData);
+        currentServiceData = { ...currentServiceData, ...updatedData };
+        localStorage.setItem(`service_${currentServiceSlug}`, JSON.stringify(currentServiceData));
+        Swal.fire({ icon: 'success', title: 'Saved!', text: 'Changes published instantly.', timer: 1500 });
+        closeAdminModal();
+        renderServicePage();
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save. Check your connection.' });
+      }
+    });
+
+    // ==================== INITIALIZE ====================
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAdminSession();
+      renderServicePage();
+    });
+    
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+  </script>
+</body>
+</html>

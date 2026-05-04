@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Admin Login | Lawie Sounds</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin { animation: spin 0.8s linear infinite; }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .animate-shake { animation: shake 0.3s ease-in-out; }
+    
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(135deg, #1e1e2a 0%, #2d2d3a 100%);
+      border-radius: 1.5rem;
+    }
+    
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(135deg, #7c4dff, #b87cff, #7c4dff);
+      border-radius: 1.5rem;
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .gradient-border:hover::before { opacity: 1; }
+    
+    .input-focus:focus {
+      box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.2);
+      border-color: #7c4dff;
+    }
+    
+    .password-toggle { cursor: pointer; transition: color 0.2s; }
+    .password-toggle:hover { color: #7c4dff; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e1e2a; }
+    ::-webkit-scrollbar-thumb { background: #7c4dff; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen flex items-center justify-center p-4">
+
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-600/20 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="w-full max-w-md animate-fade-up">
+    <div class="text-center mb-8">
+      <div class="inline-block p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl mb-4">
+        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="w-20 h-20 rounded-full border-2 border-purple-500 shadow-xl object-cover" onerror="this.src='https://placehold.co/80x80?text=LS'">
+      </div>
+      <h1 class="text-2xl font-bold text-white">LAWIE <span class="text-purple-400">SOUNDS</span></h1>
+      <p class="text-gray-400 text-sm mt-2">Admin Control Panel</p>
+    </div>
+
+    <div class="gradient-border p-8 bg-gray-900/90 backdrop-blur-sm shadow-2xl">
+      <div class="text-center mb-6">
+        <i class="fas fa-shield-alt text-4xl text-purple-400 mb-2"></i>
+        <h2 class="text-2xl font-bold text-white">Welcome Back</h2>
+        <p class="text-gray-400 text-sm mt-1">Enter your credentials to continue</p>
+      </div>
+
+      <form id="loginForm" class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            <i class="fas fa-user mr-2 text-purple-400"></i>Username
+          </label>
+          <div class="relative">
+            <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+            <input type="text" id="username" name="username" 
+                   class="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 input-focus transition"
+                   placeholder="admin" autocomplete="username" required>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            <i class="fas fa-lock mr-2 text-purple-400"></i>Password
+          </label>
+          <div class="relative">
+            <i class="fas fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+            <input type="password" id="password" name="password" 
+                   class="w-full pl-11 pr-12 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 input-focus transition"
+                   placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" id="togglePassword" class="password-toggle absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-purple-400">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-500">
+            <span class="text-sm text-gray-400">Remember me</span>
+          </label>
+          <a href="#" id="forgotPassword" class="text-sm text-purple-400 hover:text-purple-300 transition">Forgot password?</a>
+        </div>
+
+        <button type="submit" id="loginBtn" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center gap-2">
+          <i class="fas fa-sign-in-alt"></i>
+          <span>Login to Dashboard</span>
+        </button>
+
+        <div class="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+          <p class="text-xs text-center text-gray-400">
+            <i class="fas fa-info-circle mr-1"></i> 
+            Demo credentials: <span class="text-purple-400 font-mono">admin</span> / <span class="text-purple-400 font-mono">admin123</span>
+          </p>
+        </div>
+
+        <div class="flex justify-center gap-4 pt-2">
+          <span class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> 256-bit SSL</span>
+          <span class="text-xs text-gray-500"><i class="fas fa-shield-alt mr-1"></i> 2FA Ready</span>
+          <span class="text-xs text-gray-500"><i class="fas fa-clock mr-1"></i> Session Timeout</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="text-center mt-6">
+      <p class="text-xs text-gray-500">&copy; 2026 Lawie Sounds. <a href="../index.html" class="text-purple-400 hover:text-purple-300 transition">← Back to Website</a></p>
+    </div>
+  </div>
+
+  <script>
+    const VALID_CREDENTIALS = {
+      admin: { password: 'admin123', role: 'admin', name: 'Administrator' },
+      manager: { password: 'manager123', role: 'manager', name: 'Event Manager' },
+      viewer: { password: 'viewer123', role: 'viewer', name: 'Viewer' }
+    };
+
+    let loginAttempts = 0;
+    let lockoutTime = 0;
+    const MAX_ATTEMPTS = 5;
+    const LOCKOUT_DURATION = 15 * 60 * 1000;
+
+    function showLoading(show) {
+      const btn = document.getElementById('loginBtn');
+      if (!btn) return;
+      if (show) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i> <span>Authenticating...</span>';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <span>Login to Dashboard</span>';
+      }
+    }
+
+    function setCookie(name, value, days) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    }
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+
+    function deleteCookie(name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+
+    function triggerShake() {
+      const formCard = document.querySelector('.gradient-border');
+      if (formCard) {
+        formCard.classList.add('animate-shake');
+        setTimeout(() => formCard.classList.remove('animate-shake'), 300);
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('username')?.value.trim() || '';
+      const password = document.getElementById('password')?.value || '';
+      const rememberMe = document.getElementById('rememberMe')?.checked || false;
+      
+      if (!username || !password) {
+        Swal.fire({ icon: 'warning', title: 'Missing Fields', text: 'Please enter both username and password', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+        triggerShake();
+        return;
+      }
+      
+      if (lockoutTime > Date.now()) {
+        const remainingMinutes = Math.ceil((lockoutTime - Date.now()) / 60000);
+        Swal.fire({ icon: 'error', title: 'Account Locked', text: `Try again in ${remainingMinutes} minutes`, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+        return;
+      }
+      
+      showLoading(true);
+      
+      setTimeout(() => {
+        const user = VALID_CREDENTIALS[username.toLowerCase()];
+        
+        if (user && user.password === password) {
+          loginAttempts = 0;
+          
+          const session = {
+            id: 1,
+            username: username.toLowerCase(),
+            role: user.role,
+            name: user.name,
+            loginTime: Date.now(),
+            expires: Date.now() + (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
+          };
+          
+          const sessionToken = btoa(JSON.stringify(session));
+          
+          if (rememberMe) {
+            localStorage.setItem('lawie_admin_session', sessionToken);
+            setCookie('lawie_admin_session', sessionToken, 30);
+            localStorage.setItem('lawie_remembered_user', username);
+          } else {
+            sessionStorage.setItem('lawie_admin_session', sessionToken);
+          }
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Login Successful!',
+            text: `Welcome back, ${user.name}`,
+            background: '#1e1e2a',
+            color: '#fff',
+            confirmButtonColor: '#7c4dff',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            window.location.href = 'dashboard.html';
+          });
+        } else {
+          loginAttempts++;
+          if (loginAttempts >= MAX_ATTEMPTS) {
+            lockoutTime = Date.now() + LOCKOUT_DURATION;
+            Swal.fire({ icon: 'error', title: 'Account Locked', text: 'Too many attempts. Try again in 15 minutes.', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Login Failed', text: `Invalid credentials. ${MAX_ATTEMPTS - loginAttempts} attempts remaining.`, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+          }
+          showLoading(false);
+          triggerShake();
+        }
+      }, 800);
+    }
+
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = document.querySelector('#togglePassword i');
+      if (!passwordInput || !toggleIcon) return;
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+      }
+    }
+
+    function handleForgotPassword(e) {
+      e.preventDefault();
+      Swal.fire({
+        title: 'Reset Password',
+        text: 'Contact the system administrator to reset your password.',
+        background: '#1e1e2a',
+        color: '#fff',
+        confirmButtonColor: '#7c4dff'
+      });
+    }
+
+    // Clear any existing session on login page load
+    localStorage.removeItem('lawie_admin_session');
+    sessionStorage.removeItem('lawie_admin_session');
+    deleteCookie('lawie_admin_session');
+
+    // Load remembered username if exists
+    const rememberedUser = localStorage.getItem('lawie_remembered_user');
+    if (rememberedUser) {
+      document.getElementById('username').value = rememberedUser;
+      document.getElementById('rememberMe').checked = true;
+    }
+
+    // Event listeners
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.getElementById('togglePassword').addEventListener('click', togglePasswordVisibility);
+    document.getElementById('forgotPassword').addEventListener('click', handleForgotPassword);
+    document.getElementById('username').focus();
+  </script>
+</body>
+</html>

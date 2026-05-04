@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Book Your Event | LAWIE SOUNDS - Professional Entertainment</title>
+  <meta name="description" content="Book Lawie Sounds for your wedding, corporate event, or party. Professional DJ, MC, lighting, sound, and photography services in Kenya.">
+  
+  <!-- Tailwind CSS (latest v3) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 0.8s linear infinite; }
+    
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: #eab308;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+    }
+    
+    /* Service card checkbox styling */
+    .service-checkbox:checked + .service-label {
+      border-color: #eab308;
+      background-color: #fef3c7;
+    }
+    
+    .service-checkbox:checked + .service-label .service-check-icon {
+      display: inline-flex;
+    }
+    
+    /* Step indicator */
+    .step-active {
+      background-color: #eab308;
+      color: #000;
+    }
+    
+    .step-completed {
+      background-color: #10b981;
+      color: white;
+    }
+    
+    .step-pending {
+      background-color: #e5e7eb;
+      color: #6b7280;
+    }
+    
+    .logo-img { transition: transform 0.3s ease; }
+    .logo-img:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex flex-wrap items-center justify-between">
+        <div class="flex items-center gap-3">
+          <!-- FIXED: Corrected logo path with ../ -->
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
+          <h1 class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+        </div>
+        
+        <nav class="hidden md:flex gap-6 text-sm font-semibold">
+          <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
+          <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
+          <a href="gallery.html" class="hover:text-yellow-400 transition">Gallery</a>
+          <a href="booking.html" class="text-yellow-400 border-b-2 border-yellow-400 pb-1">Booking</a>
+        </nav>
+        
+        <div class="flex items-center gap-3">
+          <a href="tel:+254703925826" class="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition">
+            <i class="fas fa-phone-alt mr-1"></i>Call Us
+          </a>
+          <button id="mobile-menu-btn" class="md:hidden text-white focus:outline-none">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
+        <a href="index.html" class="block py-2 hover:text-yellow-400">Home</a>
+        <a href="services.html" class="block py-2 hover:text-yellow-400">Services</a>
+        <a href="gallery.html" class="block py-2 hover:text-yellow-400">Gallery</a>
+        <a href="booking.html" class="block py-2 text-yellow-400">Booking</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== BOOKING HERO ==================== -->
+  <section class="relative bg-gradient-to-r from-gray-900 to-black text-white py-12">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold mb-3 animate-fade-up">Book Your <span class="text-yellow-400">Event</span></h1>
+      <p class="text-gray-300 max-w-xl mx-auto animate-fade-up" style="animation-delay: 0.1s">
+        Fill out the form below and we'll get back to you within <strong class="text-yellow-400">2 hours</strong> with a custom quote.
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================== BOOKING FORM ==================== -->
+  <section class="py-12 px-4">
+    <div class="container mx-auto max-w-3xl">
+      
+      <!-- Progress Steps -->
+      <div class="flex justify-between mb-8">
+        <div class="flex-1 text-center">
+          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-active" data-step="1">1</div>
+          <span class="text-xs text-gray-500">Your Info</span>
+        </div>
+        <div class="flex-1 text-center">
+          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="2">2</div>
+          <span class="text-xs text-gray-500">Event Details</span>
+        </div>
+        <div class="flex-1 text-center">
+          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="3">3</div>
+          <span class="text-xs text-gray-500">Services</span>
+        </div>
+        <div class="flex-1 text-center">
+          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="4">4</div>
+          <span class="text-xs text-gray-500">Confirm</span>
+        </div>
+      </div>
+
+      <form id="bookingForm" class="bg-white rounded-2xl shadow-xl p-6 md:p-8 space-y-6">
+        <!-- ===== STEP 1: CONTACT INFO ===== -->
+        <div class="form-step" data-step="1">
+          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-user text-yellow-500"></i> Your Contact Information</h2>
+          
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
+              <input type="text" id="name" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="John Doe" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
+              <input type="tel" id="phone" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="+254 7XX XXX XXX" required>
+            </div>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Email Address *</label>
+              <input type="email" id="email" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="you@example.com" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">How did you hear about us?</label>
+              <select id="source" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition">
+                <option value="">Select...</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Google">Google Search</option>
+                <option value="Friend/Family">Friend/Family</option>
+                <option value="Event">Previous Event</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STEP 2: EVENT DETAILS ===== -->
+        <div class="form-step hidden" data-step="2">
+          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-calendar-alt text-yellow-500"></i> Event Details</h2>
+          
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Event Date *</label>
+              <input type="date" id="event_date" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Event Type *</label>
+              <select id="event_type" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
+                <option value="">Select event type...</option>
+                <option value="Wedding">💍 Wedding</option>
+                <option value="Birthday Party">🎂 Birthday Party</option>
+                <option value="Corporate Event">🏢 Corporate Event</option>
+                <option value="Concert">🎤 Concert</option>
+                <option value="Graduation">🎓 Graduation</option>
+                <option value="Ruracio">🎎 Ruracio/Dowry</option>
+                <option value="Other">🎉 Other</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Expected Guest Count *</label>
+              <select id="guest_count" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
+                <option value="">Select range...</option>
+                <option value="0-50">0 - 50 guests</option>
+                <option value="51-100">51 - 100 guests</option>
+                <option value="101-250">101 - 250 guests</option>
+                <option value="251-500">251 - 500 guests</option>
+                <option value="500+">500+ guests</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Budget Range (KES) *</label>
+              <select id="budget" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
+                <option value="">Select budget...</option>
+                <option value="10k-30k">KES 10,000 - 30,000</option>
+                <option value="30k-50k">KES 30,000 - 50,000</option>
+                <option value="50k-100k">KES 50,000 - 100,000</option>
+                <option value="100k-200k">KES 100,000 - 200,000</option>
+                <option value="200k+">KES 200,000+</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Venue / Location *</label>
+            <input type="text" id="venue" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="e.g., Nairobi, KICC, Sarit Centre..." required>
+          </div>
+        </div>
+
+        <!-- ===== STEP 3: SERVICES SELECTION ===== -->
+        <div class="form-step hidden" data-step="3">
+          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-microphone-alt text-yellow-500"></i> Select Services Needed</h2>
+          <p class="text-sm text-gray-500 mb-4">Check all that apply (you can select multiple)</p>
+          
+          <div class="grid md:grid-cols-2 gap-3">
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="DJ & MC Services" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-headphones text-gray-500 mr-2"></i> DJ & MC Services</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="LED Screens" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-tv text-gray-500 mr-2"></i> LED Screens</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Power & Lighting" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-lightbulb text-gray-500 mr-2"></i> Power & Lighting</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Pyrotechnics" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-fire text-gray-500 mr-2"></i> Pyrotechnics</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Photography" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-camera text-gray-500 mr-2"></i> Photography</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Live Streaming" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-video text-gray-500 mr-2"></i> Live Streaming</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="360 Booth" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-cube text-gray-500 mr-2"></i> 360 Booth</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Drone Services" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-drone text-gray-500 mr-2"></i> Drone Services</span>
+            </label>
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
+              <input type="checkbox" name="services" value="Public Address System" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
+              <span class="ml-3"><i class="fas fa-volume-up text-gray-500 mr-2"></i> Public Address System</span>
+            </label>
+          </div>
+          
+          <div class="mt-4">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Additional Notes / Special Requests</label>
+            <textarea id="special_requests" rows="3" class="form-textarea w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="Any specific requirements, timing, or questions..."></textarea>
+          </div>
+        </div>
+
+        <!-- ===== STEP 4: CONFIRMATION ===== -->
+        <div class="form-step hidden" data-step="4">
+          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Review & Submit</h2>
+          
+          <div class="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+            <p><strong class="text-gray-700">Name:</strong> <span id="review_name"></span></p>
+            <p><strong class="text-gray-700">Phone:</strong> <span id="review_phone"></span></p>
+            <p><strong class="text-gray-700">Email:</strong> <span id="review_email"></span></p>
+            <p><strong class="text-gray-700">Event Date:</strong> <span id="review_date"></span></p>
+            <p><strong class="text-gray-700">Event Type:</strong> <span id="review_type"></span></p>
+            <p><strong class="text-gray-700">Guests:</strong> <span id="review_guests"></span></p>
+            <p><strong class="text-gray-700">Budget:</strong> <span id="review_budget"></span></p>
+            <p><strong class="text-gray-700">Venue:</strong> <span id="review_venue"></span></p>
+            <p><strong class="text-gray-700">Services:</strong> <span id="review_services"></span></p>
+          </div>
+          
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+            <p class="text-sm text-gray-700"><i class="fas fa-clock mr-2"></i> We'll respond within <strong>2 hours</strong> via WhatsApp or call with your custom quote.</p>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between pt-4 border-t">
+          <button type="button" id="prevBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition hidden">
+            <i class="fas fa-arrow-left mr-2"></i> Back
+          </button>
+          <button type="button" id="nextBtn" class="px-6 py-2 bg-yellow-400 text-black rounded-full font-semibold hover:bg-yellow-500 transition ml-auto">
+            Next <i class="fas fa-arrow-right ml-2"></i>
+          </button>
+          <button type="submit" id="submitBtn" class="px-6 py-2 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition hidden">
+            <i class="fas fa-paper-plane mr-2"></i> Submit Booking
+          </button>
+        </div>
+        
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+          <div class="bg-white rounded-xl p-6 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+            <p class="text-gray-700">Submitting your booking...</p>
+          </div>
+        </div>
+      </form>
+      
+      <!-- Trust Badges -->
+      <div class="text-center mt-6">
+        <div class="flex justify-center gap-4 text-xs text-gray-400">
+          <span><i class="fas fa-lock mr-1"></i> Secure form</span>
+          <span><i class="fas fa-clock mr-1"></i> 2hr response</span>
+          <span><i class="fas fa-shield-alt mr-1"></i> No spam</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-gray-900 text-white mt-16">
+    <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
+      <div>
+        <!-- FIXED: Corrected footer logo path -->
+        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
+        <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
+        Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="index.html" class="hover:text-yellow-400">Home</a></li>
+          <li><a href="services.html" class="hover:text-yellow-400">Services</a></li>
+          <li><a href="gallery.html" class="hover:text-yellow-400">Gallery</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h3>
+        <div class="flex space-x-6 text-2xl">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-facebook"></i></a>
+          <a href="https://wa.me/254703925826" target="_blank" class="hover:text-yellow-400"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Action Buttons -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110">
+      <i class="fas fa-phone-alt"></i>
+    </a>
+    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110">
+      <i class="fab fa-whatsapp"></i>
+    </a>
+    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+  </div>
+
+  <script>
+    // Multi-step form navigation
+    let currentStep = 1;
+    const totalSteps = 4;
+    
+    const formSteps = document.querySelectorAll('.form-step');
+    const stepIndicators = document.querySelectorAll('.step-indicator');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    function updateStepDisplay() {
+      formSteps.forEach(step => {
+        const stepNum = parseInt(step.getAttribute('data-step'));
+        step.classList.toggle('hidden', stepNum !== currentStep);
+      });
+      
+      // Update step indicators
+      stepIndicators.forEach(indicator => {
+        const stepNum = parseInt(indicator.getAttribute('data-step'));
+        indicator.classList.remove('step-active', 'step-completed', 'step-pending');
+        if (stepNum === currentStep) {
+          indicator.classList.add('step-active');
+        } else if (stepNum < currentStep) {
+          indicator.classList.add('step-completed');
+        } else {
+          indicator.classList.add('step-pending');
+        }
+      });
+      
+      // Update buttons
+      prevBtn.classList.toggle('hidden', currentStep === 1);
+      
+      if (currentStep === totalSteps) {
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.remove('hidden');
+      } else {
+        nextBtn.classList.remove('hidden');
+        submitBtn.classList.add('hidden');
+      }
+    }
+    
+    function validateStep(step) {
+      const stepElement = document.querySelector(`.form-step[data-step="${step}"]`);
+      const requiredInputs = stepElement.querySelectorAll('[required]');
+      
+      for (let input of requiredInputs) {
+        if (!input.value.trim()) {
+          input.classList.add('border-red-500');
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Use SweetAlert instead of alert for better UX
+          Swal.fire({
+            icon: 'warning',
+            title: 'Missing Field',
+            text: `Please fill in ${input.previousElementSibling?.innerText || 'all required fields'}`,
+            background: '#fff',
+            confirmButtonColor: '#eab308'
+          });
+          return false;
+        }
+        input.classList.remove('border-red-500');
+      }
+      
+      // Step 3 validation: at least one service selected
+      if (step === 3) {
+        const selectedServices = document.querySelectorAll('input[name="services"]:checked');
+        if (selectedServices.length === 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'No Service Selected',
+            text: 'Please select at least one service',
+            background: '#fff',
+            confirmButtonColor: '#eab308'
+          });
+          return false;
+        }
+      }
+      
+      return true;
+    }
+    
+    function updateReview() {
+      document.getElementById('review_name').innerText = document.getElementById('name').value || '-';
+      document.getElementById('review_phone').innerText = document.getElementById('phone').value || '-';
+      document.getElementById('review_email').innerText = document.getElementById('email').value || '-';
+      document.getElementById('review_date').innerText = document.getElementById('event_date').value || '-';
+      document.getElementById('review_type').innerText = document.getElementById('event_type').value || '-';
+      document.getElementById('review_guests').innerText = document.getElementById('guest_count').value || '-';
+      document.getElementById('review_budget').innerText = document.getElementById('budget').value || '-';
+      document.getElementById('review_venue').innerText = document.getElementById('venue').value || '-';
+      
+      const selectedServices = Array.from(document.querySelectorAll('input[name="services"]:checked'))
+        .map(cb => cb.value);
+      document.getElementById('review_services').innerText = selectedServices.length ? selectedServices.join(', ') : 'None selected';
+    }
+    
+    nextBtn.addEventListener('click', () => {
+      if (validateStep(currentStep)) {
+        if (currentStep === 3) {
+          updateReview();
+        }
+        currentStep++;
+        updateStepDisplay();
+      }
+    });
+    
+    prevBtn.addEventListener('click', () => {
+      currentStep--;
+      updateStepDisplay();
+    });
+    
+    // Submit handler with WhatsApp integration
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!validateStep(currentStep)) return;
+      
+      loadingOverlay.classList.remove('hidden');
+      
+      // Collect form data
+      const formData = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        source: document.getElementById('source').value,
+        event_date: document.getElementById('event_date').value,
+        event_type: document.getElementById('event_type').value,
+        guest_count: document.getElementById('guest_count').value,
+        budget: document.getElementById('budget').value,
+        venue: document.getElementById('venue').value,
+        services: Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value).join(', '),
+        special_requests: document.getElementById('special_requests').value,
+        timestamp: new Date().toLocaleString('en-KE')
+      };
+      
+      // Save to localStorage (backup)
+      localStorage.setItem('last_booking', JSON.stringify(formData));
+      
+      try {
+        // WhatsApp message
+        const message = `📅 *NEW BOOKING REQUEST* 📅%0A%0A*Name:* ${formData.name}%0A*Phone:* ${formData.phone}%0A*Email:* ${formData.email}%0A*Source:* ${formData.source || 'Not specified'}%0A%0A*Event Details*%0A📆 Date: ${formData.event_date}%0A🎉 Type: ${formData.event_type}%0A👥 Guests: ${formData.guest_count}%0A💰 Budget: ${formData.budget}%0A📍 Venue: ${formData.venue}%0A%0A*Services:* ${formData.services}%0A%0A*Notes:* ${formData.special_requests || 'None'}%0A%0A_Submitted: ${formData.timestamp}_`;
+        
+        const whatsappURL = `https://wa.me/254703925826?text=${message}`;
+        
+        // Open WhatsApp
+        window.open(whatsappURL, '_blank');
+        
+        // Hide loading overlay
+        loadingOverlay.classList.add('hidden');
+        
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Booking Request Sent!',
+          text: 'We\'ll contact you via WhatsApp within 2 hours.',
+          confirmButtonColor: '#eab308',
+          confirmButtonText: 'Great!',
+          background: '#fff'
+        }).then(() => {
+          // Reset form
+          document.getElementById('bookingForm').reset();
+          currentStep = 1;
+          updateStepDisplay();
+        });
+        
+      } catch (error) {
+        loadingOverlay.classList.add('hidden');
+        Swal.fire({
+          icon: 'error',
+          title: 'Something went wrong',
+          text: 'Please try again or call us directly at +254 703 925 826',
+          confirmButtonColor: '#eab308',
+          background: '#fff'
+        });
+      }
+    });
+    
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+    
+    // Remove red border on input
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', () => el.classList.remove('border-red-500'));
+    });
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('event_date');
+    if (dateInput) dateInput.min = today;
+    
+    // Initialize
+    updateStepDisplay();
+  </script>
+  
+  <!-- SweetAlert2 for better alerts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>

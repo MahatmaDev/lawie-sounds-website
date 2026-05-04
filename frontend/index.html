@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LAWIE SOUNDS | Premium Event Entertainment Kenya</title>
+  <meta name="description" content="Kenya's premier event entertainment company. Professional DJ, crystal-clear sound systems, stunning lighting, and unforgettable experiences.">
+  <meta name="keywords" content="DJ Kenya, event entertainment Nairobi, wedding DJ, sound system, party lighting">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="LAWIE SOUNDS | Premium Event Entertainment">
+  <meta property="og:description" content="Book Kenya's top event entertainment professionals. 500+ happy clients.">
+  <meta property="og:image" content="IMAGES/LOGO/2.jpg">
+  <meta property="og:type" content="website">
+  
+  <!-- Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards; }
+    
+    @keyframes fadeInLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-fade-left { animation: fadeInLeft 0.6s ease forwards; }
+    
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-fade-right { animation: fadeInRight 0.6s ease forwards; }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.9; }
+    }
+    .animate-pulse-slow { animation: pulse 2s ease-in-out infinite; }
+    
+    .hover-lift {
+      transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1), box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 25px 35px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    .service-card {
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    }
+    .service-card:hover {
+      transform: translateY(-6px);
+    }
+    .service-card:hover .service-icon {
+      background-color: #eab308;
+    }
+    .service-card:hover .service-icon i {
+      color: white;
+    }
+    
+    .btn-touch {
+      min-height: 48px;
+      min-width: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    *:focus-visible {
+      outline: 2px solid #eab308;
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+    
+    html { scroll-behavior: smooth; }
+    section { scroll-margin-top: 80px; }
+    
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #eab308; border-radius: 4px; }
+    
+    .logo-img {
+      transition: transform 0.3s ease;
+    }
+    .logo-img:hover {
+      transform: scale(1.05);
+    }
+    
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 1rem;
+    }
+    .video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- ==================== MARKETING BANNER ==================== -->
+  <div id="marketingBanner" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-3 px-4 text-center shadow-xl">
+    <div class="container mx-auto flex justify-between items-center flex-wrap gap-3">
+      <p class="text-sm md:text-base font-medium flex-1" id="bannerMessage">🎉 SPECIAL OFFER: Book before April 30th and get 15% off!</p>
+      <div class="flex gap-3">
+        <a id="bannerCtaLink" href="booking.html" class="bg-white text-purple-600 px-5 py-1.5 rounded-full text-sm font-bold hover:bg-gray-100 transition btn-touch">Claim Offer →</a>
+        <button id="closeBanner" class="text-white/80 hover:text-white text-2xl leading-5 px-2">&times;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-black text-white sticky top-0 z-40 shadow-xl transition-all duration-300" id="mainHeader">
+    <div class="container mx-auto px-4 md:px-8">
+      <div class="flex flex-wrap items-center justify-between py-4">
+        <div class="flex items-center gap-3">
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="logo-img h-11 w-11 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+          <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+        </div>
+        
+        <nav class="hidden md:flex gap-7 text-sm font-semibold">
+          <a href="#home" class="hover:text-yellow-400 transition duration-200">Home</a>
+          <a href="#services" class="hover:text-yellow-400 transition duration-200">Services</a>
+          <a href="#gallery" class="hover:text-yellow-400 transition duration-200">Gallery</a>
+          <a href="#about" class="hover:text-yellow-400 transition duration-200">About</a>
+          <a href="#testimonials" class="hover:text-yellow-400 transition duration-200">Reviews</a>
+          <a href="#contact" class="hover:text-yellow-400 transition duration-200">Contact</a>
+        </nav>
+        
+        <div class="flex items-center gap-3">
+          <a href="booking.html" class="bg-yellow-400 text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+            <i class="fas fa-calendar-check mr-2"></i>Book Now
+          </a>
+          <button id="mobileMenuBtn" class="md:hidden text-white focus:outline-none btn-touch">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="mobileMenu" class="hidden md:hidden pb-4 space-y-2">
+        <a href="#home" class="mobile-nav-link block py-3 hover:text-yellow-400 transition border-b border-gray-800">Home</a>
+        <a href="#services" class="mobile-nav-link block py-3 hover:text-yellow-400 transition border-b border-gray-800">Services</a>
+        <a href="#gallery" class="mobile-nav-link block py-3 hover:text-yellow-400 transition border-b border-gray-800">Gallery</a>
+        <a href="#about" class="mobile-nav-link block py-3 hover:text-yellow-400 transition border-b border-gray-800">About</a>
+        <a href="#testimonials" class="mobile-nav-link block py-3 hover:text-yellow-400 transition border-b border-gray-800">Reviews</a>
+        <a href="#contact" class="mobile-nav-link block py-3 hover:text-yellow-400 transition">Contact</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== HERO SECTION ==================== -->
+  <section id="home" class="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden">
+    <div class="absolute inset-0 z-0">
+      <div class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/70 z-10"></div>
+      <img src="../IMAGES/Hero%20section/1.jpg" alt="Event Background" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1600'">
+    </div>
+    
+    <div class="relative z-20 px-4 max-w-5xl mx-auto">
+      <div class="flex flex-wrap justify-center gap-3 mb-6 animate-fade-up">
+        <span class="bg-yellow-400 text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">⭐ 500+ Events Hosted</span>
+        <span class="bg-yellow-400 text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">🎤 9 Professional Services</span>
+        <span class="bg-yellow-400 text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">💯 98% Satisfaction</span>
+      </div>
+      
+      <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold mb-6 leading-tight animate-fade-up" style="animation-delay: 0.1s">
+        Your Event, <br>
+        <span class="text-yellow-400">Our Passion</span>
+      </h1>
+      
+      <p class="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto animate-fade-up" style="animation-delay: 0.2s">
+        Premium DJ, crystal-clear sound, stunning lighting, and unforgettable experiences for weddings, corporate events, and parties across Kenya.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style="animation-delay: 0.3s">
+        <a href="booking.html" class="bg-yellow-400 text-black px-8 py-3.5 rounded-full font-bold text-lg hover:bg-yellow-300 transition shadow-xl btn-touch">
+          <i class="fas fa-calendar-check mr-2"></i>Book Your Event
+        </a>
+        <a href="#services" class="border-2 border-white px-8 py-3.5 rounded-full font-bold text-lg hover:bg-white hover:text-black transition btn-touch">
+          <i class="fas fa-play-circle mr-2"></i>Explore Services
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-3 gap-6 mt-16 pt-8 border-t border-white/20 max-w-lg mx-auto animate-fade-up" style="animation-delay: 0.4s">
+        <div class="text-center">
+          <div class="text-3xl md:text-4xl font-bold text-yellow-400">500+</div>
+          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Events</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl md:text-4xl font-bold text-yellow-400">50K+</div>
+          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Happy Guests</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl md:text-4xl font-bold text-yellow-400">9</div>
+          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Services</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer z-20">
+      <button onclick="document.getElementById('services').scrollIntoView({behavior:'smooth'})" class="w-10 h-10 rounded-full border-2 border-white/50 flex items-center justify-center hover:border-yellow-400 transition">
+        <i class="fas fa-chevron-down text-white"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== SERVICES SECTION ==================== -->
+  <section id="services" class="py-24 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-16">
+        <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">What We Offer</span>
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mt-3">Our Premium <span class="text-yellow-500">Services</span></h2>
+        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+        <p class="text-gray-500 mt-5 max-w-2xl mx-auto">Comprehensive event solutions tailored to make your occasion unforgettable</p>
+      </div>
+      
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-7 max-w-6xl mx-auto">
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=dj-mc-services'">
+          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
+            <i class="fas fa-headphones text-3xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">DJ & MC Services</h3>
+          <p class="text-gray-500 text-sm">Professional DJ and Master of Ceremonies for high-energy events.</p>
+          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
+        </div>
+        
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=public-address'">
+          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
+            <i class="fas fa-volume-up text-3xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Sound Systems</h3>
+          <p class="text-gray-500 text-sm">Crystal-clear audio, line arrays, subwoofers for any venue size.</p>
+          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
+        </div>
+        
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=power-lighting'">
+          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
+            <i class="fas fa-lightbulb text-3xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Lighting & Effects</h3>
+          <p class="text-gray-500 text-sm">LED, moving heads, strobes, CO2 cannons, pyrotechnics.</p>
+          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
+        </div>
+        
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=led-screens'">
+          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
+            <i class="fas fa-tv text-3xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">LED Screens</h3>
+          <p class="text-gray-500 text-sm">High-resolution displays for stunning visuals and branding.</p>
+          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
+        </div>
+      </div>
+      
+      <div class="text-center mt-10">
+        <a href="services.html" class="inline-block border-2 border-black px-8 py-3 rounded-full font-semibold hover:bg-black hover:text-white transition btn-touch">
+          View All Services <i class="fas fa-arrow-right ml-2"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== GALLERY PREVIEW ==================== -->
+  <section id="gallery" class="py-24 bg-gray-100">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-16">
+        <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Moments Captured</span>
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mt-3">Event <span class="text-yellow-500">Gallery</span></h2>
+        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+        <p class="text-gray-500 mt-5 max-w-2xl mx-auto">Take a glimpse at some of our favorite moments from past events</p>
+      </div>
+      
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-6xl mx-auto">
+        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(0)">
+          <img src="../Gallery/Weddings/1.jpg" alt="Wedding Event" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Wedding'">
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-2xl"></i>
+          </div>
+        </div>
+        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(1)">
+          <img src="../Gallery/Ruracio/Itara1.jpg" alt="Ruracio Ceremony" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Ruracio'">
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-2xl"></i>
+          </div>
+        </div>
+        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(2)">
+          <img src="../Gallery/corporate/1.jpg" alt="Corporate Event" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Corporate'">
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-2xl"></i>
+          </div>
+        </div>
+        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(3)">
+          <img src="../Gallery/equipment/Dj%20decks%20setup.jpg" alt="DJ Equipment" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=DJ+Equipment'">
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-2xl"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="text-center mt-10">
+        <a href="services.html" class="inline-block border-2 border-black px-8 py-3 rounded-full font-semibold hover:bg-black hover:text-white transition btn-touch">
+          Explore Our Services <i class="fas fa-arrow-right ml-2"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== REEL VIDEO SECTION ==================== -->
+  <section class="py-20 bg-black text-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12">
+        <span class="text-yellow-400 font-bold uppercase tracking-wider text-sm">Watch Our Work</span>
+        <h2 class="text-3xl md:text-4xl font-bold mt-3">Lawie Sounds <span class="text-yellow-400">Experience</span></h2>
+        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+      </div>
+      
+      <div class="max-w-4xl mx-auto">
+        <div class="video-container shadow-2xl">
+          <video controls poster="Gallery/equipment/Dj%20decks%20setup.jpg">
+            <source src="../Gallery/videos/Reel.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <p class="text-center text-gray-400 mt-4 text-sm">Watch our highlight reel showcasing Lawie Sounds in action</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== ABOUT SECTION ==================== -->
+  <section id="about" class="py-24 bg-white text-gray-800">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row items-center gap-12 max-w-6xl mx-auto">
+        <div class="flex-1 animate-fade-left">
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="rounded-2xl shadow-2xl w-full max-w-md mx-auto border-4 border-yellow-400 hover:scale-105 transition duration-500">
+        </div>
+        <div class="flex-1 text-center md:text-left animate-fade-right">
+          <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Our Story</span>
+          <h2 class="text-3xl md:text-4xl font-bold mt-3 mb-6">About <span class="text-yellow-500">Lawie Sounds</span></h2>
+          <p class="text-gray-600 mb-5 leading-relaxed">
+            At <strong class="text-yellow-500">Lawie Sounds</strong>, we don't just play music — we create unforgettable moments. 
+            Known for high-energy DJ sets, crisp sound systems, and an unmatched vibe, we bring life to weddings, 
+            parties, corporate gigs, and everything in between.
+          </p>
+          <p class="text-gray-600 mb-8 leading-relaxed">
+            Whether it's a crowd of five or five thousand, we tailor every performance to elevate your event. 
+            From crystal-clear audio to a professional touch that keeps the crowd moving, Lawie Sounds is your 
+            go-to for elite entertainment experiences across Kenya.
+          </p>
+          
+          <div class="flex flex-wrap gap-6 justify-center md:justify-start">
+            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">Licensed & Insured</span></div>
+            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">500+ Events</span></div>
+            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">2hr Response</span></div>
+          </div>
+          
+          <a href="booking.html" class="inline-block bg-yellow-500 text-black px-8 py-3.5 rounded-full font-bold mt-8 hover:bg-yellow-400 transition shadow-lg btn-touch">
+            Book Your Event <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== TESTIMONIALS SECTION ==================== -->
+  <section id="testimonials" class="py-24 bg-gray-100">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-16">
+        <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Client Love</span>
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mt-3">What Our <span class="text-yellow-500">Clients Say</span></h2>
+        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+          <p class="text-gray-600 italic">"Lawie Sounds made our wedding unforgettable! The DJ kept everyone dancing all night and the MC was so professional. Highly recommend!"</p>
+          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-500 text-lg"></i></div><div><p class="font-semibold">Sarah & James</p><p class="text-xs text-gray-400">Wedding, Nairobi</p></div></div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+          <p class="text-gray-600 italic">"Our corporate event was a huge success thanks to Lawie Sounds. Professional setup, great music selection, and the MC kept everything on schedule."</p>
+          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-building text-gray-500 text-lg"></i></div><div><p class="font-semibold">Tech Corp Kenya</p><p class="text-xs text-gray-400">Corporate Event</p></div></div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+          <p class="text-gray-600 italic">"Best birthday party ever! The DJ played all our requests and the energy was insane. Will definitely book again!"</p>
+          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-birthday-cake text-gray-500 text-lg"></i></div><div><p class="font-semibold">Michael O.</p><p class="text-xs text-gray-400">Birthday Party</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== WHY CHOOSE US ==================== -->
+  <section class="py-20 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-14">
+        <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Why Choose Us</span>
+        <h2 class="text-3xl md:text-4xl font-bold mt-3">The <span class="text-yellow-500">Lawie Sounds</span> Difference</h2>
+        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+      </div>
+      <div class="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-medal text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">Professional Team</h3><p class="text-gray-500 text-sm">Experienced, trained, and passionate</p></div>
+        <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-clock text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">Punctual & Reliable</h3><p class="text-gray-500 text-sm">On-time arrival guaranteed</p></div>
+        <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-shield-alt text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">Fully Insured</h3><p class="text-gray-500 text-sm">Complete coverage for peace of mind</p></div>
+        <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-headset text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">24/7 Support</h3><p class="text-gray-500 text-sm">Round-the-clock assistance</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== CONTACT SECTION ==================== -->
+  <section id="contact" class="py-24 bg-gradient-to-br from-gray-900 to-black text-white">
+    <div class="container mx-auto px-4 text-center">
+      <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-5">Let's Bring Your Vision to Life</h2>
+      <p class="text-gray-300 mb-10 max-w-xl mx-auto">Reach out for bookings, custom packages, or any questions. We respond within 2 hours.</p>
+      
+      <div class="flex flex-col md:flex-row justify-center gap-8 mb-12">
+        <div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl">
+          <i class="fas fa-phone-alt text-yellow-400 text-2xl"></i>
+          <div class="text-left"><p class="text-sm text-gray-400">Call / WhatsApp</p><p class="text-xl font-bold">+254 703 925 826</p><p class="text-lg">+254 733 925 826</p></div>
+        </div>
+        <div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl">
+          <i class="fas fa-envelope text-yellow-400 text-2xl"></i>
+          <div class="text-left"><p class="text-sm text-gray-400">Email</p><p class="text-xl font-bold">Lawiesounds@gmail.com</p></div>
+        </div>
+      </div>
+      
+      <a href="booking.html" class="inline-block bg-yellow-400 text-black px-10 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 transition shadow-xl btn-touch">
+        <i class="fas fa-calendar-check mr-2"></i>Request a Quote
+      </a>
+      
+      <div class="flex justify-center gap-6 text-2xl mt-10">
+        <a href="https://instagram.com/lawie_sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-instagram"></i></a>
+        <a href="https://facebook.com/lawie.sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-facebook"></i></a>
+        <a href="https://wa.me/254703925826" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-whatsapp"></i></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FLOATING ACTION BUTTONS ==================== -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110 btn-touch"><i class="fas fa-phone-alt text-xl"></i></a>
+    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110 btn-touch"><i class="fab fa-whatsapp text-xl"></i></a>
+    <button onclick="window.scrollTo({top:0, behavior:'smooth'})" class="bg-yellow-400 text-black w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110 btn-touch"><i class="fas fa-arrow-up text-xl"></i></button>
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-black text-gray-400 py-8">
+    <div class="container mx-auto px-4 text-center">
+      <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="h-14 w-14 rounded-full mx-auto mb-4 border-2 border-yellow-400">
+      <p class="text-sm">&copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong>. All rights reserved.</p>
+      <p class="text-xs mt-2">Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a></p>
+    </div>
+  </footer>
+
+  <!-- ==================== LIGHTBOX ==================== -->
+  <div id="lightbox" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center" onclick="closeLightbox()">
+    <button class="absolute top-5 right-5 text-white text-4xl hover:text-yellow-400 transition">&times;</button>
+    <button id="lightboxPrev" class="absolute left-5 text-white text-4xl hover:text-yellow-400 transition" onclick="event.stopPropagation();prevImage()">‹</button>
+    <img id="lightboxImage" src="" alt="Gallery" class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg">
+    <button id="lightboxNext" class="absolute right-5 text-white text-4xl hover:text-yellow-400 transition" onclick="event.stopPropagation();nextImage()">›</button>
+  </div>
+
+  <script>
+    const galleryImages = [
+      'Gallery/Weddings/1.jpg', 
+      'Gallery/Ruracio/Itara1.jpg', 
+      'Gallery/corporate/1.jpg', 
+      'Gallery/equipment/Dj%20decks%20setup.jpg'
+    ];
+    let currentImageIndex = 0;
+    
+    function openLightbox(index) { 
+      currentImageIndex = index; 
+      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
+      document.getElementById('lightbox').classList.remove('hidden'); 
+      document.getElementById('lightbox').classList.add('flex'); 
+      document.body.style.overflow = 'hidden'; 
+    }
+    function closeLightbox() { 
+      document.getElementById('lightbox').classList.add('hidden'); 
+      document.getElementById('lightbox').classList.remove('flex'); 
+      document.body.style.overflow = 'auto'; 
+    }
+    function prevImage() { 
+      currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length; 
+      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
+    }
+    function nextImage() { 
+      currentImageIndex = (currentImageIndex + 1) % galleryImages.length; 
+      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
+    }
+    
+    document.getElementById('mobileMenuBtn')?.addEventListener('click', () => { 
+      document.getElementById('mobileMenu').classList.toggle('hidden'); 
+    });
+    document.querySelectorAll('.mobile-nav-link').forEach(link => { 
+      link.addEventListener('click', () => { 
+        document.getElementById('mobileMenu').classList.add('hidden'); 
+      }); 
+    });
+    
+    const bannerClosed = localStorage.getItem('lawie_banner_dismissed');
+    const banner = document.getElementById('marketingBanner');
+    if (!bannerClosed || (Date.now() - parseInt(bannerClosed)) > 86400000) { 
+      if (banner) banner.classList.remove('hidden'); 
+    }
+    document.getElementById('closeBanner')?.addEventListener('click', () => { 
+      banner.classList.add('hidden'); 
+      localStorage.setItem('lawie_banner_dismissed', Date.now().toString()); 
+    });
+    
+    window.addEventListener('scroll', () => { 
+      const header = document.getElementById('mainHeader'); 
+      if (window.scrollY > 50) { 
+        header.classList.add('py-2'); 
+        header.classList.remove('py-4'); 
+      } else { 
+        header.classList.remove('py-2'); 
+        header.classList.add('py-4'); 
+      } 
+    });
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => { 
+      anchor.addEventListener('click', function(e) { 
+        const href = this.getAttribute('href'); 
+        if (href === '#' || href === '#home') { 
+          e.preventDefault(); 
+          window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        } else if (href !== '#') { 
+          const target = document.querySelector(href); 
+          if (target) { 
+            e.preventDefault(); 
+            target.scrollIntoView({ behavior: 'smooth' }); 
+          } 
+        } 
+      }); 
+    });
+  </script>
+</body>
+</html>

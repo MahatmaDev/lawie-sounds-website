@@ -1,0 +1,5 @@
+### Test Health Endpoint
+GET http://localhost:5000/health
+
+### Test API Endpoint
+GET http://localhost:5000/api/test

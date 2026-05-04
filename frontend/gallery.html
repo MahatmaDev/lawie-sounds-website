@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gallery | LAWIE SOUNDS - Event Moments</title>
+  <meta name="description" content="Browse our event gallery - weddings, corporate events, parties, and equipment setup. See Lawie Sounds in action.">
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  
+  <!-- Tailwind CSS (latest v3) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- LightGallery -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-zoom.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-thumbnail.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeInUp 0.6s ease forwards; }
+    
+    .gallery-img {
+      width: 100%;
+      height: 260px;
+      object-fit: cover;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .gallery-img:hover {
+      transform: scale(1.03);
+      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 0.5rem;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    html { scroll-behavior: smooth; }
+    section { scroll-margin-top: 80px; }
+    
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 1rem;
+    }
+    .video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .logo-img { transition: transform 0.3s ease; }
+    .logo-img:hover { transform: scale(1.05); }
+    
+    .btn-touch {
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex flex-wrap items-center justify-between">
+        <!-- Logo - USING LOGO 2 -->
+        <div class="flex items-center gap-3">
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
+          <h1 class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+        </div>
+        
+        <!-- Desktop Navigation -->
+        <nav class="hidden md:flex gap-6 text-sm font-semibold">
+          <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
+          <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
+          <a href="gallery.html" class="text-yellow-400 border-b-2 border-yellow-400 pb-1">Gallery</a>
+          <a href="booking.html" class="hover:text-yellow-400 transition">Booking</a>
+          <a href="index.html#contact" class="hover:text-yellow-400 transition">Contact</a>
+        </nav>
+        
+        <!-- CTA + Mobile Menu -->
+        <div class="flex items-center gap-3">
+          <a href="booking.html" class="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition btn-touch">
+            <i class="fas fa-calendar-check mr-1"></i>Book Now
+          </a>
+          <button id="mobile-menu-btn" class="md:hidden text-white focus:outline-none btn-touch">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Mobile Navigation -->
+      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
+        <a href="index.html" class="block py-2 hover:text-yellow-400">Home</a>
+        <a href="services.html" class="block py-2 hover:text-yellow-400">Services</a>
+        <a href="gallery.html" class="block py-2 text-yellow-400">Gallery</a>
+        <a href="booking.html" class="block py-2 hover:text-yellow-400">Booking</a>
+        <a href="index.html#contact" class="block py-2 hover:text-yellow-400">Contact</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== HERO SECTION ==================== -->
+  <section class="relative bg-gradient-to-r from-gray-900 to-black text-white py-16">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4 animate-fade-up">Our Event <span class="text-yellow-400">Gallery</span></h1>
+      <p class="text-gray-300 max-w-2xl mx-auto animate-fade-up" style="animation-delay: 0.1s">
+        Browse through moments captured at weddings, corporate events, parties, and equipment setups.
+        <span class="block text-yellow-400 text-sm mt-2">✨ 500+ Events | 50,000+ Happy Guests ✨</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================== CATEGORY FILTER ==================== -->
+  <div class="sticky top-16 z-30 bg-white shadow-md py-3 border-b">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-wrap justify-center gap-2 md:gap-3">
+        <button data-filter="all" class="filter-btn active px-4 py-2 rounded-full text-sm font-semibold bg-yellow-400 text-black">All</button>
+        <button data-filter="equipment" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 hover:bg-yellow-400 transition">🎧 Sound & Equipment</button>
+        <button data-filter="weddings" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 hover:bg-yellow-400 transition">💍 Weddings</button>
+        <button data-filter="ruracio" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 hover:bg-yellow-400 transition">🎎 Ruracio</button>
+        <button data-filter="corporate" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 hover:bg-yellow-400 transition">🏢 Corporate</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 py-12">
+    
+    <!-- ==================== SOUND & EQUIPMENT SECTION ==================== -->
+    <section id="equipment" class="gallery-section mb-16" data-category="equipment">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl md:text-3xl font-bold border-l-4 border-yellow-400 pl-4">🎧 Sound & Equipment</h2>
+        <span class="text-sm text-gray-500"><i class="fas fa-images mr-1"></i> Click to enlarge</span>
+      </div>
+      <div id="gallery-equipment" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+      </div>
+    </section>
+
+    <!-- ==================== WEDDINGS SECTION ==================== -->
+    <section id="weddings" class="gallery-section mb-16" data-category="weddings">
+      <h2 class="text-2xl md:text-3xl font-bold border-l-4 border-yellow-400 pl-4 mb-6">💍 Weddings, Graduations & Birthdays</h2>
+      <div id="gallery-weddings" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+      </div>
+    </section>
+
+    <!-- ==================== RURACIO SECTION ==================== -->
+    <section id="ruracio" class="gallery-section mb-16" data-category="ruracio">
+      <h2 class="text-2xl md:text-3xl font-bold border-l-4 border-yellow-400 pl-4 mb-6">🎎 Ruracio Events</h2>
+      <div id="gallery-ruracio" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+      </div>
+    </section>
+
+    <!-- ==================== CORPORATE SECTION ==================== -->
+    <section id="corporate" class="gallery-section mb-16" data-category="corporate">
+      <h2 class="text-2xl md:text-3xl font-bold border-l-4 border-yellow-400 pl-4 mb-2">🏢 Corporate Events</h2>
+      <p class="text-gray-600 mb-6 ml-4">Professional moments from our latest corporate functions and product launches.</p>
+      <div id="gallery-corporate" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+        <div class="skeleton h-[260px] rounded-lg"></div>
+      </div>
+    </section>
+
+    <!-- ==================== PROMO VIDEO SECTION ==================== -->
+    <section class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl overflow-hidden shadow-2xl mb-16">
+      <div class="flex flex-col md:flex-row">
+        <div class="flex-1 p-8 md:p-12 text-white">
+          <span class="text-yellow-300 text-sm font-bold uppercase tracking-wider">🎬 Behind the Scenes</span>
+          <h2 class="text-3xl md:text-4xl font-bold mt-2 mb-4">Watch Lawie Sounds in Action</h2>
+          <p class="text-white/90 mb-6">See why 500+ clients trust us with their biggest moments. From crystal-clear sound to high-energy performances.</p>
+          <div class="flex gap-4">
+            <a href="booking.html" class="bg-white text-purple-600 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition shadow-lg btn-touch">
+              <i class="fas fa-calendar-check mr-2"></i>Book Your Event
+            </a>
+            <a href="https://instagram.com/lawie_sounds" target="_blank" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition btn-touch">
+              <i class="fab fa-instagram mr-2"></i>Follow Us
+            </a>
+          </div>
+        </div>
+        <div class="flex-1 p-8 md:p-12">
+          <div class="video-container shadow-xl">
+            <video controls poster="../Gallery/equipment/Dj%20decks%20setup.jpg">
+              <source src="../Gallery/videos/Reel.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SOCIAL PROOF & CTA ==================== -->
+    <section class="text-center py-12 bg-gray-100 rounded-2xl">
+      <i class="fab fa-instagram text-5xl text-pink-600 mb-4"></i>
+      <h2 class="text-2xl md:text-3xl font-bold mb-3">Follow Us on Instagram</h2>
+      <p class="text-gray-600 mb-6">Get daily updates, behind-the-scenes content, and exclusive offers.</p>
+      <a href="https://instagram.com/lawie_sounds" target="_blank" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-full font-bold hover:shadow-xl transition btn-touch">
+        <i class="fab fa-instagram text-xl"></i> @lawie_sounds
+      </a>
+      <p class="text-xs text-gray-400 mt-4">✨ 500+ followers • 500+ posts ✨</p>
+    </section>
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-gray-900 text-white mt-16">
+    <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
+      <div>
+        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
+        <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
+        Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="index.html" class="hover:text-yellow-400">Home</a></li>
+          <li><a href="services.html" class="hover:text-yellow-400">Services</a></li>
+          <li><a href="gallery.html" class="hover:text-yellow-400">Gallery</a></li>
+          <li><a href="booking.html" class="hover:text-yellow-400">Booking</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h3>
+        <div class="flex space-x-6 text-2xl">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-facebook"></i></a>
+          <a href="https://wa.me/254703925826" target="_blank" class="hover:text-yellow-400"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- Floating Action Buttons -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110 btn-touch">
+      <i class="fas fa-phone-alt"></i>
+    </a>
+    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110 btn-touch">
+      <i class="fab fa-whatsapp"></i>
+    </a>
+    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110 btn-touch">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/fullscreen/lg-fullscreen.min.js"></script>
+
+  <script>
+    const galleryData = {
+      equipment: [
+        '../Gallery/equipment/linearray.jpg',
+        '../Gallery/equipment/linearray2.jpg',
+        '../Gallery/equipment/sound%20setup.jpg',
+        '../Gallery/equipment/Dj%20decks%20setup.jpg',
+        '../Gallery/equipment/sound%20technicians.jpg',
+        '../Gallery/equipment/sound%20technicians2.jpg',
+        '../Gallery/equipment/screen.jpg',
+        '../Gallery/equipment/par%20can%20lights.jpg',
+        '../Gallery/equipment/mixer.jpg',
+        '../Gallery/equipment/setup2.jpg',
+        '../Gallery/equipment/pyrotechnics.jpg',
+        '../Gallery/equipment/connecting%20cables.jpg'
+      ],
+      weddings: [
+        '../Gallery/Weddings/1.jpg', '../Gallery/Weddings/2.jpg', '../Gallery/Weddings/3.jpg',
+        '../Gallery/Weddings/4.jpg', '../Gallery/Weddings/5.jpg', '../Gallery/Weddings/6.jpg',
+        '../Gallery/Weddings/7.jpg', '../Gallery/Weddings/8.jpg'
+      ],
+      ruracio: [
+        '../Gallery/Ruracio/Itara1.jpg', '../Gallery/Ruracio/Itara2.jpg', '../Gallery/Ruracio/Itara3.jpg',
+        '../Gallery/Ruracio/Itara4.jpg', '../Gallery/Ruracio/Itara5.jpg', '../Gallery/Ruracio/Itara6.jpg',
+        '../Gallery/Ruracio/Itara7.jpg', '../Gallery/Ruracio/Itara8.jpg'
+      ],
+      corporate: [
+        '../Gallery/corporate/1.jpg', '../Gallery/corporate/2.jpg', '../Gallery/corporate/3.jpg',
+        '../Gallery/corporate/4.jpg', '../Gallery/corporate/5.jpg', '../Gallery/corporate/6.jpg'
+      ]
+    };
+
+    function renderGallery(containerId, images) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      
+      if (!images || images.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No images available</div>';
+        return;
+      }
+      
+      const html = images.map(img => `
+        <a href="${img}" class="gallery-item">
+          <img src="${img}" alt="Gallery image" class="gallery-img rounded-lg shadow-md" loading="lazy" onerror="this.src='https://placehold.co/400x300?text=Image+Not+Found'">
+        </a>
+      `).join('');
+      
+      container.innerHTML = html;
+      
+      if (typeof lightGallery !== 'undefined') {
+        lightGallery(container, {
+          plugins: [lgZoom, lgThumbnail, lgFullscreen],
+          speed: 500,
+          thumbnail: true,
+          zoom: true,
+          fullscreen: true,
+          download: false,
+          counter: true
+        });
+      }
+    }
+
+    function loadAllGalleries() {
+      renderGallery('gallery-equipment', galleryData.equipment);
+      renderGallery('gallery-weddings', galleryData.weddings);
+      renderGallery('gallery-ruracio', galleryData.ruracio);
+      renderGallery('gallery-corporate', galleryData.corporate);
+    }
+
+    function setupFilters() {
+      const filterBtns = document.querySelectorAll('.filter-btn');
+      const sections = document.querySelectorAll('.gallery-section');
+      
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const filter = btn.getAttribute('data-filter');
+          
+          filterBtns.forEach(b => {
+            b.classList.remove('bg-yellow-400', 'text-black');
+            b.classList.add('bg-gray-200');
+          });
+          btn.classList.add('bg-yellow-400', 'text-black');
+          btn.classList.remove('bg-gray-200');
+          
+          sections.forEach(section => {
+            if (filter === 'all') {
+              section.style.display = 'block';
+            } else {
+              const category = section.getAttribute('data-category');
+              section.style.display = category === filter ? 'block' : 'none';
+            }
+          });
+        });
+      });
+    }
+
+    function setupMobileMenu() {
+      const menuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener('click', () => {
+          mobileMenu.classList.toggle('hidden');
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAllGalleries();
+      setupFilters();
+      setupMobileMenu();
+    });
+  </script>
+</body>
+</html>

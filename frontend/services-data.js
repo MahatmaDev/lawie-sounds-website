@@ -9,14 +9,14 @@ const SERVICES_DATA = {
     icon: "fa-headphones",
     shortDesc: "Professional DJ and Master of Ceremonies for high-energy events.",
     longDesc: "Elevate your event with our professional DJ & MC services! From wedding receptions, corporate events, to club gigs, we deliver vibrant, seamless entertainment that keeps your guests dancing all night long. Our experienced MCs ensure smooth transitions between speeches, cake cutting, and special moments.",
-    mainImage: "IMAGES/DJ and MC Services/1.jpg",
+    mainImage: "../IMAGES/DJ and MC Services/1.jpg",
     galleryImages: [
-      "IMAGES/DJ and MC Services/1.jpg",
-      "IMAGES/DJ and MC Services/2.jpg",
-      "IMAGES/DJ and MC Services/3.jpg",
-      "IMAGES/DJ and MC Services/4.jpg",
-      "IMAGES/DJ and MC Services/5.jpg",
-      "IMAGES/DJ and MC Services/6.jpg"
+      "../IMAGES/DJ and MC Services/1.jpg",
+      "../IMAGES/DJ and MC Services/2.jpg",
+      "../IMAGES/DJ and MC Services/3.jpg",
+      "../IMAGES/DJ and MC Services/4.jpg",
+      "../IMAGES/DJ and MC Services/5.jpg",
+      "../IMAGES/DJ and MC Services/6.jpg"
     ],
     packages: [
       { name: "Basic DJ", price: 25000, duration: "Up to 4 hours", features: ["Professional DJ", "Sound system", "Basic lighting", "100+ song playlist"], popular: false },
@@ -49,11 +49,11 @@ const SERVICES_DATA = {
     icon: "fa-tv",
     shortDesc: "High-resolution LED screens for stunning visuals and branding.",
     longDesc: "High-resolution LED screens for stunning visuals at your event. Perfect for branding, lyrics display, live feeds, and presentations. Indoor and outdoor options available with full technical support.",
-    mainImage: "IMAGES/LED Screens/2.jpg",
+    mainImage: "../IMAGES/LED Screens/2.jpg",
     galleryImages: [
-      "IMAGES/LED Screens/1.jpg", "IMAGES/LED Screens/2.jpg", "IMAGES/LED Screens/3.jpg",
-      "IMAGES/LED Screens/4.jpg", "IMAGES/LED Screens/5.jpg", "IMAGES/LED Screens/6.jpg",
-      "IMAGES/LED Screens/7.jpg", "IMAGES/LED Screens/8.jpg"
+      "../IMAGES/LED Screens/1.jpg", "../IMAGES/LED Screens/2.jpg", "../IMAGES/LED Screens/3.jpg",
+      "../IMAGES/LED Screens/4.jpg", "../IMAGES/LED Screens/5.jpg", "../IMAGES/LED Screens/6.jpg",
+      "../IMAGES/LED Screens/7.jpg", "../IMAGES/LED Screens/8.jpg"
     ],
     packages: [
       { name: "Standard Screen", price: 15000, duration: "Per day", features: ["6ft x 4ft screen", "Basic content setup", "HD resolution", "Technical support"], popular: false },
@@ -84,8 +84,8 @@ const SERVICES_DATA = {
     longDesc: "Professional lighting design and power distribution for any venue size. Create the perfect atmosphere with our comprehensive lighting solutions including LED par cans, moving heads, spotlights, and full generator backup.",
     mainImage: "IMAGES/Power & Lighting/1.jpg",
     galleryImages: [
-      "IMAGES/Power & Lighting/1.jpg", "IMAGES/Power & Lighting/2.jpg",
-      "IMAGES/Power & Lighting/3.jpg", "IMAGES/Power & Lighting/4.jpg"
+      "../IMAGES/Power & Lighting/1.jpg", "../IMAGES/Power & Lighting/2.jpg",
+      "../IMAGES/Power & Lighting/3.jpg", "../IMAGES/Power & Lighting/4.jpg"
     ],
     packages: [
       { name: "Basic Lighting", price: 18000, duration: "Per event", features: ["LED par cans (8)", "Basic color washing", "Dimmer control", "Standard power"], popular: false },
@@ -114,8 +114,8 @@ const SERVICES_DATA = {
     icon: "fa-fire",
     shortDesc: "Spectacular fire effects, confetti, and CO2 cannons.",
     longDesc: "Spectacular fire effects, confetti blasts, and CO2 cannons for dramatic moments. Perfect for grand entrances, cake cutting, and special performances. Safety certified operators with full insurance.",
-    mainImage: "IMAGES/Pyrotechnics/1.jpg",
-    galleryImages: ["IMAGES/Pyrotechnics/1.jpg"],
+    mainImage: "../IMAGES/Pyrotechnics/1.jpg",
+    galleryImages: ["../IMAGES/Pyrotechnics/1.jpg"],
     packages: [
       { name: "Confetti Package", price: 25000, duration: "Per event", features: ["Confetti cannons (4)", "Colorful confetti", "Manual trigger", "Safety certified"], popular: false },
       { name: "CO2 Package", price: 35000, duration: "Per event", features: ["CO2 jets (4)", "Cryo fog effects", "DMX controlled", "Crowd engagement"], popular: true },
@@ -145,9 +145,9 @@ const SERVICES_DATA = {
     longDesc: "Professional photography coverage for weddings, corporate events, and parties. Capture every special moment with our team of experienced photographers. High-resolution edited photos delivered within 7 days.",
     mainImage: "IMAGES/Photography/1.jpg",
     galleryImages: [
-      "IMAGES/Photography/1.jpg", "IMAGES/Photography/2.jpg", "IMAGES/Photography/3.jpg",
-      "IMAGES/Photography/4.jpg", "IMAGES/Photography/5.jpg", "IMAGES/Photography/6.jpg",
-      "IMAGES/Photography/7.jpg", "IMAGES/Photography/8.jpg"
+      "../IMAGES/Photography/1.jpg", "../IMAGES/Photography/2.jpg", "../IMAGES/Photography/3.jpg",
+      "../IMAGES/Photography/4.jpg", "../IMAGES/Photography/5.jpg", "../IMAGES/Photography/6.jpg",
+      "../IMAGES/Photography/7.jpg", "../IMAGES/Photography/8.jpg"
     ],
     packages: [
       { name: "Single Photographer", price: 20000, duration: "4 hours", features: ["1 photographer", "100+ edited photos", "Online gallery", "Print rights"], popular: false },
@@ -178,9 +178,9 @@ const SERVICES_DATA = {
     longDesc: "Broadcast your event live to remote audiences with professional streaming setup. Multi-camera production, live switching, and stream to YouTube, Facebook, or custom platform.",
     mainImage: "IMAGES/Live Streaming & Media/1.jpg",
     galleryImages: [
-      "IMAGES/Live Streaming & Media/1.jpg", "IMAGES/Live Streaming & Media/2.jpg",
-      "IMAGES/Live Streaming & Media/3.jpg", "IMAGES/Live Streaming & Media/4.jpg",
-      "IMAGES/Live Streaming & Media/5.jpg"
+      "../IMAGES/Live Streaming & Media/1.jpg", "../IMAGES/Live Streaming & Media/2.jpg",
+      "../IMAGES/Live Streaming & Media/3.jpg", "../IMAGES/Live Streaming & Media/4.jpg",
+      "../IMAGES/Live Streaming & Media/5.jpg"
     ],
     packages: [
       { name: "Single Camera", price: 30000, duration: "Per event", features: ["1 camera", "Basic switching", "Stream to 1 platform", "Recording archive"], popular: false },
@@ -209,10 +209,10 @@ const SERVICES_DATA = {
     icon: "fa-cube",
     shortDesc: "Immersive 360 photo and video experience for guests.",
     longDesc: "Capture every angle of your special moments with our 360 Booth service! Perfect for weddings, parties, and corporate events. Guests receive instant shareable videos via WhatsApp or QR code.",
-    mainImage: "IMAGES/360 Booth/1.jpg",
+    mainImage: "../IMAGES/360 Booth/1.jpg",
     galleryImages: [
-      "IMAGES/360 Booth/1.jpg", "IMAGES/360 Booth/2.jpg",
-      "IMAGES/360 Booth/3.jpg", "IMAGES/360 Booth/4.jpg"
+      "IMAGES/360 Booth/1.jpg", "../IMAGES/360 Booth/2.jpg",
+      "IMAGES/360 Booth/3.jpg", "../IMAGES/360 Booth/4.jpg"
     ],
     packages: [
       { name: "Standard", price: 22000, duration: "4 hours", features: ["360 video capture", "Instant sharing", "Basic props", "Digital gallery"], popular: false },
@@ -242,7 +242,7 @@ const SERVICES_DATA = {
     shortDesc: "Aerial cinematography for stunning establishing shots.",
     longDesc: "Capture stunning aerial footage with our professional drone services! Licensed pilots, 4K Ultra HD, and fully insured. Perfect for weddings, real estate, events, and inspections.",
     mainImage: "IMAGES/Drone/1.jpg",
-    galleryImages: ["IMAGES/Drone/1.jpg", "IMAGES/Drone/2.jpg"],
+    galleryImages: ["../IMAGES/Drone/1.jpg", "../IMAGES/Drone/2.jpg"],
     packages: [
       { name: "Aerial Photos", price: 20000, duration: "2 hours", features: ["50+ edited photos", "4K resolution", "Online gallery", "Licensed pilot"], popular: false },
       { name: "Photo + Video", price: 35000, duration: "4 hours", features: ["100+ photos + video", "Professional editing", "Drone + ground", "Music background", "Same-day preview"], popular: true },
@@ -272,9 +272,9 @@ const SERVICES_DATA = {
     longDesc: "Crystal-clear audio for speeches, announcements, and background music. Professional sound system with line array speakers, wireless microphones, and dedicated sound engineer.",
     mainImage: "IMAGES/Public Address Systems/1.jpg",
     galleryImages: [
-      "IMAGES/Public Address Systems/1.jpg", "IMAGES/Public Address Systems/2.jpg",
-      "IMAGES/Public Address Systems/3.jpg", "IMAGES/Public Address Systems/4.jpg",
-      "IMAGES/Public Address Systems/5.jpg"
+      "../IMAGES/Public Address Systems/1.jpg", "IMAGES/Public Address Systems/2.jpg",
+      "../IMAGES/Public Address Systems/3.jpg", "../IMAGES/Public Address Systems/4.jpg",
+      "../IMAGES/Public Address Systems/5.jpg"
     ],
     packages: [
       { name: "Basic PA", price: 20000, duration: "Per event", features: ["2 speakers", "2 wireless mics", "Basic mixer", "Sound engineer"], popular: false },

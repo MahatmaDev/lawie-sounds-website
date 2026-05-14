@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "outputDirectory": "frontend",
   "builds": [
     {
       "src": "api/index.js",
@@ -17,8 +16,16 @@
       "dest": "/api/index.js"
     },
     {
+      "src": "/IMAGES/(.*)",
+      "dest": "/IMAGES/$1"
+    },
+    {
+      "src": "/Gallery/(.*)",
+      "dest": "/Gallery/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/frontend/$1"
     }
   ]
 }

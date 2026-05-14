@@ -105,7 +105,14 @@
         <div class="bg-gray-800 rounded-xl px-2 sm:px-4 py-2 text-center min-w-[50px] sm:min-w-[70px]"><p class="text-xl sm:text-2xl font-bold text-purple-400" id="statGallery">0</p><p class="text-xs text-gray-400">Images</p></div>
         <div class="bg-gray-800 rounded-xl px-2 sm:px-4 py-2 text-center min-w-[50px] sm:min-w-[70px]"><p class="text-xl sm:text-2xl font-bold text-purple-400" id="statReviews">0</p><p class="text-xs text-gray-400">Reviews</p></div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="/" target="_blank" rel="noopener" class="bg-green-800 hover:bg-green-700 px-3 sm:px-4 py-2 rounded-lg transition flex items-center gap-2 text-green-300 text-sm font-medium">
+          <i class="fas fa-external-link-alt"></i> <span class="hidden sm:inline">View Site</span>
+        </a>
+        <button id="notifBtn" class="relative bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition" title="Pending actions — click to view bookings">
+          <i class="fas fa-bell text-gray-300"></i>
+          <span id="notifBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full items-center justify-center font-bold leading-none">0</span>
+        </button>
         <div class="text-right hidden sm:block"><p class="text-xs text-gray-400" id="adminGreetingDisplay">Welcome</p><p class="text-sm font-semibold" id="adminNameDisplay">Administrator</p></div>
         <button id="logoutBtn" class="bg-gray-800 hover:bg-gray-700 px-3 sm:px-4 py-2 rounded-lg transition flex items-center gap-2"><i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span></button>
       </div>
@@ -200,6 +207,45 @@
     function updateStats() { document.getElementById('statEvents').textContent = store.events.length; document.getElementById('statBookings').textContent = store.bookings.filter(b => b.status === 'pending').length; document.getElementById('statGallery').textContent = store.gallery.length; document.getElementById('statReviews').textContent = store.reviews.filter(r => !r.isApproved).length; }
     function updateGreetingDisplay() { const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome'; const emoji = sessionStorage.getItem('adminEmoji') || '👋'; const adminName = sessionStorage.getItem('adminName') || 'Administrator'; document.getElementById('adminGreetingDisplay').textContent = `${greeting} ${emoji}`; document.getElementById('adminNameDisplay').textContent = adminName; }
 
+    function showToast(message, type = 'info') {
+      const colors = { info: 'bg-blue-600', success: 'bg-green-600', booking: 'bg-purple-600', review: 'bg-yellow-600' };
+      const icons = { info: 'fa-info-circle', success: 'fa-check-circle', booking: 'fa-calendar-check', review: 'fa-star' };
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 z-50 ' + (colors[type] || colors.info) + ' text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm fade-in';
+      toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i><span>' + message + '</span>';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    function updateNotifBadge() {
+      const pending = store.bookings.filter(b => b.status === 'pending').length + store.reviews.filter(r => !r.isApproved).length;
+      const badge = document.getElementById('notifBadge');
+      if (!badge) return;
+      if (pending > 0) { badge.textContent = pending > 9 ? '9+' : pending; badge.classList.remove('hidden'); badge.classList.add('flex'); }
+      else { badge.classList.add('hidden'); badge.classList.remove('flex'); }
+    }
+
+    async function refreshLiveData() {
+      const prevBookings = store.bookings.length;
+      const prevPendingRevs = store.reviews.filter(r => !r.isApproved).length;
+      await loadAllDataFromAPI();
+      updateStats();
+      updateNotifBadge();
+      const newBookings = store.bookings.length - prevBookings;
+      const newPendingRevs = store.reviews.filter(r => !r.isApproved).length - prevPendingRevs;
+      if (newBookings > 0) showToast(newBookings + ' new booking request' + (newBookings > 1 ? 's' : '') + '!', 'booking');
+      if (newPendingRevs > 0) showToast(newPendingRevs + ' new review' + (newPendingRevs > 1 ? 's' : '') + ' awaiting approval!', 'review');
+      if (newBookings > 0 || newPendingRevs > 0) {
+        if (currentTab === 'dashboard') renderDashboard();
+        else if (currentTab === 'bookings' && newBookings > 0) renderBookings();
+        else if (currentTab === 'reviews' && newPendingRevs > 0) renderReviews();
+      }
+      const indicator = document.getElementById('lastRefreshed');
+      if (indicator) indicator.textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    }
+
+    function startAutoRefresh() { setInterval(refreshLiveData, 30000); }
+
     // ==================== DASHBOARD ====================
     function renderDashboard() {
       const container = document.getElementById('sectionContent');
@@ -216,6 +262,20 @@
       const last6 = Array.from({length: 6}, (_, i) => { const d = new Date(now6.getFullYear(), now6.getMonth() - 5 + i, 1); return { label: monthNames[d.getMonth()], y: d.getFullYear(), m: d.getMonth() }; });
       const chartCounts = last6.map(mo => store.bookings.filter(b => { const d = new Date(b.createdAt || b.eventDate); return d.getMonth() === mo.m && d.getFullYear() === mo.y; }).length);
 
+      const rawActivity = [
+        ...store.bookings.slice(-15).map(b => ({ type: 'booking', date: new Date(b.createdAt || b.eventDate || Date.now()), item: b })),
+        ...store.reviews.slice(-10).map(r => ({ type: 'review', date: new Date(r.createdAt || Date.now()), item: r }))
+      ].sort((a, b) => b.date - a.date).slice(0, 8);
+      const activityHtml = rawActivity.length === 0
+        ? '<p class="p-6 text-center text-gray-500 text-sm">No recent activity yet</p>'
+        : rawActivity.map(a => {
+            const icon = a.type === 'booking' ? 'fa-calendar-check text-purple-400' : 'fa-star text-yellow-400';
+            const bg = a.type === 'booking' ? 'bg-purple-600/20' : 'bg-yellow-600/20';
+            const label = a.type === 'booking' ? escapeHtml(a.item.name || '') + ' — ' + escapeHtml(a.item.eventType || '') : escapeHtml(a.item.clientName || '') + ' left a review';
+            const badge = a.type === 'booking' ? '<span class="badge-' + a.item.status + '">' + a.item.status + '</span>' : (a.item.isApproved ? '<span class="text-green-400 text-xs">Approved</span>' : '<span class="text-yellow-400 text-xs">Pending</span>');
+            return '<div class="px-4 py-3 flex items-center gap-3 hover:bg-gray-800/50 transition"><div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ' + bg + '"><i class="fas ' + icon + ' text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">' + label + '</p><p class="text-xs text-gray-500 mt-0.5">' + a.date.toLocaleDateString() + ' &middot; ' + badge + '</p></div></div>';
+          }).join('');
+
       container.innerHTML = `<div class="welcome-banner rounded-2xl p-6 mb-8 border border-gray-800"><div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h2 class="text-2xl font-bold text-white">${greeting}, <span class="text-purple-400">${adminName}</span>! ${emoji}</h2><p class="text-gray-400 mt-1">Here's what's happening with your business today.</p></div><div class="flex gap-3"><div class="bg-purple-600/20 rounded-xl px-4 py-2 text-center"><p class="text-xl font-bold text-purple-400">KES ${totalEstimatedValue.toLocaleString()}</p><p class="text-xs text-gray-400">Est. Pipeline Value</p></div></div></div></div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.events.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt text-purple-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${store.events.filter(e => { const d = new Date().toISOString().split('T')[0]; return e.date >= d && e.status !== 'cancelled'; }).length} upcoming</div></div>
       <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Bookings</p><p class="text-2xl font-bold text-white">${store.bookings.length}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-ticket-alt text-blue-400"></i></div></div><div class="mt-2 text-xs text-yellow-400">${store.bookings.filter(b => b.status === 'pending').length} pending review</div></div>
@@ -223,7 +283,26 @@
       <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Conversion Rate</p><p class="text-2xl font-bold text-white">${convRate}%</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${confirmedBookings} confirmed / ${store.bookings.length} total</div></div></div>
       <div class="grid md:grid-cols-2 gap-6 mb-8"><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">📊 Bookings — Last 6 Months</h3><canvas id="bookingsChart" height="200"></canvas></div><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">⚡ Quick Actions</h3><div class="grid grid-cols-2 gap-3"><button onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">+ Add Event</button><button onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📸 Upload Image</button><button onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📢 Create Banner</button><button onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📋 View Bookings</button></div></div></div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 mb-6"><div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center"><h3 class="font-semibold">📋 Recent Bookings</h3><button onclick="switchTab('bookings')" class="text-purple-400 text-sm hover:underline">View all →</button></div><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left text-xs">Name</th><th class="px-4 py-3 text-left text-xs">Event</th><th class="px-4 py-3 text-left text-xs">Date</th><th class="px-4 py-3 text-left text-xs">Status</th><th class="px-4 py-3 text-left text-xs">Actions</th></tr></thead><tbody>${recentBookings.map(booking => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(booking.name)}</td><td class="px-4 py-3">${escapeHtml(booking.eventType)}</td><td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td><td class="px-4 py-3"><span class="badge-${booking.status}">${booking.status}</span></td><td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 hover:text-purple-300 text-sm">View</button></td></tr>`).join('')}</tbody></table></div></div>
-      ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-xl border border-gray-800"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.map(review => `<div class="p-4 flex justify-between items-center"><div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div><div class="flex gap-2"><button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div>`).join('')}</div></div>` : ''}`;
+      ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-xl border border-gray-800"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.map(review => `<div class="p-4 flex justify-between items-center"><div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div><div class="flex gap-2"><button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div>`).join('')}</div></div>` : ''}
+      <div class="mt-6 grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-900 rounded-xl border border-gray-800">
+          <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+            <h3 class="font-semibold">🔴 Live Activity</h3>
+            <span id="lastRefreshed" class="text-xs text-gray-500 flex items-center gap-1.5"><span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>Auto-refresh on</span>
+          </div>
+          <div class="divide-y divide-gray-800 max-h-72 overflow-y-auto">${activityHtml}</div>
+        </div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800">
+          <div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">🌐 Website Live Status</h3></div>
+          <div class="p-5 space-y-3">
+            <a href="/services.html" target="_blank" rel="noopener" class="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition group"><span class="flex items-center gap-3 text-sm"><i class="fas fa-headphones text-purple-400"></i> Services live on site</span><span class="font-bold text-purple-400">${store.services.length} <i class="fas fa-external-link-alt text-xs text-gray-500 group-hover:text-gray-400"></i></span></a>
+            <a href="/gallery.html" target="_blank" rel="noopener" class="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition group"><span class="flex items-center gap-3 text-sm"><i class="fas fa-images text-blue-400"></i> Gallery photos</span><span class="font-bold text-blue-400">${store.gallery.length} <i class="fas fa-external-link-alt text-xs text-gray-500 group-hover:text-gray-400"></i></span></a>
+            <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg"><span class="flex items-center gap-3 text-sm"><i class="fas fa-star text-yellow-400"></i> Approved reviews</span><span class="font-bold text-yellow-400">${store.reviews.filter(r => r.isApproved).length}</span></div>
+            <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg"><span class="flex items-center gap-3 text-sm"><i class="fas fa-image text-green-400"></i> Active posters</span><span class="font-bold text-green-400">${store.posters.filter(p => p.isActive).length}</span></div>
+            <a href="/" target="_blank" rel="noopener" class="flex items-center justify-center gap-2 w-full p-3 bg-green-800/40 hover:bg-green-800/70 rounded-lg transition text-green-300 text-sm font-medium"><i class="fas fa-globe"></i> Open homepage</a>
+          </div>
+        </div>
+      </div>`;
       const chartCanvas = document.getElementById('bookingsChart');
       if (chartCanvas) { if (bookingsChart) bookingsChart.destroy(); bookingsChart = new Chart(chartCanvas, { type: 'line', data: { labels: last6.map(m => m.label), datasets: [{ label: 'Bookings', data: chartCounts, borderColor: '#7c4dff', backgroundColor: 'rgba(124, 77, 255, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' }, beginAtZero: true, precision: 0 }, x: { ticks: { color: '#9ca3af' } } } } }); }
     }
@@ -1512,6 +1591,9 @@ function duplicateMarketingBanner(id) {
       await loadAllDataFromAPI();
       updateStats();
       switchTab('dashboard');
+      updateNotifBadge();
+      startAutoRefresh();
+      document.getElementById('notifBtn')?.addEventListener('click', () => switchTab('bookings'));
 
       document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 

@@ -144,47 +144,14 @@
   <script>
     // ==================== DATA STORE ====================
     let store = {
-      events: [
-        { id: '1', title: 'Afrobeat Night', date: '2026-05-15', venue: 'Club Volume, Nairobi', price: 1500, seatsLeft: 45, image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7', isActive: true },
-        { id: '2', title: 'Corporate Gala', date: '2026-05-20', venue: 'KICC, Nairobi', price: 5000, seatsLeft: 120, image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622', isActive: true },
-        { id: '3', title: 'Wedding Expo', date: '2026-06-10', venue: 'Sarit Centre', price: 2000, seatsLeft: 200, image: 'https://images.unsplash.com/photo-1519741497674-611481863552', isActive: true }
-      ],
+      events: [],
       gallery: [],
-      reviews: [
-        { id: '1', clientName: 'Sarah & James', rating: 5, comment: 'Amazing service! Highly recommend.', eventType: 'Wedding', isApproved: true, createdAt: new Date().toISOString() },
-        { id: '2', clientName: 'Tech Corp', rating: 5, comment: 'Professional and reliable team.', eventType: 'Corporate', isApproved: false, createdAt: new Date().toISOString() },
-        { id: '3', clientName: 'Michael O.', rating: 4, comment: 'Great energy, crowd loved it!', eventType: 'Birthday', isApproved: true, createdAt: new Date().toISOString() }
-      ],
-      marketingBanners: [
-        { id: '1', type: 'banner', name: 'April Special', message: '🎉 Special Offer: 15% off April bookings!', ctaText: 'Claim Offer', ctaLink: '/booking.html', isActive: true, startDate: '2026-04-01', endDate: '2026-04-30', views: 0, clicks: 0, ctr: 0, createdAt: new Date().toISOString() }
-      ],
-      bookings: [
-        { id: '1', name: 'John Doe', email: 'john@example.com', phone: '0712345678', eventDate: '2026-06-01', eventType: 'Wedding', guestCount: '101-250', budget: '100k-200k', venue: 'Nairobi', status: 'pending', createdAt: new Date().toISOString() },
-        { id: '2', name: 'Jane Smith', email: 'jane@example.com', phone: '0723456789', eventDate: '2026-05-25', eventType: 'Corporate', guestCount: '51-100', budget: '50k-100k', venue: 'Westlands', status: 'confirmed', createdAt: new Date().toISOString() }
-      ],
-      employees: [
-        { id: '1', name: 'John Kamau', role: 'Senior DJ', phone: '0712345678', email: 'john@lawiesounds.com', hireDate: '2024-01-15', status: 'active', totalEvents: 45, avgRating: 4.8 },
-        { id: '2', name: 'Mary Wanjiku', role: 'Lighting Technician', phone: '0723456789', email: 'mary@lawiesounds.com', hireDate: '2024-03-20', status: 'active', totalEvents: 32, avgRating: 4.9 },
-        { id: '3', name: 'Peter Omondi', role: 'Sound Engineer', phone: '0734567890', email: 'peter@lawiesounds.com', hireDate: '2024-02-10', status: 'active', totalEvents: 38, avgRating: 4.7 },
-        { id: '4', name: 'Grace Muthoni', role: 'MC/Host', phone: '0745678901', email: 'grace@lawiesounds.com', hireDate: '2024-04-05', status: 'active', totalEvents: 28, avgRating: 4.9 },
-        { id: '5', name: 'James Kariuki', role: 'Pyro Technician', phone: '0756789012', email: 'james@lawiesounds.com', hireDate: '2024-01-30', status: 'active', totalEvents: 25, avgRating: 4.6 }
-      ],
-      services: [
-        { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', price: 25000, shortDesc: 'Professional DJ and MC for high-energy events.', image: '/IMAGES/DJ%20and%20MC%20Services/1.jpg', isActive: true, displayOrder: 1 },
-        { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', price: 15000, shortDesc: 'High-resolution LED screens for stunning visuals.', image: '/IMAGES/LED%20Screens/1.jpg', isActive: true, displayOrder: 2 },
-        { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', price: 18000, shortDesc: 'Professional lighting design and power distribution.', image: '/IMAGES/Power%20&%20Lighting/1.jpg', isActive: true, displayOrder: 3 },
-        { id: '4', name: 'Pyrotechnics', slug: 'pyrotechnics', category: 'Effects', icon: 'fa-fire', price: 35000, shortDesc: 'Spectacular fire effects and confetti.', image: '/IMAGES/Pyrotechnics/1.jpg', isActive: true, displayOrder: 4 },
-        { id: '5', name: 'Photography', slug: 'photography', category: 'Media', icon: 'fa-camera', price: 20000, shortDesc: 'Professional photography for events.', image: '/IMAGES/Photography/1.jpg', isActive: true, displayOrder: 5 },
-        { id: '6', name: 'Live Streaming', slug: 'live-streaming', category: 'Media', icon: 'fa-video', price: 30000, shortDesc: 'Broadcast your event live.', image: '/IMAGES/Live%20Streaming/1.jpg', isActive: true, displayOrder: 6 },
-        { id: '7', name: '360 Booth', slug: '360-booth', category: 'Media', icon: 'fa-cube', price: 22000, shortDesc: 'Immersive 360 photo experience.', image: '/IMAGES/360%20Booth/1.jpg', isActive: true, displayOrder: 7 },
-        { id: '8', name: 'Drone Services', slug: 'drone-services', category: 'Media', icon: 'fa-drone', price: 28000, shortDesc: 'Aerial cinematography.', image: '/IMAGES/Drone/1.jpg', isActive: true, displayOrder: 8 },
-        { id: '9', name: 'Public Address Systems', slug: 'public-address', category: 'Audio', icon: 'fa-volume-up', price: 20000, shortDesc: 'Crystal-clear audio for speeches.', image: '/IMAGES/Public%20Address/1.jpg', isActive: true, displayOrder: 9 }
-      ],
-      payroll: [
-        { id: '1', employeeId: '1', employeeName: 'John Kamau', eventName: 'Afrobeat Night', eventDate: '2026-05-15', amount: 15000, status: 'paid', paymentDate: '2026-05-16', rating: 5 },
-        { id: '2', employeeId: '2', employeeName: 'Mary Wanjiku', eventName: 'Corporate Gala', eventDate: '2026-05-20', amount: 12000, status: 'paid', paymentDate: '2026-05-21', rating: 5 },
-        { id: '3', employeeId: '3', employeeName: 'Peter Omondi', eventName: 'Wedding Expo', eventDate: '2026-06-10', amount: 14000, status: 'pending', paymentDate: null, rating: 4 }
-      ],
+      reviews: [],
+      marketingBanners: [],
+      bookings: [],
+      employees: [],
+      services: [],
+      payroll: [],
       posters: []
     };
 
@@ -218,15 +185,15 @@
         apiRequest('GET', '/api/admin/employees'),
         apiRequest('GET', '/api/admin/payroll'),
       ]);
-      if (evts?.data?.length) store.events = evts.data;
-      if (svcs?.data?.length) store.services = svcs.data;
-      if (gal?.data) store.gallery = gal.data;
-      if (revs?.data) store.reviews = revs.data;
-      if (bans?.data) store.marketingBanners = bans.data;
-      if (posts?.data) store.posters = posts.data;
-      if (bkgs?.data) store.bookings = bkgs.data;
-      if (emps?.data?.length) store.employees = emps.data;
-      if (pay?.data) store.payroll = pay.data;
+      store.events = evts?.data || [];
+      store.services = svcs?.data || [];
+      store.gallery = gal?.data || [];
+      store.reviews = revs?.data || [];
+      store.marketingBanners = bans?.data || [];
+      store.posters = posts?.data || [];
+      store.bookings = bkgs?.data || [];
+      store.employees = emps?.data || [];
+      store.payroll = pay?.data || [];
     }
 
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
@@ -238,18 +205,27 @@
       const container = document.getElementById('sectionContent');
       const recentBookings = store.bookings.slice(0, 5);
       const pendingReviews = store.reviews.filter(r => !r.isApproved);
-      const totalRevenue = store.bookings.reduce((sum, b) => { const budgets = { '10k-30k': 20000, '30k-50k': 40000, '50k-100k': 75000, '100k-200k': 150000, '200k+': 250000 }; return sum + (budgets[b.budget] || 0); }, 0);
+      const totalEstimatedValue = store.bookings.reduce((sum, b) => { const budgets = { '10k-30k': 20000, '30k-50k': 40000, '50k-100k': 75000, '100k-200k': 150000, '200k+': 250000 }; return sum + (budgets[b.budget] || 0); }, 0);
+      const confirmedBookings = store.bookings.filter(b => ['confirmed','completed'].includes(b.status)).length;
+      const convRate = store.bookings.length > 0 ? Math.round((confirmedBookings / store.bookings.length) * 100) : 0;
       const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome'; const emoji = sessionStorage.getItem('adminEmoji') || '👋'; const adminName = sessionStorage.getItem('adminName') || 'Administrator';
-      container.innerHTML = `<div class="welcome-banner rounded-2xl p-6 mb-8 border border-gray-800"><div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h2 class="text-2xl font-bold text-white">${greeting}, <span class="text-purple-400">${adminName}</span>! ${emoji}</h2><p class="text-gray-400 mt-1">Here's what's happening with your business today.</p></div><div class="flex gap-3"><div class="bg-purple-600/20 rounded-xl px-4 py-2 text-center"><p class="text-xl font-bold text-purple-400">${totalRevenue.toLocaleString()} KES</p><p class="text-xs text-gray-400">Total Value</p></div></div></div></div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.events.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt text-purple-400"></i></div></div><div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +12% from last month</div></div>
-      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Bookings</p><p class="text-2xl font-bold text-white">${store.bookings.length}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-ticket-alt text-blue-400"></i></div></div><div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +8 new this week</div></div>
+
+      // Build last 6 months chart data from real bookings
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const now6 = new Date();
+      const last6 = Array.from({length: 6}, (_, i) => { const d = new Date(now6.getFullYear(), now6.getMonth() - 5 + i, 1); return { label: monthNames[d.getMonth()], y: d.getFullYear(), m: d.getMonth() }; });
+      const chartCounts = last6.map(mo => store.bookings.filter(b => { const d = new Date(b.createdAt || b.eventDate); return d.getMonth() === mo.m && d.getFullYear() === mo.y; }).length);
+
+      container.innerHTML = `<div class="welcome-banner rounded-2xl p-6 mb-8 border border-gray-800"><div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h2 class="text-2xl font-bold text-white">${greeting}, <span class="text-purple-400">${adminName}</span>! ${emoji}</h2><p class="text-gray-400 mt-1">Here's what's happening with your business today.</p></div><div class="flex gap-3"><div class="bg-purple-600/20 rounded-xl px-4 py-2 text-center"><p class="text-xl font-bold text-purple-400">KES ${totalEstimatedValue.toLocaleString()}</p><p class="text-xs text-gray-400">Est. Pipeline Value</p></div></div></div></div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.events.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt text-purple-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${store.events.filter(e => { const d = new Date().toISOString().split('T')[0]; return e.date >= d && e.status !== 'cancelled'; }).length} upcoming</div></div>
+      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Bookings</p><p class="text-2xl font-bold text-white">${store.bookings.length}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-ticket-alt text-blue-400"></i></div></div><div class="mt-2 text-xs text-yellow-400">${store.bookings.filter(b => b.status === 'pending').length} pending review</div></div>
       <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Pending Reviews</p><p class="text-2xl font-bold text-yellow-400">${pendingReviews.length}</p></div><div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div></div><div class="mt-2 text-xs text-yellow-400"><i class="fas fa-clock mr-1"></i> Awaiting approval</div></div>
-      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Conversion Rate</p><p class="text-2xl font-bold text-white">68%</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div></div><div class="mt-2 text-xs text-green-400"><i class="fas fa-arrow-up mr-1"></i> +5% from last month</div></div></div>
-      <div class="grid md:grid-cols-2 gap-6 mb-8"><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">📊 Monthly Bookings</h3><canvas id="bookingsChart" height="200"></canvas></div><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">⚡ Quick Actions</h3><div class="grid grid-cols-2 gap-3"><button onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">+ Add Event</button><button onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📸 Upload Image</button><button onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📢 Create Banner</button><button onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📋 View Bookings</button></div></div></div>
+      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Conversion Rate</p><p class="text-2xl font-bold text-white">${convRate}%</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${confirmedBookings} confirmed / ${store.bookings.length} total</div></div></div>
+      <div class="grid md:grid-cols-2 gap-6 mb-8"><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">📊 Bookings — Last 6 Months</h3><canvas id="bookingsChart" height="200"></canvas></div><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">⚡ Quick Actions</h3><div class="grid grid-cols-2 gap-3"><button onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">+ Add Event</button><button onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📸 Upload Image</button><button onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📢 Create Banner</button><button onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">📋 View Bookings</button></div></div></div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 mb-6"><div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center"><h3 class="font-semibold">📋 Recent Bookings</h3><button onclick="switchTab('bookings')" class="text-purple-400 text-sm hover:underline">View all →</button></div><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left text-xs">Name</th><th class="px-4 py-3 text-left text-xs">Event</th><th class="px-4 py-3 text-left text-xs">Date</th><th class="px-4 py-3 text-left text-xs">Status</th><th class="px-4 py-3 text-left text-xs">Actions</th></tr></thead><tbody>${recentBookings.map(booking => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(booking.name)}</td><td class="px-4 py-3">${escapeHtml(booking.eventType)}</td><td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td><td class="px-4 py-3"><span class="badge-${booking.status}">${booking.status}</span></td><td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 hover:text-purple-300 text-sm">View</button></td></tr>`).join('')}</tbody></table></div></div>
       ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-xl border border-gray-800"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.map(review => `<div class="p-4 flex justify-between items-center"><div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div><div class="flex gap-2"><button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div>`).join('')}</div></div>` : ''}`;
       const chartCanvas = document.getElementById('bookingsChart');
-      if (chartCanvas) { if (bookingsChart) bookingsChart.destroy(); bookingsChart = new Chart(chartCanvas, { type: 'line', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], datasets: [{ label: 'Bookings', data: [12, 19, 15, 27, 24, 32], borderColor: '#7c4dff', backgroundColor: 'rgba(124, 77, 255, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } } } }); }
+      if (chartCanvas) { if (bookingsChart) bookingsChart.destroy(); bookingsChart = new Chart(chartCanvas, { type: 'line', data: { labels: last6.map(m => m.label), datasets: [{ label: 'Bookings', data: chartCounts, borderColor: '#7c4dff', backgroundColor: 'rgba(124, 77, 255, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' }, beginAtZero: true, precision: 0 }, x: { ticks: { color: '#9ca3af' } } } } }); }
     }
 
     // ==================== REVAMPED EVENTS MANAGEMENT ====================
@@ -672,7 +648,7 @@
                 <div class="flex-1 p-4">
                   <div class="flex justify-between items-start"><div><h3 class="text-lg font-bold">${escapeHtml(service.name)}</h3><p class="text-xs text-gray-400">${service.category || 'Uncategorized'}</p></div><span class="px-2 py-1 rounded-full text-xs ${service.isActive !== false ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${service.isActive !== false ? 'Active' : 'Draft'}</span></div>
                   <p class="text-sm text-gray-400 mt-2 line-clamp-2">${escapeHtml(service.shortDesc || 'No description')}</p>
-                  <div class="flex justify-between items-center mt-3"><div><span class="text-xl font-bold text-yellow-400">KES ${service.price?.toLocaleString() || 0}</span><span class="text-xs text-gray-500"> starting</span></div><div class="flex gap-2"><button onclick="editService('${service.id}')" class="text-purple-400 hover:text-purple-300 p-1"><i class="fas fa-edit"></i></button><button onclick="deleteService('${service.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash"></i></button></div></div>
+                  <div class="flex justify-between items-center mt-3"><div><span class="text-sm text-gray-400">${(service.packages || []).length} package${(service.packages || []).length !== 1 ? 's' : ''} · ${(service.features || []).length} feature${(service.features || []).length !== 1 ? 's' : ''}</span></div><div class="flex gap-2"><button onclick="editService('${service.id}')" class="text-purple-400 hover:text-purple-300 p-1"><i class="fas fa-edit"></i></button><button onclick="deleteService('${service.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash"></i></button></div></div>
                 </div>
               </div>
             </div>

@@ -46,10 +46,7 @@ let mockData = {
     { id: '1', title: 'Afrobeat Night', date: '2025-05-15', venue: 'Club Volume, Nairobi', price: 1500, seatsLeft: 45, image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7', isActive: true },
     { id: '2', title: 'Corporate Gala', date: '2025-05-20', venue: 'KICC, Nairobi', price: 5000, seatsLeft: 120, image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622', isActive: true }
   ],
-  gallery: [
-    { id: '1', title: 'DJ Performance', category: 'Audio', imageUrl: 'https://images.unsplash.com/photo-1593642532973-d31b6557fa68', createdAt: new Date().toISOString() },
-    { id: '2', title: 'Wedding Setup', category: 'Weddings', imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552', createdAt: new Date().toISOString() }
-  ],
+  gallery: [],
   reviews: [
     { id: '1', clientName: 'Sarah & James', rating: 5, comment: 'Amazing service! Highly recommend.', eventType: 'Wedding', isApproved: true, createdAt: new Date().toISOString() },
     { id: '2', clientName: 'Tech Corp', rating: 5, comment: 'Professional and reliable.', eventType: 'Corporate', isApproved: false, createdAt: new Date().toISOString() }
@@ -62,8 +59,27 @@ let mockData = {
   ]
 };
 
+// Load persisted gallery from localStorage
+function loadPersistedGallery() {
+  const savedGallery = localStorage.getItem('lawie_gallery_items');
+  if (savedGallery) {
+    try {
+      mockData.gallery = JSON.parse(savedGallery);
+      console.log(`✅ Loaded ${mockData.gallery.length} gallery items from storage`);
+    } catch(e) { console.error('Failed to load gallery', e); }
+  }
+}
+
+// Save gallery to localStorage
+function persistGallery() {
+  localStorage.setItem('lawie_gallery_items', JSON.stringify(mockData.gallery));
+  sessionStorage.setItem('lawie_gallery_items', JSON.stringify(mockData.gallery));
+}
+
 // ==================== LOAD DASHBOARD ====================
 async function loadDashboard() {
+  loadPersistedGallery();
+  
   const statEvents = document.getElementById('statEvents');
   const statBookings = document.getElementById('statBookings');
   const statGallery = document.getElementById('statGallery');
@@ -236,63 +252,215 @@ async function editEvent(id) {
   openEventForm(id);
 }
 
-// ==================== GALLERY MANAGEMENT ====================
+// ==================== GALLERY MANAGEMENT (with Local File Upload) ====================
 function renderGallery() {
   const container = document.getElementById('sectionContent');
   if (!container) return;
   
+  if (!mockData.gallery || mockData.gallery.length === 0) {
+    container.innerHTML = `
+      <div class="flex justify-end mb-4"><button onclick="openGalleryForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-upload mr-2"></i>Upload Image/Video</button></div>
+      <div class="text-center text-gray-500 py-12">
+        <i class="fas fa-image text-6xl mb-4 opacity-50"></i>
+        <p class="text-lg">No images or videos yet.</p>
+        <p class="text-sm mt-2">Click "Upload Image/Video" to add your first gallery item.</p>
+      </div>
+    `;
+    return;
+  }
+  
   container.innerHTML = `
-    <div class="flex justify-end mb-4"><button onclick="openGalleryForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add Image</button></div>
+    <div class="flex justify-end mb-4"><button onclick="openGalleryForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-upload mr-2"></i>Upload Image/Video</button></div>
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       ${mockData.gallery.map(img => `
-        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <img src="${img.imageUrl}" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/400x300'">
-          <div class="p-3"><p class="text-sm font-medium truncate">${escapeHtml(img.title)}</p><p class="text-xs text-gray-400">${escapeHtml(img.category)}</p><button onclick="deleteImage('${img.id}')" class="mt-2 w-full bg-red-600/20 text-red-400 py-1 rounded-lg text-sm hover:bg-red-600/30 transition">Delete</button></div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-purple-500 transition group">
+          <div class="relative h-40 bg-gray-800">
+            ${img.type === 'video' ? 
+              `<video src="${img.imageUrl}" class="w-full h-full object-cover"></video>` : 
+              `<img src="${img.imageUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center bg-gray-700\'><i class=\'fas fa-image text-4xl text-gray-500\'></i></div>'">`
+            }
+            <div class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded group-hover:bg-purple-600 transition">${img.type === 'video' ? '🎬' : '📷'}</div>
+          </div>
+          <div class="p-3">
+            <p class="text-sm font-medium truncate">${escapeHtml(img.title)}</p>
+            <p class="text-xs text-gray-400">${escapeHtml(img.category)}</p>
+            <button onclick="deleteImage('${img.id}')" class="mt-2 w-full bg-red-600/20 text-red-400 py-1 rounded-lg text-sm hover:bg-red-600/30 transition">Delete</button>
+          </div>
         </div>
       `).join('')}
     </div>
+    <div class="mt-4 text-center text-gray-500 text-sm">${mockData.gallery.length} items in gallery</div>
   `;
 }
 
 function openGalleryForm() {
-  document.getElementById('modalTitle').textContent = 'Add Gallery Image';
+  currentEditId = null;
+  document.getElementById('modalTitle').textContent = 'Add Gallery Item';
   document.getElementById('modalForm').innerHTML = `
+    <div class="modal-header pb-3 border-b border-gray-700 mb-3">
+      <p class="text-sm text-gray-400">📸 Upload Image or Video</p>
+    </div>
     <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required></div>
-    <div><label class="block text-sm mb-1">Category</label><select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option>Weddings</option><option>Corporate</option><option>Equipment</option><option>Ruracio</option></select></div>
-    <div><label class="block text-sm mb-1">Image URL *</label><input type="url" id="galleryUrl" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required></div>
-    <div class="bg-gray-800/50 rounded-lg p-4 text-center"><p class="text-sm text-gray-400">Preview:</p><img id="imagePreview" class="mx-auto max-h-32 rounded-lg hidden"><p class="text-xs text-gray-500 mt-2">Enter URL to see preview</p></div>
+    <div><label class="block text-sm mb-1">Category</label>
+      <select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <option>Weddings</option><option>Corporate</option><option>Equipment</option><option>Ruracio</option><option>Audio</option><option>Visual</option>
+      </select>
+    </div>
+    <div><label class="block text-sm mb-1">Type</label>
+      <select id="galleryType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <option value="image">Image</option><option value="video">Video</option>
+      </select>
+    </div>
+    <div><label class="block text-sm mb-1">Select File *</label>
+      <input type="file" id="galleryFile" accept="image/*,video/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required>
+      <p class="text-xs text-gray-500 mt-1">Max file size: 50MB. Supported: JPG, PNG, GIF, MP4</p>
+    </div>
+    <div id="previewArea" class="hidden bg-gray-800/50 rounded-lg p-4 text-center">
+      <p class="text-sm text-gray-400 mb-2">Preview:</p>
+      <img id="imagePreview" class="mx-auto max-h-32 rounded-lg hidden">
+      <video id="videoPreview" class="mx-auto max-h-32 rounded-lg hidden" controls></video>
+    </div>
+    <div id="uploadProgressArea" class="hidden">
+      <div class="flex items-center gap-3">
+        <div class="flex-1 bg-gray-700 rounded-full h-2"><div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width:0%"></div></div>
+        <span id="uploadPercent" class="text-xs text-gray-400">0%</span>
+      </div>
+      <p id="uploadStatusMsg" class="text-xs text-gray-400 mt-2 text-center">Processing file...</p>
+    </div>
   `;
   
-  const urlInput = document.getElementById('galleryUrl');
-  urlInput?.addEventListener('input', () => {
-    const preview = document.getElementById('imagePreview');
-    if (urlInput.value && preview) { 
-      preview.src = urlInput.value; 
-      preview.classList.remove('hidden'); 
-    } else if (preview) { 
-      preview.classList.add('hidden'); 
+  const typeSelect = document.getElementById('galleryType');
+  const fileInput = document.getElementById('galleryFile');
+  const previewArea = document.getElementById('previewArea');
+  const imagePreview = document.getElementById('imagePreview');
+  const videoPreview = document.getElementById('videoPreview');
+  
+  typeSelect?.addEventListener('change', () => {
+    previewArea.classList.remove('hidden');
+    imagePreview.classList.add('hidden');
+    videoPreview.classList.add('hidden');
+  });
+  
+  fileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        Swal.fire({ icon: 'error', title: 'File Too Large', text: 'Maximum file size is 50MB', background: '#1e1e2a', color: '#fff' });
+        fileInput.value = '';
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      previewArea.classList.remove('hidden');
+      if (typeSelect.value === 'image') {
+        imagePreview.src = url;
+        imagePreview.classList.remove('hidden');
+        videoPreview.classList.add('hidden');
+      } else {
+        videoPreview.src = url;
+        videoPreview.classList.remove('hidden');
+        imagePreview.classList.add('hidden');
+      }
     }
   });
+  
   document.getElementById('formModal').classList.remove('hidden');
 }
 
 async function saveGallery() {
-  mockData.gallery.push({ 
-    id: Date.now().toString(), 
-    title: document.getElementById('galleryTitle').value, 
-    category: document.getElementById('galleryCategory').value, 
-    imageUrl: document.getElementById('galleryUrl').value, 
-    createdAt: new Date().toISOString() 
-  });
-  closeModal(); 
-  renderGallery();
-  Swal.fire({ icon: 'success', title: 'Image added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+  const titleInput = document.getElementById('galleryTitle');
+  const categorySelect = document.getElementById('galleryCategory');
+  const typeSelect = document.getElementById('galleryType');
+  const fileInput = document.getElementById('galleryFile');
+  
+  if (!titleInput.value.trim()) {
+    Swal.fire({ icon: 'error', title: 'Missing Title', text: 'Please enter a title', background: '#1e1e2a', color: '#fff' });
+    return;
+  }
+  
+  if (!fileInput.files || !fileInput.files[0]) {
+    Swal.fire({ icon: 'error', title: 'No File', text: 'Please select a file', background: '#1e1e2a', color: '#fff' });
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  const title = titleInput.value;
+  const category = categorySelect.value;
+  const type = typeSelect.value;
+  
+  const progressArea = document.getElementById('uploadProgressArea');
+  const progressBar = document.getElementById('uploadProgressBar');
+  const percentSpan = document.getElementById('uploadPercent');
+  const statusMsg = document.getElementById('uploadStatusMsg');
+  
+  if (progressArea) progressArea.classList.remove('hidden');
+  if (statusMsg) statusMsg.textContent = 'Converting image...';
+  
+  const reader = new FileReader();
+  let progress = 0;
+  const interval = setInterval(() => {
+    if (progress < 90) {
+      progress += 10;
+      if (progressBar) progressBar.style.width = progress + '%';
+      if (percentSpan) percentSpan.textContent = progress + '%';
+    }
+  }, 100);
+  
+  reader.onload = function(e) {
+    const imageUrl = e.target.result;
+    if (statusMsg) statusMsg.textContent = 'Saving to gallery...';
+    if (progressBar) progressBar.style.width = '100%';
+    if (percentSpan) percentSpan.textContent = '100%';
+    
+    const newItem = {
+      id: Date.now().toString(),
+      title: title,
+      category: category,
+      type: type,
+      imageUrl: imageUrl,
+      createdAt: new Date().toISOString()
+    };
+    
+    mockData.gallery.unshift(newItem);
+    persistGallery();
+    
+    closeModal();
+    renderGallery();
+    
+    clearInterval(interval);
+    if (progressArea) progressArea.classList.add('hidden');
+    if (progressBar) progressBar.style.width = '0%';
+    if (percentSpan) percentSpan.textContent = '0%';
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Upload Complete!',
+      text: `${title} has been added to gallery`,
+      timer: 2000,
+      showConfirmButton: false,
+      background: '#1e1e2a',
+      color: '#fff'
+    });
+    
+    titleInput.value = '';
+    fileInput.value = '';
+  };
+  
+  reader.onerror = function() {
+    Swal.fire({ icon: 'error', title: 'Upload Failed', text: 'Could not read file', background: '#1e1e2a', color: '#fff' });
+    if (progressArea) progressArea.classList.add('hidden');
+    clearInterval(interval);
+    if (progressBar) progressBar.style.width = '0%';
+    if (percentSpan) percentSpan.textContent = '0%';
+  };
+  
+  reader.readAsDataURL(file);
 }
 
 async function deleteImage(id) {
   const result = await Swal.fire({ title: 'Delete image?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
   if (result.isConfirmed) { 
     mockData.gallery = mockData.gallery.filter(i => i.id !== id); 
+    persistGallery();
     renderGallery(); 
   }
 }
@@ -436,7 +604,7 @@ function renderBookings() {
                 </select>
               </td>
               <td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 text-sm">View</button></td>
-            </tr>
+            </td>
           `).join('')}</tbody>
         </table>
       </div>
@@ -507,6 +675,9 @@ window.openEventForm = openEventForm;
 
 // ==================== INITIALIZE ====================
 document.addEventListener('DOMContentLoaded', () => {
+  // Load persisted gallery first
+  loadPersistedGallery();
+  
   document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
   
   const closeModalBtn = document.getElementById('closeModalBtn');

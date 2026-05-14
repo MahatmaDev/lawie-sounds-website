@@ -197,58 +197,44 @@
   </div>
 
   <script>
-    // ==================== API CONFIGURATION ====================
-    const API_BASE_URL = 'http://localhost:5000/api';
-    
     let SERVICES = [];
     let CATEGORIES = [];
-    let currentFilter = "all";
-    let currentSearch = "";
+    let currentFilter = 'all';
+    let currentSearch = '';
 
-    // Fallback data with CORRECT image paths (using ../)
     const FALLBACK_SERVICES = [
-      { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', price: 25000, short_desc: 'Professional DJ and Master of Ceremonies for high-energy events.', image: '../IMAGES/DJ and MC Services/1.jpg' },
-      { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', price: 15000, short_desc: 'High-resolution LED screens for stunning visuals.', image: '../IMAGES/LED Screens/1.jpg' },
-      { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', price: 18000, short_desc: 'Professional lighting design and power distribution.', image: '../IMAGES/Power & Lighting/1.jpg' },
-      { id: '4', name: 'Pyrotechnics', slug: 'pyrotechnics', category: 'Effects', icon: 'fa-fire', price: 35000, short_desc: 'Spectacular fire effects, confetti, and CO2 cannons.', image: '../IMAGES/Pyrotechnics/1.jpg' },
-      { id: '5', name: 'Photography', slug: 'photography', category: 'Media', icon: 'fa-camera', price: 20000, short_desc: 'Professional photography for weddings and events.', image: '../IMAGES/Photography/1.jpg' },
-      { id: '6', name: 'Live Streaming', slug: 'live-streaming', category: 'Media', icon: 'fa-video', price: 30000, short_desc: 'Broadcast your event live to remote audiences.', image: '../IMAGES/Live Streaming & Media/1.jpg' },
-      { id: '7', name: '360 Booth', slug: '360-booth', category: 'Media', icon: 'fa-cube', price: 22000, short_desc: 'Immersive 360 photo and video experience for guests.', image: '../IMAGES/360 Booth/1.jpg' },
-      { id: '8', name: 'Drone Services', slug: 'drone-services', category: 'Media', icon: 'fa-drone', price: 28000, short_desc: 'Aerial cinematography for stunning establishing shots.', image: '../IMAGES/Drone/1.jpg' },
-      { id: '9', name: 'Public Address Systems', slug: 'public-address', category: 'Audio', icon: 'fa-volume-up', price: 20000, short_desc: 'Crystal-clear audio for speeches and announcements.', image: '../IMAGES/Public Address Systems/1.jpg' }
+      { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', shortDesc: 'Professional DJ and Master of Ceremonies for high-energy events.', mainImage: '../IMAGES/DJ and MC Services/1.jpg' },
+      { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', shortDesc: 'High-resolution LED screens for stunning visuals.', mainImage: '../IMAGES/LED Screens/1.jpg' },
+      { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', shortDesc: 'Professional lighting design and power distribution.', mainImage: '../IMAGES/Power & Lighting/1.jpg' },
+      { id: '4', name: 'Pyrotechnics', slug: 'pyrotechnics', category: 'Effects', icon: 'fa-fire', shortDesc: 'Spectacular fire effects, confetti, and CO2 cannons.', mainImage: '../IMAGES/Pyrotechnics/1.jpg' },
+      { id: '5', name: 'Photography', slug: 'photography', category: 'Media', icon: 'fa-camera', shortDesc: 'Professional photography for weddings and events.', mainImage: '../IMAGES/Photography/1.jpg' },
+      { id: '6', name: 'Live Streaming', slug: 'live-streaming', category: 'Media', icon: 'fa-video', shortDesc: 'Broadcast your event live to remote audiences.', mainImage: '../IMAGES/Live Streaming & Media/1.jpg' },
+      { id: '7', name: '360 Booth', slug: '360-booth', category: 'Media', icon: 'fa-cube', shortDesc: 'Immersive 360 photo and video experience for guests.', mainImage: '../IMAGES/360 Booth/1.jpg' },
+      { id: '8', name: 'Drone Services', slug: 'drone-services', category: 'Media', icon: 'fa-drone', shortDesc: 'Aerial cinematography for stunning establishing shots.', mainImage: '../IMAGES/Drone/1.jpg' },
+      { id: '9', name: 'Public Address Systems', slug: 'public-address', category: 'Audio', icon: 'fa-volume-up', shortDesc: 'Crystal-clear audio for speeches and announcements.', mainImage: '../IMAGES/Public Address Systems/1.jpg' }
     ];
 
-    // ==================== FETCH SERVICES FROM API ====================
-    async function fetchServicesFromAPI() {
+    async function fetchServices() {
       try {
-        const response = await fetch(`${API_BASE_URL}/services?is_active=eq.true&order=display_order.asc`);
-        if (!response.ok) throw new Error('API error');
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error('API fetch failed, using fallback data:', error);
+        const res = await fetch('/api/services');
+        if (!res.ok) throw new Error('API error');
+        const json = await res.json();
+        return json.data || [];
+      } catch {
         return FALLBACK_SERVICES;
       }
     }
 
-    // ==================== RENDER FUNCTIONS ====================
     function renderFilters() {
       const container = document.getElementById('categoryFilters');
       if (!container) return;
-      
       container.innerHTML = `
         <button data-category="all" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-yellow-400 text-black transition btn-touch">All</button>
-        ${CATEGORIES.map(cat => `
-          <button data-category="${cat}" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-yellow-300 transition btn-touch">${cat}</button>
-        `).join('')}
+        ${CATEGORIES.map(cat => `<button data-category="${cat}" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-yellow-300 transition btn-touch">${cat}</button>`).join('')}
       `;
-      
-      document.querySelectorAll('.filter-btn').forEach(btn => {
+      container.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.filter-btn').forEach(b => {
-            b.classList.remove('bg-yellow-400', 'text-black');
-            b.classList.add('bg-gray-200', 'text-gray-700');
-          });
+          container.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('bg-yellow-400', 'text-black'); b.classList.add('bg-gray-200', 'text-gray-700'); });
           btn.classList.remove('bg-gray-200', 'text-gray-700');
           btn.classList.add('bg-yellow-400', 'text-black');
           currentFilter = btn.dataset.category;
@@ -259,114 +245,86 @@
 
     function renderServices() {
       let filtered = SERVICES;
-      if (currentFilter !== "all") filtered = filtered.filter(s => s.category === currentFilter);
-      if (currentSearch) filtered = filtered.filter(s => s.name.toLowerCase().includes(currentSearch) || (s.short_desc || s.shortDesc || '').toLowerCase().includes(currentSearch));
-      
+      if (currentFilter !== 'all') filtered = filtered.filter(s => s.category === currentFilter);
+      if (currentSearch) filtered = filtered.filter(s => {
+        const desc = s.shortDesc || s.short_desc || '';
+        return (s.name || '').toLowerCase().includes(currentSearch) || desc.toLowerCase().includes(currentSearch);
+      });
+
       document.getElementById('resultNumber').textContent = filtered.length;
-      
+      const grid = document.getElementById('servicesGrid');
+      const skeleton = document.getElementById('skeletonLoader');
       const noResults = document.getElementById('noResults');
-      const servicesGrid = document.getElementById('servicesGrid');
-      const skeletonLoader = document.getElementById('skeletonLoader');
-      
-      if (filtered.length === 0) {
-        servicesGrid.classList.add('hidden');
-        skeletonLoader.classList.add('hidden');
+
+      if (!filtered.length) {
+        grid.classList.add('hidden');
+        skeleton.classList.add('hidden');
         noResults.classList.remove('hidden');
         return;
       }
-      
+
       noResults.classList.add('hidden');
-      skeletonLoader.classList.add('hidden');
-      servicesGrid.classList.remove('hidden');
-      
-      servicesGrid.innerHTML = filtered.map(service => {
-        const imagePath = service.main_image || service.mainImage || service.image || 'https://placehold.co/400x300';
+      skeleton.classList.add('hidden');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = filtered.map(s => {
+        const img = s.mainImage || s.main_image || `https://placehold.co/400x300?text=${encodeURIComponent(s.name || 'Service')}`;
+        const icon = s.icon || 'fa-star';
+        const desc = s.shortDesc || s.short_desc || '';
+        const slug = s.slug || s.id;
         return `
-          <div class="service-card bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group" onclick="window.location.href='service-detail.html?service=${service.slug || service.id}'">
+          <div class="service-card bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group" onclick="window.location.href='service-detail.html?service=${slug}'">
             <div class="relative h-52 overflow-hidden">
-              <img src="${imagePath}" alt="${service.name}" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" onerror="this.src='https://placehold.co/400x300?text=${service.name}'">
-              <div class="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                KES ${(service.price || 0).toLocaleString()}
+              <img src="${img}" alt="${s.name || 'Service'}" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" onerror="this.src='https://placehold.co/400x300?text=${encodeURIComponent(s.name || 'Service')}'">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+              <div class="absolute bottom-3 left-4">
+                <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold shadow-md">${s.category || 'Service'}</span>
               </div>
             </div>
             <div class="p-5">
               <div class="flex items-center gap-2 mb-2">
-                <i class="fas ${service.icon || 'fa-star'} text-yellow-500 text-lg"></i>
-                <h3 class="text-xl font-bold text-gray-800">${service.name}</h3>
+                <i class="fas ${icon} text-yellow-500 text-lg"></i>
+                <h3 class="text-xl font-bold text-gray-800">${s.name || 'Service'}</h3>
               </div>
-              <p class="text-gray-600 text-sm mb-4">${service.short_desc || service.shortDesc || ''}</p>
-              <button class="bg-black text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-yellow-400 hover:text-black transition btn-touch">
-                View Details <i class="fas fa-arrow-right ml-1"></i>
-              </button>
+              <p class="text-gray-600 text-sm mb-4">${desc.substring(0, 100)}${desc.length > 100 ? '...' : ''}</p>
+              <a href="booking.html?service=${slug}" onclick="event.stopPropagation()" class="inline-flex items-center gap-2 bg-yellow-400 text-black px-5 py-2 rounded-full text-sm font-bold hover:bg-yellow-500 transition btn-touch">
+                <i class="fas fa-envelope"></i> Request a Quote
+              </a>
             </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
     }
 
     function resetFilters() {
-      currentFilter = "all";
-      currentSearch = "";
-      document.getElementById('searchInput').value = "";
-      
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-yellow-400', 'text-black');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
-      });
-      
+      currentFilter = 'all';
+      currentSearch = '';
+      document.getElementById('searchInput').value = '';
+      document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('bg-yellow-400', 'text-black'); b.classList.add('bg-gray-200', 'text-gray-700'); });
       const allBtn = document.querySelector('.filter-btn[data-category="all"]');
-      if (allBtn) {
-        allBtn.classList.remove('bg-gray-200', 'text-gray-700');
-        allBtn.classList.add('bg-yellow-400', 'text-black');
-      }
-      
+      if (allBtn) { allBtn.classList.remove('bg-gray-200', 'text-gray-700'); allBtn.classList.add('bg-yellow-400', 'text-black'); }
       renderServices();
     }
 
-    // ==================== INITIALIZE ====================
     async function init() {
-      // Show skeletons
-      const skeletonLoader = document.getElementById('skeletonLoader');
-      const servicesGrid = document.getElementById('servicesGrid');
-      if (skeletonLoader) skeletonLoader.classList.remove('hidden');
-      if (servicesGrid) servicesGrid.classList.add('hidden');
-      
-      // Fetch data
-      SERVICES = await fetchServicesFromAPI();
-      
-      // Cache for offline
-      localStorage.setItem('lawie_services_cache', JSON.stringify(SERVICES));
-      
-      // Extract categories
+      document.getElementById('skeletonLoader').classList.remove('hidden');
+      document.getElementById('servicesGrid').classList.add('hidden');
+
+      SERVICES = await fetchServices();
       CATEGORIES = [...new Set(SERVICES.map(s => s.category).filter(Boolean))];
-      
-      // Render UI
       renderFilters();
       renderServices();
-      
-      // Setup search
+
       let searchTimeout;
-      const searchInput = document.getElementById('searchInput');
-      if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-          clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(() => {
-            currentSearch = e.target.value.toLowerCase();
-            renderServices();
-          }, 300);
-        });
-      }
-      
-      // Mobile menu
-      const menuBtn = document.getElementById('mobile-menu-btn');
-      if (menuBtn) {
-        menuBtn.addEventListener('click', () => {
-          const mobileMenu = document.getElementById('mobile-menu');
-          if (mobileMenu) mobileMenu.classList.toggle('hidden');
-        });
-      }
+      document.getElementById('searchInput')?.addEventListener('input', e => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => { currentSearch = e.target.value.toLowerCase(); renderServices(); }, 300);
+      });
+
+      document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+        document.getElementById('mobile-menu')?.classList.toggle('hidden');
+      });
     }
-    
+
     document.addEventListener('DOMContentLoaded', init);
     window.resetFilters = resetFilters;
   </script>

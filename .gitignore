@@ -1,0 +1,12 @@
+node_modules/
+backened/.env
+.env
+.env.local
+.env.production
+.vercel
+*.log
+.DS_Store
+Thumbs.db
+dist/
+build/
+coverage/

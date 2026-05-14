@@ -123,6 +123,171 @@
       height: 100%;
       object-fit: cover;
     }
+
+    .gallery-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.75rem;
+      min-height: 260px;
+      background: #111827;
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+    .gallery-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 32px 80px rgba(15, 23, 42, 0.25);
+    }
+    .gallery-card img,
+    .gallery-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+      opacity: 0.85;
+    }
+    .gallery-badge {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 10;
+      padding: 0.5rem 0.85rem;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      color: #f8fafc;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      border-radius: 9999px;
+      text-transform: uppercase;
+    }
+    .gallery-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.24);
+    }
+    .gallery-card:hover .gallery-overlay {
+      opacity: 1;
+    }
+    .gallery-overlay i {
+      font-size: 1.7rem;
+      color: #ffffff;
+      text-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+    }
+    #lightbox {
+      background: rgba(0, 0, 0, 0.92);
+    }
+    #lightboxContent {
+      width: min(96vw, 1120px);
+      max-height: 92vh;
+      overflow: hidden;
+      border-radius: 2rem;
+      background: #020617;
+      box-shadow: 0 35px 100px rgba(0, 0, 0, 0.45);
+    }
+    .lightbox-inner {
+      display: flex;
+      flex-direction: column;
+      min-height: 460px;
+    }
+    .lightbox-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+    }
+    .lightbox-media {
+      position: relative;
+      min-height: 380px;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .lightbox-image,
+    .lightbox-video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      border-radius: 0;
+    }
+    .lightbox-controls {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: 0 1rem;
+    }
+    .lightbox-controls button {
+      pointer-events: auto;
+      min-width: 3.25rem;
+      min-height: 3.25rem;
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+    .lightbox-controls button:hover {
+      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .lightbox-progress {
+      height: 0.4rem;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      margin-bottom: 0.85rem;
+    }
+    .lightbox-progress-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #facc15, #f97316);
+      transition: width 0.3s ease;
+    }
+    .lightbox-thumbnails {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.8rem;
+    }
+    .lightbox-thumb {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1rem;
+      border: 2px solid transparent;
+      transition: transform 0.25s ease, border-color 0.25s ease;
+      padding: 0;
+      background: transparent;
+    }
+    .lightbox-thumb.active,
+    .lightbox-thumb:hover {
+      transform: translateY(-2px);
+      border-color: #facc15;
+    }
+    .lightbox-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -130,7 +295,7 @@
   <!-- ==================== MARKETING BANNER ==================== -->
   <div id="marketingBanner" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-3 px-4 text-center shadow-xl">
     <div class="container mx-auto flex justify-between items-center flex-wrap gap-3">
-      <p class="text-sm md:text-base font-medium flex-1" id="bannerMessage">🎉 SPECIAL OFFER: Book before May 31st and get 15% off!</p>
+      <p class="text-sm md:text-base font-medium flex-1" id="bannerMessage">🎉 SPECIAL OFFER: Book your event today!</p>
       <div class="flex gap-3">
         <a id="bannerCtaLink" href="booking.html" class="bg-white text-purple-600 px-5 py-1.5 rounded-full text-sm font-bold hover:bg-gray-100 transition btn-touch">Claim Offer →</a>
         <button id="closeBanner" class="text-white/80 hover:text-white text-2xl leading-5 px-2">&times;</button>
@@ -143,7 +308,7 @@
     <div class="container mx-auto px-4 md:px-8">
       <div class="flex flex-wrap items-center justify-between py-4">
         <div class="flex items-center gap-3">
-          <img src="../IMAGES/LOGO/2.jpg"> alt="Lawie Sounds Logo" class="logo-img h-11 w-11 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="logo-img h-11 w-11 rounded-full object-cover border-2 border-yellow-400 shadow-md">
           <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
         </div>
         
@@ -210,18 +375,9 @@
       </div>
       
       <div class="grid grid-cols-3 gap-6 mt-16 pt-8 border-t border-white/20 max-w-lg mx-auto animate-fade-up" style="animation-delay: 0.4s">
-        <div class="text-center">
-          <div class="text-3xl md:text-4xl font-bold text-yellow-400">500+</div>
-          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Events</div>
-        </div>
-        <div class="text-center">
-          <div class="text-3xl md:text-4xl font-bold text-yellow-400">50K+</div>
-          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Happy Guests</div>
-        </div>
-        <div class="text-center">
-          <div class="text-3xl md:text-4xl font-bold text-yellow-400">9</div>
-          <div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Services</div>
-        </div>
+        <div class="text-center"><div class="text-3xl md:text-4xl font-bold text-yellow-400">500+</div><div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Events</div></div>
+        <div class="text-center"><div class="text-3xl md:text-4xl font-bold text-yellow-400">50K+</div><div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Happy Guests</div></div>
+        <div class="text-center"><div class="text-3xl md:text-4xl font-bold text-yellow-400">9</div><div class="text-xs uppercase tracking-wide text-gray-300 mt-1">Services</div></div>
       </div>
     </div>
     
@@ -232,7 +388,17 @@
     </div>
   </section>
 
-  <!-- ==================== SERVICES SECTION ==================== -->
+  <!-- ==================== PROMOTIONS / POSTERS (Admin-controlled) ==================== -->
+  <section id="postersSection" class="hidden bg-gray-900 py-6">
+    <div class="container mx-auto px-4">
+      <div id="postersTrack" class="relative overflow-hidden rounded-2xl shadow-2xl min-h-[260px] sm:min-h-[380px]">
+        <!-- Injected by loadPosters() -->
+      </div>
+      <div id="posterDots" class="flex justify-center gap-2 mt-4"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SERVICES SECTION (Dynamic) ==================== -->
   <section id="services" class="py-24 bg-white">
     <div class="container mx-auto px-4">
       <div class="text-center mb-16">
@@ -242,42 +408,9 @@
         <p class="text-gray-500 mt-5 max-w-2xl mx-auto">Comprehensive event solutions tailored to make your occasion unforgettable</p>
       </div>
       
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-7 max-w-6xl mx-auto">
-        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=dj-mc-services'">
-          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
-            <i class="fas fa-headphones text-3xl text-yellow-600"></i>
-          </div>
-          <h3 class="text-xl font-bold mb-2">DJ & MC Services</h3>
-          <p class="text-gray-500 text-sm">Professional DJ and Master of Ceremonies for high-energy events.</p>
-          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
-        </div>
-        
-        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=public-address'">
-          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
-            <i class="fas fa-volume-up text-3xl text-yellow-600"></i>
-          </div>
-          <h3 class="text-xl font-bold mb-2">Sound Systems</h3>
-          <p class="text-gray-500 text-sm">Crystal-clear audio, line arrays, subwoofers for any venue size.</p>
-          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
-        </div>
-        
-        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=power-lighting'">
-          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
-            <i class="fas fa-lightbulb text-3xl text-yellow-600"></i>
-          </div>
-          <h3 class="text-xl font-bold mb-2">Lighting & Effects</h3>
-          <p class="text-gray-500 text-sm">LED, moving heads, strobes, CO2 cannons, pyrotechnics.</p>
-          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
-        </div>
-        
-        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=led-screens'">
-          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
-            <i class="fas fa-tv text-3xl text-yellow-600"></i>
-          </div>
-          <h3 class="text-xl font-bold mb-2">LED Screens</h3>
-          <p class="text-gray-500 text-sm">High-resolution displays for stunning visuals and branding.</p>
-          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Learn More →</div>
-        </div>
+      <div id="servicesGrid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-7 max-w-6xl mx-auto">
+        <!-- Dynamic services will load here -->
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all animate-pulse h-64 flex items-center justify-center"><i class="fas fa-spinner fa-spin text-2xl text-yellow-500"></i></div>
       </div>
       
       <div class="text-center mt-10">
@@ -288,7 +421,7 @@
     </div>
   </section>
 
-  <!-- ==================== GALLERY PREVIEW ==================== -->
+  <!-- ==================== GALLERY PREVIEW (Dynamic) ==================== -->
   <section id="gallery" class="py-24 bg-gray-100">
     <div class="container mx-auto px-4">
       <div class="text-center mb-16">
@@ -297,38 +430,21 @@
         <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
         <p class="text-gray-500 mt-5 max-w-2xl mx-auto">Take a glimpse at some of our favorite moments from past events</p>
       </div>
-      
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-6xl mx-auto">
-        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(0)">
-          <img src="../Gallery/Weddings/1.jpg" alt="Wedding Event" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Wedding'">
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-2xl"></i>
-          </div>
+
+      <div class="grid gap-6 lg:grid-cols-[1.8fr_1fr] items-start max-w-7xl mx-auto">
+        <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="gallery-card animate-pulse h-64 flex items-center justify-center bg-gray-800"><i class="fas fa-spinner fa-spin text-2xl text-yellow-500"></i></div>
         </div>
-        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(1)">
-          <img src="../Gallery/Ruracio/Itara1.jpg" alt="Ruracio Ceremony" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Ruracio'">
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-2xl"></i>
+
+        <aside class="rounded-[2rem] border border-white/10 bg-white shadow-2xl p-8 text-slate-900">
+          <div class="space-y-6">
+            <div class="inline-flex items-center gap-3 rounded-full bg-yellow-50 px-4 py-2 text-sm font-semibold text-yellow-700 shadow-sm"><i class="fas fa-camera-retro"></i> Curated Event Highlights</div>
+            <div><h3 class="text-2xl font-bold">Experience premium production quality, captured live.</h3><p class="mt-4 text-gray-600 leading-7">Every image is selected to showcase our professional DJ, lighting, and event coordination.</p></div>
+            <div class="grid gap-4"><div class="rounded-3xl bg-slate-950 p-5 text-white"><p class="text-sm uppercase tracking-[0.24em] text-yellow-300">Trusted by</p><p class="mt-3 text-3xl font-bold">200+</p><p class="text-gray-300 text-sm">Events delivered across weddings, corporate, and private celebrations.</p></div>
+            <div class="rounded-3xl bg-slate-950 p-5 text-white"><p class="text-sm uppercase tracking-[0.24em] text-yellow-300">Fast setup</p><p class="mt-3 text-3xl font-bold">45 mins</p><p class="text-gray-300 text-sm">Stage-ready audio, lighting, and DJ rigging.</p></div></div>
+            <a href="booking.html" class="inline-flex items-center justify-center rounded-full bg-yellow-400 px-6 py-3 text-sm font-bold text-black shadow-xl transition hover:bg-yellow-300 btn-touch">Book Your Experience <i class="fas fa-arrow-right ml-3"></i></a>
           </div>
-        </div>
-        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(2)">
-          <img src="../Gallery/corporate/1.jpg" alt="Corporate Event" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=Corporate'">
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-2xl"></i>
-          </div>
-        </div>
-        <div class="relative aspect-square overflow-hidden rounded-xl cursor-pointer group" onclick="openLightbox(3)">
-          <img src="../Gallery/equipment/Dj%20decks%20setup.jpg" alt="DJ Equipment" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://placehold.co/400x400?text=DJ+Equipment'">
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-2xl"></i>
-          </div>
-        </div>
-      </div>
-      
-      <div class="text-center mt-10">
-        <a href="services.html" class="inline-block border-2 border-black px-8 py-3 rounded-full font-semibold hover:bg-black hover:text-white transition btn-touch">
-          Explore Our Services <i class="fas fa-arrow-right ml-2"></i>
-        </a>
+        </aside>
       </div>
     </div>
   </section>
@@ -341,7 +457,6 @@
         <h2 class="text-3xl md:text-4xl font-bold mt-3">Lawie Sounds <span class="text-yellow-400">Experience</span></h2>
         <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
       </div>
-      
       <div class="max-w-4xl mx-auto">
         <div class="video-container shadow-2xl">
           <video controls poster="../Gallery/equipment/Dj%20decks%20setup.jpg">
@@ -358,32 +473,14 @@
   <section id="about" class="py-24 bg-white text-gray-800">
     <div class="container mx-auto px-4">
       <div class="flex flex-col md:flex-row items-center gap-12 max-w-6xl mx-auto">
-        <div class="flex-1 animate-fade-left">
-          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="rounded-2xl shadow-2xl w-full max-w-md mx-auto border-4 border-yellow-400 hover:scale-105 transition duration-500">
-        </div>
+        <div class="flex-1 animate-fade-left"><img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="rounded-2xl shadow-2xl w-full max-w-md mx-auto border-4 border-yellow-400 hover:scale-105 transition duration-500"></div>
         <div class="flex-1 text-center md:text-left animate-fade-right">
           <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Our Story</span>
           <h2 class="text-3xl md:text-4xl font-bold mt-3 mb-6">About <span class="text-yellow-500">Lawie Sounds</span></h2>
-          <p class="text-gray-600 mb-5 leading-relaxed">
-            At <strong class="text-yellow-500">Lawie Sounds</strong>, we don't just play music. We create unforgettable moments. 
-            Known for high energy DJ sets, crisp sound systems, and an unmatched vibe, we bring life to weddings, 
-            parties, corporate gigs, and everything in between.
-          </p>
-          <p class="text-gray-600 mb-8 leading-relaxed">
-            Whether it's a crowd of five or five thousand, we tailor every performance to elevate your event. 
-            From crystal-clear audio to a professional touch that keeps the crowd moving, Lawie Sounds is your 
-            go-to for elite entertainment experiences across Kenya.
-          </p>
-          
-          <div class="flex flex-wrap gap-6 justify-center md:justify-start">
-            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">Licensed & Insured</span></div>
-            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">500+ Events</span></div>
-            <div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">2hr Response</span></div>
-          </div>
-          
-          <a href="booking.html" class="inline-block bg-yellow-500 text-black px-8 py-3.5 rounded-full font-bold mt-8 hover:bg-yellow-400 transition shadow-lg btn-touch">
-            Book Your Event <i class="fas fa-arrow-right ml-2"></i>
-          </a>
+          <p class="text-gray-600 mb-5 leading-relaxed">At <strong class="text-yellow-500">Lawie Sounds</strong>, we don't just play music. We create unforgettable moments. Known for high energy DJ sets, crisp sound systems, and an unmatched vibe, we bring life to weddings, parties, corporate gigs, and everything in between.</p>
+          <p class="text-gray-600 mb-8 leading-relaxed">Whether it's a crowd of five or five thousand, we tailor every performance to elevate your event. From crystal-clear audio to a professional touch that keeps the crowd moving, Lawie Sounds is your go-to for elite entertainment experiences across Kenya.</p>
+          <div class="flex flex-wrap gap-6 justify-center md:justify-start"><div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">Licensed & Insured</span></div><div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">500+ Events</span></div><div class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-500"></i><span class="text-sm">2hr Response</span></div></div>
+          <a href="booking.html" class="inline-block bg-yellow-500 text-black px-8 py-3.5 rounded-full font-bold mt-8 hover:bg-yellow-400 transition shadow-lg btn-touch">Book Your Event <i class="fas fa-arrow-right ml-2"></i></a>
         </div>
       </div>
     </div>
@@ -397,23 +494,8 @@
         <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mt-3">What Our <span class="text-yellow-500">Clients Say</span></h2>
         <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
       </div>
-      
-      <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-          <p class="text-gray-600 italic">"Lawie Sounds made our wedding unforgettable! The DJ kept everyone dancing all night and the MC was so professional. Highly recommend!"</p>
-          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-500 text-lg"></i></div><div><p class="font-semibold">Sarah & James</p><p class="text-xs text-gray-400">Wedding, Nairobi</p></div></div>
-        </div>
-        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-          <p class="text-gray-600 italic">"Our corporate event was a huge success thanks to Lawie Sounds. Professional setup, great music selection, and the MC kept everything on schedule."</p>
-          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-building text-gray-500 text-lg"></i></div><div><p class="font-semibold">Tech Corp Kenya</p><p class="text-xs text-gray-400">Corporate Event</p></div></div>
-        </div>
-        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-          <div class="flex text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-          <p class="text-gray-600 italic">"Best birthday party ever! The DJ played all our requests and the energy was insane. Will definitely book again!"</p>
-          <div class="mt-5 flex items-center gap-3"><div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-birthday-cake text-gray-500 text-lg"></i></div><div><p class="font-semibold">Michael O.</p><p class="text-xs text-gray-400">Birthday Party</p></div></div>
-        </div>
+      <div id="reviewsGrid" class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition animate-pulse h-48 flex items-center justify-center"><i class="fas fa-spinner fa-spin text-2xl text-yellow-500"></i></div>
       </div>
     </div>
   </section>
@@ -421,11 +503,7 @@
   <!-- ==================== WHY CHOOSE US ==================== -->
   <section class="py-20 bg-white">
     <div class="container mx-auto px-4">
-      <div class="text-center mb-14">
-        <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Why Choose Us</span>
-        <h2 class="text-3xl md:text-4xl font-bold mt-3">The <span class="text-yellow-500">Lawie Sounds</span> Difference</h2>
-        <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
-      </div>
+      <div class="text-center mb-14"><span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Why Choose Us</span><h2 class="text-3xl md:text-4xl font-bold mt-3">The <span class="text-yellow-500">Lawie Sounds</span> Difference</h2><div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div></div>
       <div class="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
         <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-medal text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">Professional Team</h3><p class="text-gray-500 text-sm">Experienced, trained, and passionate</p></div>
         <div class="text-center p-5"><div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-clock text-2xl text-yellow-600"></i></div><h3 class="font-bold text-lg mb-2">Punctual & Reliable</h3><p class="text-gray-500 text-sm">On time arrival guaranteed</p></div>
@@ -440,27 +518,9 @@
     <div class="container mx-auto px-4 text-center">
       <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-5">Let's Bring Your Vision to Life</h2>
       <p class="text-gray-300 mb-10 max-w-xl mx-auto">Reach out for bookings, custom packages, or any questions. We respond within 2 hours.</p>
-      
-      <div class="flex flex-col md:flex-row justify-center gap-8 mb-12">
-        <div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl">
-          <i class="fas fa-phone-alt text-yellow-400 text-2xl"></i>
-          <div class="text-left"><p class="text-sm text-gray-400">Call / WhatsApp</p><p class="text-xl font-bold">+254 703 925 826</p><p class="text-lg">+254 733 925 826</p></div>
-        </div>
-        <div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl">
-          <i class="fas fa-envelope text-yellow-400 text-2xl"></i>
-          <div class="text-left"><p class="text-sm text-gray-400">Email</p><p class="text-xl font-bold">Lawiesounds@gmail.com</p></div>
-        </div>
-      </div>
-      
-      <a href="booking.html" class="inline-block bg-yellow-400 text-black px-10 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 transition shadow-xl btn-touch">
-        <i class="fas fa-calendar-check mr-2"></i>Request a Quote
-      </a>
-      
-      <div class="flex justify-center gap-6 text-2xl mt-10">
-        <a href="https://instagram.com/lawie_sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-instagram"></i></a>
-        <a href="https://facebook.com/lawie.sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-facebook"></i></a>
-        <a href="https://wa.me/254703925826" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-whatsapp"></i></a>
-      </div>
+      <div class="flex flex-col md:flex-row justify-center gap-8 mb-12"><div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl"><i class="fas fa-phone-alt text-yellow-400 text-2xl"></i><div class="text-left"><p class="text-sm text-gray-400">Call / WhatsApp</p><p class="text-xl font-bold">+254 703 925 826</p><p class="text-lg">+254 733 925 826</p></div></div><div class="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl"><i class="fas fa-envelope text-yellow-400 text-2xl"></i><div class="text-left"><p class="text-sm text-gray-400">Email</p><p class="text-xl font-bold">Lawiesounds@gmail.com</p></div></div></div>
+      <a href="booking.html" class="inline-block bg-yellow-400 text-black px-10 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 transition shadow-xl btn-touch"><i class="fas fa-calendar-check mr-2"></i>Request a Quote</a>
+      <div class="flex justify-center gap-6 text-2xl mt-10"><a href="https://instagram.com/lawie_sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-instagram"></i></a><a href="https://facebook.com/lawie.sounds" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-facebook"></i></a><a href="https://wa.me/254703925826" target="_blank" class="text-gray-400 hover:text-yellow-400 transition"><i class="fab fa-whatsapp"></i></a></div>
     </div>
   </section>
 
@@ -481,87 +541,264 @@
   </footer>
 
   <!-- ==================== LIGHTBOX ==================== -->
-  <div id="lightbox" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center" onclick="closeLightbox()">
-    <button class="absolute top-5 right-5 text-white text-4xl hover:text-yellow-400 transition">&times;</button>
-    <button id="lightboxPrev" class="absolute left-5 text-white text-4xl hover:text-yellow-400 transition" onclick="event.stopPropagation();prevImage()">‹</button>
-    <img id="lightboxImage" src="" alt="Gallery" class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg">
-    <button id="lightboxNext" class="absolute right-5 text-white text-4xl hover:text-yellow-400 transition" onclick="event.stopPropagation();nextImage()">›</button>
+  <div id="lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 px-4 py-10">
+    <div id="lightboxContent" class="relative w-full">
+      <button id="lightboxClose" onclick="closeLightbox()" class="absolute right-5 top-5 z-20 rounded-full border border-white/10 bg-slate-900/90 p-3 text-white shadow-xl transition hover:bg-slate-800"><i class="fas fa-times"></i></button>
+      <div class="lightbox-inner">
+        <div class="lightbox-meta"><div><p id="lightboxLabel" class="text-xs uppercase tracking-[0.24em] text-yellow-400">Event Gallery</p><h3 id="lightboxTitle" class="text-2xl font-semibold mt-2">Featured moment</h3></div><span id="lightboxCounter" class="text-sm text-slate-300">1 / 4</span></div>
+        <div class="lightbox-media"><img id="lightboxImage" alt="Gallery item" class="lightbox-image hidden" /><video id="lightboxVideo" class="lightbox-video hidden" controls playsinline></video><div class="lightbox-controls"><button onclick="navigateLightbox(-1)"><i class="fas fa-chevron-left"></i></button><button onclick="navigateLightbox(1)"><i class="fas fa-chevron-right"></i></button></div></div>
+        <div class="px-6 py-4"><div class="lightbox-progress"><div id="lightboxProgressBar" class="lightbox-progress-inner"></div></div><div id="lightboxThumbs" class="lightbox-thumbnails"></div></div>
+      </div>
+    </div>
   </div>
 
   <script>
-    const galleryImages = [
-      '../Gallery/Weddings/1.jpg', 
-      '../Gallery/Ruracio/Itara1.jpg', 
-      '../Gallery/corporate/1.jpg', 
-      'Gallery/equipment/Dj%20decks%20setup.jpg'
+    // ==================== GLOBAL DATA & FALLBACKS ====================
+    let galleryItems = [];
+    let activeGalleryIndex = 0;
+    let lightboxAutoTimer = null;
+
+    // Fallback data
+    const fallbackServices = [
+      { name: 'DJ & MC Services', slug: 'dj-mc-services', icon: 'fa-headphones', shortDesc: 'Professional DJ and Master of Ceremonies for high-energy events.' },
+      { name: 'LED Screens', slug: 'led-screens', icon: 'fa-tv', shortDesc: 'High-resolution LED screens for stunning visuals.' },
+      { name: 'Power & Lighting', slug: 'power-lighting', icon: 'fa-lightbulb', shortDesc: 'Professional lighting design and power distribution.' },
+      { name: 'Sound Systems', slug: 'public-address', icon: 'fa-volume-up', shortDesc: 'Crystal-clear audio for speeches and announcements.' }
     ];
-    let currentImageIndex = 0;
-    
-    function openLightbox(index) { 
-      currentImageIndex = index; 
-      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
-      document.getElementById('lightbox').classList.remove('hidden'); 
-      document.getElementById('lightbox').classList.add('flex'); 
-      document.body.style.overflow = 'hidden'; 
+
+    const fallbackGallery = [
+      { imageUrl: '../Gallery/Weddings/1.jpg', alt: 'Wedding Event', type: 'image', label: 'Wedding' },
+      { imageUrl: '../Gallery/Ruracio/Itara1.jpg', alt: 'Ruracio Ceremony', type: 'image', label: 'Ruracio' },
+      { imageUrl: '../Gallery/corporate/1.jpg', alt: 'Corporate Event', type: 'image', label: 'Corporate' },
+      { imageUrl: '../Gallery/equipment/Dj%20decks%20setup.jpg', alt: 'DJ Equipment', type: 'image', label: 'Equipment' }
+    ];
+
+    const fallbackReviews = [
+      { clientName: 'Sarah & James', rating: 5, comment: 'Lawie Sounds made our wedding unforgettable! The DJ kept everyone dancing all night.', eventType: 'Wedding' },
+      { clientName: 'Tech Corp Kenya', rating: 5, comment: 'Professional setup, great music selection, and the MC kept everything on schedule.', eventType: 'Corporate' },
+      { clientName: 'Michael O.', rating: 5, comment: 'Best birthday party ever! The DJ played all our requests and the energy was insane.', eventType: 'Birthday' }
+    ];
+
+    // ==================== API HELPERS ====================
+    async function apiFetch(path) {
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(res.statusText);
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
     }
-    function closeLightbox() { 
-      document.getElementById('lightbox').classList.add('hidden'); 
-      document.getElementById('lightbox').classList.remove('flex'); 
-      document.body.style.overflow = 'auto'; 
+
+    // ==================== LOAD FUNCTIONS (from API with fallback) ====================
+    async function loadServices() {
+      const container = document.getElementById('servicesGrid');
+      if (!container) return;
+
+      const result = await apiFetch('/api/services');
+      const services = result?.data?.filter(s => s.isActive !== false).slice(0, 4) || fallbackServices;
+
+      container.innerHTML = services.map(service => `
+        <div class="service-card text-center p-6 rounded-2xl bg-gray-50 hover:bg-white cursor-pointer border border-gray-100 transition-all" onclick="window.location.href='service-detail.html?service=${service.slug}'">
+          <div class="service-icon w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-all">
+            <i class="fas ${service.icon || 'fa-star'} text-3xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">${service.name}</h3>
+          <p class="text-gray-500 text-sm">${service.shortDesc || ''}</p>
+          <div class="mt-4 inline-block text-yellow-600 text-sm font-semibold">Request a Quote →</div>
+        </div>
+      `).join('');
     }
-    function prevImage() { 
-      currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length; 
-      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
+
+    async function loadReviews() {
+      const container = document.getElementById('reviewsGrid');
+      if (!container) return;
+
+      const result = await apiFetch('/api/reviews');
+      const reviews = result?.data?.slice(0, 3) || fallbackReviews;
+
+      container.innerHTML = reviews.map(review => `
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+          <div class="flex text-yellow-400 mb-4">${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}</div>
+          <p class="text-gray-600 italic">"${review.comment}"</p>
+          <div class="mt-5 flex items-center gap-3">
+            <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-500 text-lg"></i></div>
+            <div><p class="font-semibold">${review.clientName}</p><p class="text-xs text-gray-400">${review.eventType || 'Event'}</p></div>
+          </div>
+        </div>
+      `).join('');
     }
-    function nextImage() { 
-      currentImageIndex = (currentImageIndex + 1) % galleryImages.length; 
-      document.getElementById('lightboxImage').src = galleryImages[currentImageIndex]; 
+
+    function renderGallery(items) {
+      const galleryContainer = document.getElementById('galleryGrid');
+      if (!galleryContainer) return;
+      if (!items.length) items = fallbackGallery;
+      galleryContainer.innerHTML = items.slice(0, 6).map((item, index) => `
+        <button type="button" class="gallery-card group" onclick="openLightboxModal(${index})" aria-label="View gallery item ${index + 1}">
+          <span class="gallery-badge">${item.type === 'video' ? 'Video' : 'Photo'}</span>
+          ${item.type === 'video'
+            ? `<video src="${item.imageUrl}" muted playsinline preload="metadata" class="transition duration-500 group-hover:scale-105"></video>`
+            : `<img src="${item.imageUrl}" alt="${item.alt || 'Gallery image'}" class="transition duration-500 group-hover:scale-105" onerror="this.src='https://placehold.co/400x400?text=Gallery'">`
+          }
+          <div class="gallery-overlay"><i class="fas fa-search-plus"></i></div>
+        </button>
+      `).join('');
     }
-    
-    document.getElementById('mobileMenuBtn')?.addEventListener('click', () => { 
-      document.getElementById('mobileMenu').classList.toggle('hidden'); 
-    });
-    document.querySelectorAll('.mobile-nav-link').forEach(link => { 
-      link.addEventListener('click', () => { 
-        document.getElementById('mobileMenu').classList.add('hidden'); 
-      }); 
-    });
-    
+
+    async function loadHomepageGallery() {
+      const result = await apiFetch('/api/gallery');
+      galleryItems = result?.data || [];
+      if (!galleryItems.length) galleryItems = fallbackGallery;
+      renderGallery(galleryItems);
+    }
+
+    // ==================== POSTERS ====================
+    let posterIndex = 0;
+    let posterTimer = null;
+
+    async function loadPosters() {
+      const result = await apiFetch('/api/posters');
+      const posters = result?.data || [];
+      if (!posters.length) return;
+
+      const section = document.getElementById('postersSection');
+      const track = document.getElementById('postersTrack');
+      const dotsEl = document.getElementById('posterDots');
+      section.classList.remove('hidden');
+
+      track.innerHTML = `
+        <div class="flex transition-transform duration-500 ease-in-out h-full" id="posterSlider">
+          ${posters.map(p => `
+            <div class="min-w-full relative" style="min-height:inherit">
+              <img src="${p.image_url}" alt="${p.title}" class="w-full h-full object-cover absolute inset-0">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col items-center justify-end pb-10 px-6 text-center">
+                <h3 class="text-white text-2xl sm:text-4xl font-extrabold drop-shadow-lg">${p.title}</h3>
+                ${p.caption ? `<p class="text-white/90 text-sm sm:text-lg mt-2 max-w-xl">${p.caption}</p>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      if (posters.length > 1) {
+        dotsEl.innerHTML = posters.map((_, i) => `<button onclick="goToPoster(${i})" class="poster-dot w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-yellow-400 w-5' : 'bg-white/50 hover:bg-white'}"></button>`).join('');
+        posterTimer = setInterval(() => goToPoster((posterIndex + 1) % posters.length), 5000);
+      }
+    }
+
+    function goToPoster(idx) {
+      const slider = document.getElementById('posterSlider');
+      const dots = document.querySelectorAll('.poster-dot');
+      if (!slider) return;
+      posterIndex = idx;
+      slider.style.transform = `translateX(-${idx * 100}%)`;
+      dots.forEach((d, i) => { d.className = `poster-dot w-2.5 h-2.5 rounded-full transition-all ${i === idx ? 'bg-yellow-400 w-5' : 'bg-white/50 hover:bg-white'}`; });
+    }
+
+    // ==================== LIGHTBOX FUNCTIONS ====================
+    function openLightboxModal(index) {
+      if (!galleryItems.length) galleryItems = fallbackGallery;
+      activeGalleryIndex = Math.max(0, Math.min(index, galleryItems.length - 1));
+      updateLightboxDisplay();
+      document.getElementById('lightbox').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      startLightboxAutoAdvance();
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      stopLightboxAutoAdvance();
+      const video = document.getElementById('lightboxVideo');
+      if (video) { video.pause(); video.removeAttribute('src'); video.load(); }
+    }
+
+    function updateLightboxDisplay() {
+      const current = galleryItems[activeGalleryIndex];
+      const imageEl = document.getElementById('lightboxImage');
+      const videoEl = document.getElementById('lightboxVideo');
+      const titleEl = document.getElementById('lightboxTitle');
+      const counterEl = document.getElementById('lightboxCounter');
+      const progressEl = document.getElementById('lightboxProgressBar');
+
+      if (current?.type === 'video') {
+        imageEl.classList.add('hidden');
+        videoEl.classList.remove('hidden');
+        videoEl.src = current.imageUrl;
+      } else {
+        videoEl.classList.add('hidden');
+        videoEl.pause();
+        imageEl.classList.remove('hidden');
+        imageEl.src = current?.imageUrl || '';
+        imageEl.alt = current?.alt || 'Gallery image';
+      }
+
+      titleEl.textContent = current?.alt || 'Featured moment';
+      counterEl.textContent = `${activeGalleryIndex + 1} / ${galleryItems.length}`;
+      if (progressEl) progressEl.style.width = `${((activeGalleryIndex + 1) / galleryItems.length) * 100}%`;
+      renderLightboxThumbnails();
+    }
+
+    function renderLightboxThumbnails() {
+      const thumbs = document.getElementById('lightboxThumbs');
+      if (!thumbs) return;
+      thumbs.innerHTML = galleryItems.slice(0, 8).map((item, index) => `
+        <button type="button" class="lightbox-thumb ${index === activeGalleryIndex ? 'active' : ''}" onclick="openLightboxModal(${index})" aria-label="Select gallery item ${index + 1}">
+          <img src="${item.imageUrl}" alt="Thumbnail" onerror="this.src='https://placehold.co/120x120?text=...'" />
+        </button>
+      `).join('');
+    }
+
+    function navigateLightbox(direction) {
+      if (!galleryItems.length) return;
+      activeGalleryIndex = (activeGalleryIndex + direction + galleryItems.length) % galleryItems.length;
+      updateLightboxDisplay();
+    }
+
+    function startLightboxAutoAdvance() { stopLightboxAutoAdvance(); lightboxAutoTimer = setInterval(() => navigateLightbox(1), 7000); }
+    function stopLightboxAutoAdvance() { if (lightboxAutoTimer) { clearInterval(lightboxAutoTimer); lightboxAutoTimer = null; } }
+
+    // ==================== MARKETING BANNER ====================
+    async function loadMarketingBanner() {
+      try {
+        const result = await apiFetch('/api/banners');
+        const banners = result?.data || [];
+        const now = new Date();
+        const activeBanner = banners.find(b => b.isActive !== false && (!b.endDate || new Date(b.endDate) >= now));
+        if (activeBanner) {
+          document.getElementById('bannerMessage').textContent = activeBanner.message;
+          document.getElementById('bannerCtaLink').href = activeBanner.ctaLink || '#';
+          document.getElementById('marketingBanner').classList.remove('hidden');
+        }
+      } catch(e) {}
+    }
+
+    // ==================== MOBILE & SCROLL ====================
+    document.getElementById('mobileMenuBtn')?.addEventListener('click', () => document.getElementById('mobileMenu').classList.toggle('hidden'));
+    document.querySelectorAll('.mobile-nav-link').forEach(link => link.addEventListener('click', () => document.getElementById('mobileMenu').classList.add('hidden')));
+
     const bannerClosed = localStorage.getItem('lawie_banner_dismissed');
-    const banner = document.getElementById('marketingBanner');
-    if (!bannerClosed || (Date.now() - parseInt(bannerClosed)) > 86400000) { 
-      if (banner) banner.classList.remove('hidden'); 
-    }
-    document.getElementById('closeBanner')?.addEventListener('click', () => { 
-      banner.classList.add('hidden'); 
-      localStorage.setItem('lawie_banner_dismissed', Date.now().toString()); 
-    });
+    if (!bannerClosed || (Date.now() - parseInt(bannerClosed)) > 86400000) loadMarketingBanner();
+    document.getElementById('closeBanner')?.addEventListener('click', () => { document.getElementById('marketingBanner').classList.add('hidden'); localStorage.setItem('lawie_banner_dismissed', Date.now().toString()); });
     
-    window.addEventListener('scroll', () => { 
-      const header = document.getElementById('mainHeader'); 
-      if (window.scrollY > 50) { 
-        header.classList.add('py-2'); 
-        header.classList.remove('py-4'); 
-      } else { 
-        header.classList.remove('py-2'); 
-        header.classList.add('py-4'); 
-      } 
-    });
+    window.addEventListener('scroll', () => { const header = document.getElementById('mainHeader'); if (window.scrollY > 50) { header.classList.add('py-2'); header.classList.remove('py-4'); } else { header.classList.remove('py-2'); header.classList.add('py-4'); } });
     
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => { 
-      anchor.addEventListener('click', function(e) { 
-        const href = this.getAttribute('href'); 
-        if (href === '#' || href === '#home') { 
-          e.preventDefault(); 
-          window.scrollTo({ top: 0, behavior: 'smooth' }); 
-        } else if (href !== '#') { 
-          const target = document.querySelector(href); 
-          if (target) { 
-            e.preventDefault(); 
-            target.scrollIntoView({ behavior: 'smooth' }); 
-          } 
-        } 
-      }); 
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => anchor.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      if (href === '#' || href === '#home') { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else if (href !== '#') { const target = document.querySelector(href); if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); } }
+    }));
+
+    document.addEventListener('keydown', (event) => {
+      if (document.getElementById('lightbox').classList.contains('hidden')) return;
+      if (event.key === 'ArrowRight') navigateLightbox(1);
+      if (event.key === 'ArrowLeft') navigateLightbox(-1);
+      if (event.key === 'Escape') closeLightbox();
+    });
+
+    // ==================== INITIALIZE ====================
+    document.addEventListener('DOMContentLoaded', async function() {
+      await Promise.all([loadServices(), loadReviews(), loadHomepageGallery(), loadPosters()]);
     });
   </script>
 </body>

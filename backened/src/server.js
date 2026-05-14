@@ -1,303 +1,362 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const { createClient } = require('@supabase/supabase-js');
 
-dotenv.config();
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: '*' }));
+app.use(express.json({ limit: '20mb' })); // support base64 image uploads
 
-// ==================== HEALTH CHECK ====================
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Lawie Sounds API is running', timestamp: new Date().toISOString() });
+// Supabase client (service role — bypasses RLS, admin-level access)
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// ==================== AUTH MIDDLEWARE ====================
+function adminAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const decoded = JSON.parse(Buffer.from(auth.split(' ')[1], 'base64').toString());
+    const expiry = decoded.expires || decoded.exp;
+    if (!expiry || expiry < Date.now()) return res.status(401).json({ error: 'Session expired' });
+    req.admin = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+// ==================== MAPPING (DB snake_case → API camelCase) ====================
+const map = {
+  event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
+  service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
+  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, createdAt: r.created_at }),
+  review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, isApproved: r.is_approved, createdAt: r.created_at }),
+  banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
+  booking: (r) => r && ({ id: r.id, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, status: r.status, notes: r.notes, createdAt: r.created_at }),
+  employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
+  payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
+};
+
+// ==================== DB CONVERTERS (API camelCase → DB snake_case) ====================
+function toEventDB(b) {
+  return { title: b.title, date: b.date, venue: b.venue, price: b.price || 0, total_seats: b.totalSeats, seats_left: b.seatsLeft !== undefined ? b.seatsLeft : b.totalSeats, description: b.description, image: b.image, status: b.status || 'published', is_active: b.isActive !== false, booking_count: b.bookingCount || 0 };
+}
+function toServiceDB(b) {
+  return { name: b.name, slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), category: b.category, icon: b.icon, short_desc: b.shortDesc, long_desc: b.longDesc, image: b.mainImage || b.image, is_active: b.isActive !== false, display_order: b.displayOrder || 0, packages: b.packages || [], features: b.features || [], faqs: b.faqs || [] };
+}
+function toBannerDB(b) {
+  return { type: b.type || 'banner', name: b.name, message: b.message, cta_text: b.ctaText, cta_link: b.ctaLink, is_active: b.isActive !== false, start_date: b.startDate || null, end_date: b.endDate || null, priority: b.priority || 0, views: 0, clicks: 0, ctr: 0 };
+}
+function toEmployeeDB(b) {
+  return { name: b.name, role: b.role, phone: b.phone, email: b.email, hire_date: b.hireDate, status: b.status || 'active', total_events: b.totalEvents || 0, avg_rating: b.avgRating || 0 };
+}
+function toPayrollDB(b) {
+  return { employee_id: b.employeeId, employee_name: b.employeeName, event_name: b.eventName, event_date: b.eventDate, amount: b.amount, status: b.status || 'pending', payment_date: b.status === 'paid' ? (b.paymentDate || new Date().toISOString().split('T')[0]) : null, rating: b.rating || 0 };
+}
+
+// Update employee stats after payroll changes
+async function syncEmployeeStats(employeeId) {
+  if (!employeeId) return;
+  const { data } = await supabase.from('payroll').select('rating').eq('employee_id', employeeId).gt('rating', 0);
+  if (!data) return;
+  const avg = data.length ? data.reduce((s, p) => s + p.rating, 0) / data.length : 0;
+  await supabase.from('employees').update({ total_events: data.length, avg_rating: parseFloat(avg.toFixed(1)) }).eq('id', employeeId);
+}
+
+function handleError(res, error, status = 500) {
+  console.error(error);
+  return res.status(status).json({ error: error.message || 'An error occurred' });
+}
+
+// ==================== PUBLIC ROUTES ====================
+
+app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
+// Services (active only — no prices in response for public)
+app.get('/api/services', async (req, res) => {
+  const { data, error } = await supabase.from('services').select('id,name,slug,category,icon,short_desc,image,is_active,display_order,features,faqs').eq('is_active', true).order('display_order');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.service) });
 });
 
-// ==================== TEST ROUTE ====================
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API is working!' });
+// Events (upcoming active)
+app.get('/api/events', async (req, res) => {
+  const { data, error } = await supabase.from('events').select('*').eq('is_active', true).order('date');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.event) });
 });
 
-// ==================== ADMIN AUTH ROUTES ====================
+// Gallery (all items)
+app.get('/api/gallery', async (req, res) => {
+  const { data, error } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.gallery) });
+});
+
+// Reviews (approved only)
+app.get('/api/reviews', async (req, res) => {
+  const { data, error } = await supabase.from('reviews').select('*').eq('is_approved', true).order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.review) });
+});
+
+// Marketing banners (active, within date range)
+app.get('/api/banners', async (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase.from('marketing_banners').select('*').eq('is_active', true).order('priority', { ascending: false });
+  if (error) return handleError(res, error);
+  const active = data.filter(b => (!b.start_date || b.start_date <= today) && (!b.end_date || b.end_date >= today));
+  res.json({ success: true, data: active.map(map.banner) });
+});
+
+// Posters (active, within date range)
+app.get('/api/posters', async (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase.from('posters').select('*').eq('is_active', true).order('display_order');
+  if (error) return handleError(res, error);
+  const active = data.filter(p => (!p.start_date || p.start_date <= today) && (!p.end_date || p.end_date >= today));
+  res.json({ success: true, data: active });
+});
+
+// Submit booking (public)
+app.post('/api/bookings', async (req, res) => {
+  const { name, phone } = req.body;
+  if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+  const { data, error } = await supabase.from('bookings').insert({ ...req.body, event_date: req.body.eventDate, event_type: req.body.eventType, guest_count: req.body.guestCount, status: 'pending' }).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.booking(data) });
+});
+
+// Submit review (public — requires approval before showing)
+app.post('/api/reviews', async (req, res) => {
+  const { clientName, rating, comment, eventType } = req.body;
+  if (!clientName || !rating) return res.status(400).json({ error: 'Name and rating are required' });
+  const { data, error } = await supabase.from('reviews').insert({ client_name: clientName, rating: parseInt(rating), comment, event_type: eventType, is_approved: false }).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.review(data) });
+});
+
+// ==================== ADMIN AUTH ====================
 app.post('/api/admin/auth/login', (req, res) => {
   const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
-  
-  if (username === 'admin' && password === 'admin123') {
-    const token = Buffer.from(JSON.stringify({ 
-      id: 1, 
-      username: 'admin', 
-      role: 'admin',
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-    })).toString('base64');
-    
-    res.json({ 
-      success: true, 
-      token,
-      user: { id: 1, username: 'admin', role: 'admin' }
-    });
-  } else if (username === 'manager' && password === 'manager123') {
-    const token = Buffer.from(JSON.stringify({ 
-      id: 2, 
-      username: 'manager', 
-      role: 'manager',
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-    })).toString('base64');
-    
-    res.json({ 
-      success: true, 
-      token,
-      user: { id: 2, username: 'manager', role: 'manager' }
-    });
+  const adminUser = process.env.ADMIN_USERNAME || 'admin';
+  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (username === adminUser && password === adminPass) {
+    const session = { id: 1, username: adminUser, name: 'Administrator', role: 'admin', loginTime: Date.now(), expires: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+    const token = Buffer.from(JSON.stringify(session)).toString('base64');
+    res.json({ success: true, token, user: { id: 1, name: 'Administrator', role: 'admin' } });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
   }
 });
 
-app.get('/api/admin/auth/verify', (req, res) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-  
-  const token = authHeader.split(' ')[1];
-  
-  try {
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-    if (decoded.exp < Date.now()) {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    res.json({ valid: true, user: decoded });
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
+// ==================== ADMIN — EVENTS ====================
+app.get('/api/admin/events', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('events').select('*').order('date');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.event) });
+});
+app.post('/api/admin/events', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('events').insert(toEventDB(req.body)).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.event(data) });
+});
+app.put('/api/admin/events/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('events').update(toEventDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.event(data) });
+});
+app.delete('/api/admin/events/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('events').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-// ==================== EVENTS ROUTES ====================
-let events = [
-  { id: '1', title: 'Afrobeat Night', date: '2025-05-15', venue: 'Club Volume, Nairobi', price: 1500, seatsLeft: 45, isActive: true },
-  { id: '2', title: 'Corporate Gala', date: '2025-05-20', venue: 'KICC, Nairobi', price: 5000, seatsLeft: 120, isActive: true },
-  { id: '3', title: 'Wedding Expo', date: '2025-06-10', venue: 'Sarit Centre', price: 2000, seatsLeft: 200, isActive: true }
-];
-
-app.get('/api/admin/events', (req, res) => {
-  res.json({ success: true, data: events });
+// ==================== ADMIN — SERVICES ====================
+app.get('/api/admin/services', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('services').select('*').order('display_order');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.service) });
+});
+app.post('/api/admin/services', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('services').insert(toServiceDB(req.body)).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.service(data) });
+});
+app.put('/api/admin/services/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('services').update(toServiceDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.service(data) });
+});
+app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('services').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-app.post('/api/admin/events', (req, res) => {
-  const newEvent = { id: Date.now().toString(), ...req.body, isActive: true };
-  events.push(newEvent);
-  res.status(201).json({ success: true, data: newEvent });
+// ==================== ADMIN — GALLERY ====================
+app.get('/api/admin/gallery', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.gallery) });
+});
+app.post('/api/admin/gallery', adminAuth, async (req, res) => {
+  const { title, category, type, imageUrl } = req.body;
+  const { data, error } = await supabase.from('gallery').insert({ title, category, type, image_url: imageUrl }).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.gallery(data) });
+});
+app.delete('/api/admin/gallery/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('gallery').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-app.put('/api/admin/events/:id', (req, res) => {
-  const { id } = req.params;
-  const index = events.findIndex(e => e.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Event not found' });
-  events[index] = { ...events[index], ...req.body };
-  res.json({ success: true, data: events[index] });
+// ==================== ADMIN — REVIEWS ====================
+app.get('/api/admin/reviews', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.review) });
+});
+app.patch('/api/admin/reviews/:id/approve', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('reviews').update({ is_approved: true }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.review(data) });
+});
+app.delete('/api/admin/reviews/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('reviews').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-app.delete('/api/admin/events/:id', (req, res) => {
-  const { id } = req.params;
-  const index = events.findIndex(e => e.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Event not found' });
-  events.splice(index, 1);
-  res.json({ success: true, message: 'Event deleted' });
+// ==================== ADMIN — MARKETING BANNERS ====================
+app.get('/api/admin/banners', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('marketing_banners').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.banner) });
+});
+app.post('/api/admin/banners', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('marketing_banners').insert(toBannerDB(req.body)).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.banner(data) });
+});
+app.patch('/api/admin/banners/:id/toggle', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('marketing_banners').select('is_active').eq('id', req.params.id).single();
+  const { data, error } = await supabase.from('marketing_banners').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.banner(data) });
+});
+app.delete('/api/admin/banners/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('marketing_banners').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-// ==================== GALLERY ROUTES ====================
-let gallery = [
-  { id: '1', title: 'DJ Performance', category: 'Audio', imageUrl: 'https://images.unsplash.com/photo-1593642532973-d31b6557fa68', createdAt: new Date().toISOString() },
-  { id: '2', title: 'Wedding Setup', category: 'Weddings', imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552', createdAt: new Date().toISOString() }
-];
-
-app.get('/api/admin/gallery', (req, res) => {
-  res.json({ success: true, data: gallery });
+// ==================== ADMIN — POSTERS ====================
+app.get('/api/admin/posters', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('posters').select('*').order('display_order');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+app.post('/api/admin/posters', adminAuth, async (req, res) => {
+  const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
+  const { data, error } = await supabase.from('posters').insert({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data });
+});
+app.put('/api/admin/posters/:id', adminAuth, async (req, res) => {
+  const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
+  const { data, error } = await supabase.from('posters').update({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+app.patch('/api/admin/posters/:id/toggle', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('posters').select('is_active').eq('id', req.params.id).single();
+  const { data, error } = await supabase.from('posters').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+app.delete('/api/admin/posters/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('posters').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-app.post('/api/admin/gallery', (req, res) => {
-  const newImage = { id: Date.now().toString(), ...req.body, createdAt: new Date().toISOString() };
-  gallery.push(newImage);
-  res.status(201).json({ success: true, data: newImage });
+// ==================== ADMIN — BOOKINGS ====================
+app.get('/api/admin/bookings', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.booking) });
+});
+app.patch('/api/admin/bookings/:id/status', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('bookings').update({ status: req.body.status }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.booking(data) });
 });
 
-app.delete('/api/admin/gallery/:id', (req, res) => {
-  const { id } = req.params;
-  const index = gallery.findIndex(i => i.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Image not found' });
-  gallery.splice(index, 1);
-  res.json({ success: true, message: 'Image deleted' });
+// ==================== ADMIN — EMPLOYEES ====================
+app.get('/api/admin/employees', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('employees').select('*').order('name');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.employee) });
+});
+app.post('/api/admin/employees', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('employees').insert(toEmployeeDB(req.body)).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.employee(data) });
+});
+app.put('/api/admin/employees/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('employees').update(toEmployeeDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.employee(data) });
+});
+app.delete('/api/admin/employees/:id', adminAuth, async (req, res) => {
+  await supabase.from('payroll').delete().eq('employee_id', req.params.id);
+  const { error } = await supabase.from('employees').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
-// ==================== REVIEWS ROUTES ====================
-let reviews = [
-  { id: '1', clientName: 'Sarah & James', rating: 5, comment: 'Amazing service! Highly recommend.', eventType: 'Wedding', isApproved: true, createdAt: new Date().toISOString() },
-  { id: '2', clientName: 'Tech Corp', rating: 5, comment: 'Professional and reliable team.', eventType: 'Corporate', isApproved: false, createdAt: new Date().toISOString() }
-];
-
-app.get('/api/admin/reviews', (req, res) => {
-  res.json({ success: true, data: reviews });
+// ==================== ADMIN — PAYROLL ====================
+app.get('/api/admin/payroll', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('payroll').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.payroll) });
+});
+app.post('/api/admin/payroll', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('payroll').insert(toPayrollDB(req.body)).select().single();
+  if (error) return handleError(res, error);
+  await syncEmployeeStats(req.body.employeeId);
+  res.status(201).json({ success: true, data: map.payroll(data) });
+});
+app.put('/api/admin/payroll/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('payroll').update(toPayrollDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  await syncEmployeeStats(req.body.employeeId);
+  res.json({ success: true, data: map.payroll(data) });
+});
+app.delete('/api/admin/payroll/:id', adminAuth, async (req, res) => {
+  const { data: rec } = await supabase.from('payroll').select('employee_id').eq('id', req.params.id).single();
+  const { error } = await supabase.from('payroll').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  if (rec?.employee_id) await syncEmployeeStats(rec.employee_id);
+  res.json({ success: true });
 });
 
-app.put('/api/admin/reviews/:id/approve', (req, res) => {
-  const { id } = req.params;
-  const review = reviews.find(r => r.id === id);
-  if (!review) return res.status(404).json({ error: 'Review not found' });
-  review.isApproved = true;
-  res.json({ success: true, data: review });
-});
+// ==================== 404 / ERROR HANDLERS ====================
+app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
+app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: 'Internal server error' }); });
 
-app.delete('/api/admin/reviews/:id', (req, res) => {
-  const { id } = req.params;
-  const index = reviews.findIndex(r => r.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Review not found' });
-  reviews.splice(index, 1);
-  res.json({ success: true, message: 'Review deleted' });
-});
+// Start locally when run directly; export for Vercel
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Lawie Sounds API running on http://localhost:${PORT}`));
+}
 
-// ==================== MARKETING ROUTES ====================
-let marketingBanners = [
-  { id: '1', type: 'banner', message: '🎉 Special Offer: 15% off April bookings!', ctaText: 'Claim Offer', ctaLink: '/booking.html', isActive: true, startDate: '2025-04-01', endDate: '2025-04-30' }
-];
-
-app.get('/api/admin/marketing', (req, res) => {
-  res.json({ success: true, data: marketingBanners });
-});
-
-app.post('/api/admin/marketing', (req, res) => {
-  const newBanner = { id: Date.now().toString(), ...req.body, isActive: true };
-  marketingBanners.push(newBanner);
-  res.status(201).json({ success: true, data: newBanner });
-});
-
-app.put('/api/admin/marketing/:id', (req, res) => {
-  const { id } = req.params;
-  const index = marketingBanners.findIndex(b => b.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Banner not found' });
-  marketingBanners[index] = { ...marketingBanners[index], ...req.body };
-  res.json({ success: true, data: marketingBanners[index] });
-});
-
-app.delete('/api/admin/marketing/:id', (req, res) => {
-  const { id } = req.params;
-  const index = marketingBanners.findIndex(b => b.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Banner not found' });
-  marketingBanners.splice(index, 1);
-  res.json({ success: true, message: 'Banner deleted' });
-});
-
-app.patch('/api/admin/marketing/:id/toggle', (req, res) => {
-  const { id } = req.params;
-  const { isActive } = req.body;
-  const index = marketingBanners.findIndex(b => b.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Banner not found' });
-  marketingBanners[index].isActive = isActive;
-  res.json({ success: true, data: marketingBanners[index] });
-});
-
-// ==================== BOOKINGS ROUTES ====================
-let bookings = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', phone: '0712345678', eventDate: '2025-06-01', eventType: 'Wedding', guestCount: '101-250', budget: '100k-200k', venue: 'Nairobi', status: 'pending', createdAt: new Date().toISOString() },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', phone: '0723456789', eventDate: '2025-05-25', eventType: 'Corporate', guestCount: '51-100', budget: '50k-100k', venue: 'Westlands', status: 'confirmed', createdAt: new Date().toISOString() }
-];
-
-app.get('/api/admin/bookings', (req, res) => {
-  res.json({ success: true, data: bookings });
-});
-
-app.patch('/api/admin/bookings/:id/status', (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const booking = bookings.find(b => b.id === id);
-  if (!booking) return res.status(404).json({ error: 'Booking not found' });
-  booking.status = status;
-  res.json({ success: true, data: booking });
-});
-
-app.delete('/api/admin/bookings/:id', (req, res) => {
-  const { id } = req.params;
-  const index = bookings.findIndex(b => b.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Booking not found' });
-  bookings.splice(index, 1);
-  res.json({ success: true, message: 'Booking deleted' });
-});
-
-app.get('/api/admin/bookings/stats', (req, res) => {
-  res.json({ 
-    success: true, 
-    stats: { 
-      total: bookings.length, 
-      pending: bookings.filter(b => b.status === 'pending').length,
-      confirmed: bookings.filter(b => b.status === 'confirmed').length,
-      completed: bookings.filter(b => b.status === 'completed').length,
-      cancelled: bookings.filter(b => b.status === 'cancelled').length
-    } 
-  });
-});
-
-// ==================== SERVICES ROUTES ====================
-let services = [
-  { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', price: 25000, shortDesc: 'Professional DJ and MC for high-energy events.', image: 'IMAGES/DJ%20and%20MC%20Services/1.jpg', isActive: true, displayOrder: 1 },
-  { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', price: 15000, shortDesc: 'High-resolution LED screens for stunning visuals.', image: 'IMAGES/LED%20Screens/1.jpg', isActive: true, displayOrder: 2 },
-  { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', price: 18000, shortDesc: 'Professional lighting design and power distribution.', image: 'IMAGES/Power%20&%20Lighting/1.jpg', isActive: true, displayOrder: 3 }
-];
-
-app.get('/api/admin/services', (req, res) => {
-  res.json({ success: true, data: services });
-});
-
-app.get('/api/admin/services/:id', (req, res) => {
-  const { id } = req.params;
-  const service = services.find(s => s.id === id);
-  if (!service) return res.status(404).json({ error: 'Service not found' });
-  res.json({ success: true, data: service });
-});
-
-app.post('/api/admin/services', (req, res) => {
-  const newService = { id: Date.now().toString(), ...req.body, isActive: true };
-  services.push(newService);
-  res.status(201).json({ success: true, data: newService });
-});
-
-app.put('/api/admin/services/:id', (req, res) => {
-  const { id } = req.params;
-  const index = services.findIndex(s => s.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Service not found' });
-  services[index] = { ...services[index], ...req.body };
-  res.json({ success: true, data: services[index] });
-});
-
-app.delete('/api/admin/services/:id', (req, res) => {
-  const { id } = req.params;
-  const index = services.findIndex(s => s.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Service not found' });
-  services.splice(index, 1);
-  res.json({ success: true, message: 'Service deleted' });
-});
-
-// ==================== 404 HANDLER ====================
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// ==================== ERROR HANDLER ====================
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// ==================== START SERVER ====================
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Test API: http://localhost:${PORT}/api/test`);
-  console.log(`🔐 Admin login: POST http://localhost:${PORT}/api/admin/auth/login`);
-});
+module.exports = app;

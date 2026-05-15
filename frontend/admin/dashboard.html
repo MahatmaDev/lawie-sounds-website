@@ -1349,26 +1349,24 @@ function openMarketingForm() {
 }
 
 async function saveMarketingBanner() {
-    const newBanner = {
-        id: Date.now().toString(),
+    const payload = {
         type: 'banner',
         name: document.getElementById('bannerName').value || 'Unnamed',
         message: document.getElementById('bannerMessage').value,
         ctaText: document.getElementById('bannerCtaText').value,
         ctaLink: document.getElementById('bannerCtaLink').value,
         isActive: document.getElementById('bannerActive').checked,
-        startDate: document.getElementById('bannerStartDate').value,
+        startDate: document.getElementById('bannerStartDate').value || null,
         endDate: document.getElementById('bannerEndDate').value || null,
-        priority: 0,
-        views: 0,
-        clicks: 0,
-        ctr: 0,
-        createdAt: new Date().toISOString()
+        priority: 0
     };
-    
+    const result = await apiRequest('POST', '/api/admin/banners', payload);
+    if (!result?.data) {
+        Swal.fire({ icon: 'error', title: 'Failed to Save', text: 'Could not create banner. Check your API connection.', background: '#1e1e2a', color: '#fff' });
+        return;
+    }
     if (!store.marketingBanners) store.marketingBanners = [];
-    store.marketingBanners.push(newBanner);
-    apiRequest('POST', '/api/admin/banners', newBanner);
+    store.marketingBanners.unshift(result.data);
     closeModal();
     renderMarketing();
     Swal.fire({ icon: 'success', title: 'Banner Created!', text: 'Your banner is now live on the homepage', timer: 2000, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });

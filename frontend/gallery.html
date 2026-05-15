@@ -246,7 +246,7 @@
     <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
       <div>
         <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
-        <p class="text-sm">&copy; 2025 <strong>LAWIE SOUNDS</strong><br>
+        <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
         Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p>
       </div>
       <div>
@@ -331,7 +331,7 @@
       
       const html = images.map(img => `
         <a href="${img}" class="gallery-item">
-          <img src="${img}" alt="Gallery image" class="gallery-img rounded-lg shadow-md" loading="lazy" onerror="this.src='https://placehold.co/400x300?text=Image+Not+Found'">
+          <img src="${img}" alt="Gallery image" class="gallery-img rounded-lg shadow-md" loading="lazy" onerror="this.closest('a').style.display='none'">
         </a>
       `).join('');
       

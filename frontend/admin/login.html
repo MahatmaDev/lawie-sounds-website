@@ -131,13 +131,6 @@
           <span>Login to Dashboard</span>
         </button>
 
-        <div class="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-          <p class="text-xs text-center text-gray-400">
-            <i class="fas fa-info-circle mr-1"></i> 
-            Demo credentials: <span class="text-purple-400 font-mono">admin</span> / <span class="text-purple-400 font-mono">admin123</span>
-          </p>
-        </div>
-
         <div class="flex justify-center gap-4 pt-2">
           <span class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> 256-bit SSL</span>
           <span class="text-xs text-gray-500"><i class="fas fa-shield-alt mr-1"></i> 2FA Ready</span>
@@ -152,12 +145,6 @@
   </div>
 
   <script>
-    const VALID_CREDENTIALS = {
-      admin: { password: 'admin123', role: 'admin', name: 'Administrator' },
-      manager: { password: 'manager123', role: 'manager', name: 'Event Manager' },
-      viewer: { password: 'viewer123', role: 'viewer', name: 'Viewer' }
-    };
-
     let loginAttempts = 0;
     let lockoutTime = 0;
     const MAX_ATTEMPTS = 5;
@@ -181,13 +168,6 @@
       document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
     }
 
-    function getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return null;
-    }
-
     function deleteCookie(name) {
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     }
@@ -202,63 +182,34 @@
 
     async function handleLogin(e) {
       e.preventDefault();
-      
+
       const username = document.getElementById('username')?.value.trim() || '';
       const password = document.getElementById('password')?.value || '';
       const rememberMe = document.getElementById('rememberMe')?.checked || false;
-      
+
       if (!username || !password) {
         Swal.fire({ icon: 'warning', title: 'Missing Fields', text: 'Please enter both username and password', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
         triggerShake();
         return;
       }
-      
+
       if (lockoutTime > Date.now()) {
         const remainingMinutes = Math.ceil((lockoutTime - Date.now()) / 60000);
         Swal.fire({ icon: 'error', title: 'Account Locked', text: `Try again in ${remainingMinutes} minutes`, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
         return;
       }
-      
+
       showLoading(true);
-      
-      setTimeout(() => {
-        const user = VALID_CREDENTIALS[username.toLowerCase()];
-        
-        if (user && user.password === password) {
-          loginAttempts = 0;
-          
-          const session = {
-            id: 1,
-            username: username.toLowerCase(),
-            role: user.role,
-            name: user.name,
-            loginTime: Date.now(),
-            expires: Date.now() + (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
-          };
-          
-          const sessionToken = btoa(JSON.stringify(session));
-          
-          if (rememberMe) {
-            localStorage.setItem('lawie_admin_session', sessionToken);
-            setCookie('lawie_admin_session', sessionToken, 30);
-            localStorage.setItem('lawie_remembered_user', username);
-          } else {
-            sessionStorage.setItem('lawie_admin_session', sessionToken);
-          }
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Login Successful!',
-            text: `Welcome back, ${user.name}`,
-            background: '#1e1e2a',
-            color: '#fff',
-            confirmButtonColor: '#7c4dff',
-            timer: 1500,
-            showConfirmButton: false
-          }).then(() => {
-            window.location.href = 'dashboard.html';
-          });
-        } else {
+
+      try {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
           loginAttempts++;
           if (loginAttempts >= MAX_ATTEMPTS) {
             lockoutTime = Date.now() + LOCKOUT_DURATION;
@@ -268,8 +219,38 @@
           }
           showLoading(false);
           triggerShake();
+          return;
         }
-      }, 800);
+
+        loginAttempts = 0;
+        const token = data.token;
+        const user = data.user || {};
+
+        if (rememberMe) {
+          localStorage.setItem('lawie_admin_session', token);
+          setCookie('lawie_admin_session', token, 30);
+          localStorage.setItem('lawie_remembered_user', username);
+        } else {
+          sessionStorage.setItem('lawie_admin_session', token);
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Login Successful!',
+          text: `Welcome back, ${user.name || 'Administrator'}`,
+          background: '#1e1e2a',
+          color: '#fff',
+          confirmButtonColor: '#7c4dff',
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => {
+          window.location.href = 'dashboard.html';
+        });
+      } catch (err) {
+        showLoading(false);
+        Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Cannot reach the server. Check your internet connection.', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+        triggerShake();
+      }
     }
 
     function togglePasswordVisibility() {

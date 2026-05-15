@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <style>
     * { font-family: 'Inter', sans-serif; }
@@ -489,31 +491,34 @@
       
       loadingOverlay.classList.remove('hidden');
       
-      // Collect form data
+      // Collect form data (camelCase to match API)
       const formData = {
         name: document.getElementById('name').value,
         phone: document.getElementById('phone').value,
         email: document.getElementById('email').value,
         source: document.getElementById('source').value,
-        event_date: document.getElementById('event_date').value,
-        event_type: document.getElementById('event_type').value,
-        guest_count: document.getElementById('guest_count').value,
+        eventDate: document.getElementById('event_date').value,
+        eventType: document.getElementById('event_type').value,
+        guestCount: document.getElementById('guest_count').value,
         budget: document.getElementById('budget').value,
         venue: document.getElementById('venue').value,
         services: Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value).join(', '),
-        special_requests: document.getElementById('special_requests').value,
-        timestamp: new Date().toLocaleString('en-KE')
+        notes: document.getElementById('special_requests').value,
       };
-      
-      // Save to localStorage (backup)
-      localStorage.setItem('last_booking', JSON.stringify(formData));
-      
+
+      // Save to API (fire-and-save — WhatsApp is primary contact channel)
+      fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }).catch(() => {});
+
       try {
         // WhatsApp message
-        const message = `📅 *NEW BOOKING REQUEST* 📅%0A%0A*Name:* ${formData.name}%0A*Phone:* ${formData.phone}%0A*Email:* ${formData.email}%0A*Source:* ${formData.source || 'Not specified'}%0A%0A*Event Details*%0A📆 Date: ${formData.event_date}%0A🎉 Type: ${formData.event_type}%0A👥 Guests: ${formData.guest_count}%0A💰 Budget: ${formData.budget}%0A📍 Venue: ${formData.venue}%0A%0A*Services:* ${formData.services}%0A%0A*Notes:* ${formData.special_requests || 'None'}%0A%0A_Submitted: ${formData.timestamp}_`;
-        
+        const message = `📅 *NEW BOOKING REQUEST* 📅%0A%0A*Name:* ${formData.name}%0A*Phone:* ${formData.phone}%0A*Email:* ${formData.email}%0A*Source:* ${formData.source || 'Not specified'}%0A%0A*Event Details*%0A📆 Date: ${formData.eventDate}%0A🎉 Type: ${formData.eventType}%0A👥 Guests: ${formData.guestCount}%0A💰 Budget: ${formData.budget}%0A📍 Venue: ${formData.venue}%0A%0A*Services:* ${formData.services}%0A%0A*Notes:* ${formData.notes || 'None'}%0A%0A_Submitted: ${new Date().toLocaleString('en-KE')}_`;
+
         const whatsappURL = `https://wa.me/254703925826?text=${message}`;
-        
+
         // Open WhatsApp
         window.open(whatsappURL, '_blank');
         
@@ -566,7 +571,5 @@
     updateStepDisplay();
   </script>
   
-  <!-- SweetAlert2 for better alerts -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>

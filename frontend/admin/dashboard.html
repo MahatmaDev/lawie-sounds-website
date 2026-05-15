@@ -176,8 +176,10 @@
         const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAdminToken()}` } };
         if (body) opts.body = JSON.stringify(body);
         const res = await fetch(path, opts);
-        return res.ok ? await res.json() : null;
-      } catch { return null; }
+        const json = await res.json().catch(() => null);
+        if (!res.ok) return { _error: true, status: res.status, message: json?.error || res.statusText };
+        return json;
+      } catch(e) { return { _error: true, status: 0, message: 'Network error — cannot reach API' }; }
     }
 
     async function loadAllDataFromAPI() {
@@ -1362,7 +1364,8 @@ async function saveMarketingBanner() {
     };
     const result = await apiRequest('POST', '/api/admin/banners', payload);
     if (!result?.data) {
-        Swal.fire({ icon: 'error', title: 'Failed to Save', text: 'Could not create banner. Check your API connection.', background: '#1e1e2a', color: '#fff' });
+        const detail = result?._error ? result.message + (result.status ? ' (HTTP ' + result.status + ')' : '') : 'Unexpected response';
+        Swal.fire({ icon: 'error', title: 'Failed to Save Banner', html: '<p>' + detail + '</p><p class="text-sm text-gray-400 mt-2">Check Vercel env vars: SUPABASE_URL, SUPABASE_SERVICE_KEY</p>', background: '#1e1e2a', color: '#fff' });
         return;
     }
     if (!store.marketingBanners) store.marketingBanners = [];

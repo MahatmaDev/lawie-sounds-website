@@ -202,16 +202,34 @@
     let currentFilter = 'all';
     let currentSearch = '';
 
+    // Slug → local image map used as fallback when DB has no image
+    const SERVICE_IMAGES = {
+      'dj-mc-services':   '/IMAGES/DJ and MC Services/1.jpg',
+      'led-screens':      '/IMAGES/LED Screens/1.jpg',
+      'power-lighting':   '/IMAGES/Power & Lighting/1.jpg',
+      'pyrotechnics':     '/IMAGES/Pyrotechnics/1.jpg',
+      'photography':      '/IMAGES/Photography/1.jpg',
+      'live-streaming':   '/IMAGES/Live Streaming & Media/1.jpg',
+      '360-booth':        '/IMAGES/360 Booth/1.jpg',
+      'drone-services':   '/IMAGES/Drone/1.jpg',
+      'public-address':   '/IMAGES/Public Address Systems/1.jpg',
+    };
+
+    function getServiceImage(s) {
+      if (s.mainImage && !s.mainImage.includes('placehold.co')) return s.mainImage;
+      return SERVICE_IMAGES[s.slug] || SERVICE_IMAGES[Object.keys(SERVICE_IMAGES).find(k => (s.name || '').toLowerCase().includes(k.split('-')[0]))] || '/IMAGES/LOGO/2.jpg';
+    }
+
     const FALLBACK_SERVICES = [
-      { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', shortDesc: 'Professional DJ and Master of Ceremonies for high-energy events.', mainImage: '../IMAGES/DJ and MC Services/1.jpg' },
-      { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', shortDesc: 'High-resolution LED screens for stunning visuals.', mainImage: '../IMAGES/LED Screens/1.jpg' },
-      { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', shortDesc: 'Professional lighting design and power distribution.', mainImage: '../IMAGES/Power & Lighting/1.jpg' },
-      { id: '4', name: 'Pyrotechnics', slug: 'pyrotechnics', category: 'Effects', icon: 'fa-fire', shortDesc: 'Spectacular fire effects, confetti, and CO2 cannons.', mainImage: '../IMAGES/Pyrotechnics/1.jpg' },
-      { id: '5', name: 'Photography', slug: 'photography', category: 'Media', icon: 'fa-camera', shortDesc: 'Professional photography for weddings and events.', mainImage: '../IMAGES/Photography/1.jpg' },
-      { id: '6', name: 'Live Streaming', slug: 'live-streaming', category: 'Media', icon: 'fa-video', shortDesc: 'Broadcast your event live to remote audiences.', mainImage: '../IMAGES/Live Streaming & Media/1.jpg' },
-      { id: '7', name: '360 Booth', slug: '360-booth', category: 'Media', icon: 'fa-cube', shortDesc: 'Immersive 360 photo and video experience for guests.', mainImage: '../IMAGES/360 Booth/1.jpg' },
-      { id: '8', name: 'Drone Services', slug: 'drone-services', category: 'Media', icon: 'fa-drone', shortDesc: 'Aerial cinematography for stunning establishing shots.', mainImage: '../IMAGES/Drone/1.jpg' },
-      { id: '9', name: 'Public Address Systems', slug: 'public-address', category: 'Audio', icon: 'fa-volume-up', shortDesc: 'Crystal-clear audio for speeches and announcements.', mainImage: '../IMAGES/Public Address Systems/1.jpg' }
+      { id: '1', name: 'DJ & MC Services', slug: 'dj-mc-services', category: 'Audio', icon: 'fa-headphones', shortDesc: 'Professional DJ and Master of Ceremonies for high-energy events.' },
+      { id: '2', name: 'LED Screens', slug: 'led-screens', category: 'Visual', icon: 'fa-tv', shortDesc: 'High-resolution LED screens for stunning visuals.' },
+      { id: '3', name: 'Power & Lighting', slug: 'power-lighting', category: 'Lighting', icon: 'fa-lightbulb', shortDesc: 'Professional lighting design and power distribution.' },
+      { id: '4', name: 'Pyrotechnics', slug: 'pyrotechnics', category: 'Effects', icon: 'fa-fire', shortDesc: 'Spectacular fire effects, confetti, and CO2 cannons.' },
+      { id: '5', name: 'Photography', slug: 'photography', category: 'Media', icon: 'fa-camera', shortDesc: 'Professional photography for weddings and events.' },
+      { id: '6', name: 'Live Streaming', slug: 'live-streaming', category: 'Media', icon: 'fa-video', shortDesc: 'Broadcast your event live to remote audiences.' },
+      { id: '7', name: '360 Booth', slug: '360-booth', category: 'Media', icon: 'fa-cube', shortDesc: 'Immersive 360 photo and video experience for guests.' },
+      { id: '8', name: 'Drone Services', slug: 'drone-services', category: 'Media', icon: 'fa-drone', shortDesc: 'Aerial cinematography for stunning establishing shots.' },
+      { id: '9', name: 'Public Address Systems', slug: 'public-address', category: 'Audio', icon: 'fa-volume-up', shortDesc: 'Crystal-clear audio for speeches and announcements.' }
     ];
 
     async function fetchServices() {
@@ -268,14 +286,15 @@
       grid.classList.remove('hidden');
 
       grid.innerHTML = filtered.map(s => {
-        const img = s.mainImage || s.main_image || `https://placehold.co/400x300?text=${encodeURIComponent(s.name || 'Service')}`;
+        const img = getServiceImage(s);
+        const fallbackImg = SERVICE_IMAGES[s.slug] || '/IMAGES/LOGO/2.jpg';
         const icon = s.icon || 'fa-star';
         const desc = s.shortDesc || s.short_desc || '';
         const slug = s.slug || s.id;
         return `
           <div class="service-card bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group" onclick="window.location.href='service-detail.html?service=${slug}'">
             <div class="relative h-52 overflow-hidden">
-              <img src="${img}" alt="${s.name || 'Service'}" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" onerror="this.src='https://placehold.co/400x300?text=${encodeURIComponent(s.name || 'Service')}'">
+              <img src="${img}" alt="${s.name || 'Service'}" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" onerror="this.onerror=null;this.src='${fallbackImg}'">
               <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
               <div class="absolute bottom-3 left-4">
                 <span class="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold shadow-md">${s.category || 'Service'}</span>

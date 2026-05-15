@@ -320,8 +320,8 @@
         icon: "fa-video",
         shortDesc: "Broadcast your event live to remote audiences.",
         longDesc: "Broadcast your event live to remote audiences with professional streaming setup. Multi-camera production, live switching, and stream to YouTube, Facebook, or custom platform.",
-        mainImage: "/IMAGES/Live%20Streaming/1.jpg",
-        galleryImages: ["/IMAGES/Live%20Streaming/1.jpg", "/IMAGES/Live%20Streaming/2.jpg", "/IMAGES/Live%20Streaming/3.jpg", "/IMAGES/Live%20Streaming/4.jpg"],
+        mainImage: "/IMAGES/Live%20Streaming%20%26%20Media/1.jpg",
+        galleryImages: ["/IMAGES/Live%20Streaming%20%26%20Media/1.jpg", "/IMAGES/Live%20Streaming%20%26%20Media/2.jpg", "/IMAGES/Live%20Streaming%20%26%20Media/3.jpg", "/IMAGES/Live%20Streaming%20%26%20Media/4.jpg"],
         packages: [
           { name: "Single Camera", price: 30000, duration: "Per event", features: ["1 camera", "Basic switching", "Stream to 1 platform", "Recording archive"], popular: false },
           { name: "Multi-Camera", price: 55000, duration: "Per event", features: ["3 cameras", "Live switching", "Stream to 2 platforms", "Graphics overlays", "Recording archive"], popular: true },
@@ -398,8 +398,8 @@
         icon: "fa-volume-up",
         shortDesc: "Crystal-clear audio for speeches and announcements.",
         longDesc: "Crystal-clear audio for speeches, announcements, and background music. Professional sound system with line array speakers, wireless microphones, and dedicated sound engineer.",
-        mainImage: "/IMAGES/Public%20Address/1.jpg",
-        galleryImages: ["/IMAGES/Public%20Address/1.jpg", "/IMAGES/Public%20Address/2.jpg", "/IMAGES/Public%20Address/3.jpg", "/IMAGES/Public%20Address/4.jpg"],
+        mainImage: "/IMAGES/Public%20Address%20Systems/1.jpg",
+        galleryImages: ["/IMAGES/Public%20Address%20Systems/1.jpg", "/IMAGES/Public%20Address%20Systems/2.jpg", "/IMAGES/Public%20Address%20Systems/3.jpg", "/IMAGES/Public%20Address%20Systems/4.jpg"],
         packages: [
           { name: "Basic PA", price: 20000, duration: "Per event", features: ["2 speakers", "2 wireless mics", "Basic mixer", "Sound engineer"], popular: false },
           { name: "Premium PA", price: 35000, duration: "Per event", features: ["Line array (4)", "4 wireless mics", "Digital mixer", "Dedicated engineer", "Coverage up to 2000 pax"], popular: true },
@@ -453,7 +453,8 @@
       const galleryImages = service.galleryImages || service.gallery_images || [];
       const testimonials = service.testimonials || [];
       const faqs = service.faqs || [];
-      const mainImage = service.mainImage || service.main_image || 'https://placehold.co/600x400';
+      const SERVICE_IMAGE_MAP = { 'dj-mc-services': '/IMAGES/DJ%20and%20MC%20Services/1.jpg', 'led-screens': '/IMAGES/LED%20Screens/1.jpg', 'power-lighting': '/IMAGES/Power%20%26%20Lighting/1.jpg', 'pyrotechnics': '/IMAGES/Pyrotechnics/1.jpg', 'photography': '/IMAGES/Photography/1.jpg', 'live-streaming': '/IMAGES/Live%20Streaming%20%26%20Media/1.jpg', '360-booth': '/IMAGES/360%20Booth/1.jpg', 'drone-services': '/IMAGES/Drone/1.jpg', 'public-address': '/IMAGES/Public%20Address%20Systems/1.jpg' };
+      const mainImage = (service.mainImage && !service.mainImage.includes('placehold.co')) ? service.mainImage : (SERVICE_IMAGE_MAP[slug] || '/IMAGES/LOGO/2.jpg');
       const icon = service.icon || 'fa-star';
       const longDesc = service.longDesc || service.long_desc || service.shortDesc || service.short_desc || '';
 

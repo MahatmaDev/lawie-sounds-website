@@ -725,7 +725,7 @@
           ${filteredServices.map(service => `
             <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-purple-500 transition">
               <div class="flex flex-col md:flex-row">
-                <div class="md:w-32 h-32 bg-gray-800"><img src="${service.image || 'https://placehold.co/128x128?text=Service'}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/128x128?text=No+Image'"></div>
+                <div class="md:w-32 h-32 bg-gray-800"><img src="${service.mainImage || 'https://placehold.co/128x128?text=Service'}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/128x128?text=No+Image'"></div>
                 <div class="flex-1 p-4">
                   <div class="flex justify-between items-start"><div><h3 class="text-lg font-bold">${escapeHtml(service.name)}</h3><p class="text-xs text-gray-400">${service.category || 'Uncategorized'}</p></div><span class="px-2 py-1 rounded-full text-xs ${service.isActive !== false ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${service.isActive !== false ? 'Active' : 'Draft'}</span></div>
                   <p class="text-sm text-gray-400 mt-2 line-clamp-2">${escapeHtml(service.shortDesc || 'No description')}</p>
@@ -754,7 +754,7 @@
           <div><label class="block text-sm mb-1">Base Price (KES) *</label><input type="number" id="servicePrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${service?.price || ''}" required></div>
           <div><label class="block text-sm mb-1">Short Description</label><textarea id="serviceShortDesc" rows="2" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(service?.shortDesc || '')}</textarea></div>
           <div><label class="block text-sm mb-1">Full Description</label><textarea id="serviceLongDesc" rows="3" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(service?.longDesc || '')}</textarea></div>
-          <div><label class="block text-sm mb-1">Service Image</label><input type="file" id="serviceImageFile" accept="image/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><div id="serviceImagePreview" class="mt-2 ${service?.image ? '' : 'hidden'}"><img src="${service?.image || ''}" class="h-20 rounded-lg"></div><input type="url" id="serviceImageUrl" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 mt-2" placeholder="Or image URL" value="${service?.image || ''}"></div>
+          <div><label class="block text-sm mb-1">Service Image</label><input type="file" id="serviceImageFile" accept="image/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><div id="serviceImagePreview" class="mt-2 ${service?.mainImage ? '' : 'hidden'}"><img src="${service?.mainImage || ''}" class="h-20 rounded-lg"></div><input type="url" id="serviceImageUrl" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 mt-2" placeholder="Or image URL" value="${service?.mainImage || ''}"></div>
           <div><label class="flex items-center gap-2"><input type="checkbox" id="serviceActive" ${service?.isActive !== false ? 'checked' : ''}> <span class="text-sm">Active (visible on website)</span></label></div>
         </div>
 

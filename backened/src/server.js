@@ -15,20 +15,22 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false 
 // HTTP request logging
 app.use(morgan('combined'));
 
-// CORS — allow Vercel domain + localhost dev
-const allowedOrigins = [
-  'https://lawie-sounds-website.vercel.app',
-  'http://localhost:3000',
-  'http://127.0.0.1:5500'
-];
+// CORS — allow Vercel deployments + localhost dev
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    if (!origin) return cb(null, true); // server-to-server / same-origin
+    if (
+      origin.endsWith('.vercel.app') ||
+      origin === 'http://localhost:3000' ||
+      origin === 'http://127.0.0.1:5500' ||
+      origin === 'https://127.0.0.1:5500'
+    ) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.options('*', cors()); // handle preflight for all routes
 
 app.use(express.json({ limit: '20mb' })); // support base64 image uploads
 

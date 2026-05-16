@@ -1,13 +1,42 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 
 require('dotenv').config();
 
 const app = express();
 
-app.use(cors({ origin: '*' }));
+// Security headers
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+
+// HTTP request logging
+app.use(morgan('combined'));
+
+// CORS — allow Vercel domain + localhost dev
+const allowedOrigins = [
+  'https://lawie-sounds-website.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:5500'
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit: '20mb' })); // support base64 image uploads
+
+// Rate limiting — 100 req/15min general, 10 req/15min on login
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Too many login attempts. Try again in 15 minutes.' }, standardHeaders: true, legacyHeaders: false });
+app.use('/api/', generalLimiter);
+app.use('/api/admin/auth/login', loginLimiter);
 
 // Supabase client (service role — bypasses RLS, admin-level access)
 const supabase = createClient(
@@ -74,6 +103,18 @@ function handleError(res, error, status = 500) {
   return res.status(status).json({ error: error.message || 'An error occurred' });
 }
 
+// WhatsApp push notification via CallMeBot (free — admin must activate once)
+// Setup: WhatsApp +34 644 38 11 72, send: "I allow callmebot to send me messages"
+// Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars
+async function notifyAdmin(message) {
+  const phone = process.env.ADMIN_PHONE;
+  const apiKey = process.env.CALLMEBOT_APIKEY;
+  if (!phone || !apiKey) return;
+  try {
+    fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`);
+  } catch (e) {}
+}
+
 // ==================== PUBLIC ROUTES ====================
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -130,6 +171,7 @@ app.post('/api/bookings', async (req, res) => {
   if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
   const { data, error } = await supabase.from('bookings').insert({ ...req.body, event_date: req.body.eventDate, event_type: req.body.eventType, guest_count: req.body.guestCount, status: 'pending' }).select().single();
   if (error) return handleError(res, error);
+  notifyAdmin(`🎉 NEW BOOKING REQUEST!\n\nClient: ${name}\nPhone: ${phone}\nEvent: ${req.body.eventType || 'N/A'} on ${req.body.eventDate || 'TBD'}\nVenue: ${req.body.venue || 'N/A'}\nBudget: KES ${req.body.budget || 'N/A'}\nServices: ${req.body.services || 'N/A'}\n\n👉 Dashboard: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
   res.status(201).json({ success: true, data: map.booking(data) });
 });
 
@@ -139,6 +181,7 @@ app.post('/api/reviews', async (req, res) => {
   if (!clientName || !rating) return res.status(400).json({ error: 'Name and rating are required' });
   const { data, error } = await supabase.from('reviews').insert({ client_name: clientName, rating: parseInt(rating), comment, event_type: eventType, is_approved: false }).select().single();
   if (error) return handleError(res, error);
+  notifyAdmin(`⭐ NEW REVIEW — Needs Approval!\n\nFrom: ${clientName}\nRating: ${'⭐'.repeat(parseInt(rating))} (${rating}/5)\nEvent: ${eventType || 'N/A'}\nComment: "${(comment || '').slice(0, 120)}"\n\n👉 Approve at: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
   res.status(201).json({ success: true, data: map.review(data) });
 });
 

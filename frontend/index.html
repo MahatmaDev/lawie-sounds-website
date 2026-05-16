@@ -306,13 +306,16 @@
   <!-- ==================== HEADER ==================== -->
   <header class="bg-black text-white sticky top-0 z-40 shadow-xl transition-all duration-300" id="mainHeader">
     <div class="container mx-auto px-4 md:px-8">
-      <div class="flex flex-wrap items-center justify-between py-4">
+      <div class="flex flex-wrap items-center justify-between py-5">
         <div class="flex items-center gap-3">
-          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="logo-img h-11 w-11 rounded-full object-cover border-2 border-yellow-400 shadow-md">
-          <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds Logo" class="logo-img h-14 w-14 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+          <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight leading-none">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">Premium Event Entertainment · Kenya</p>
+          </div>
         </div>
-        
-        <nav class="hidden md:flex gap-7 text-sm font-semibold">
+
+        <nav class="hidden md:flex gap-8 text-base font-semibold">
           <a href="#home" class="hover:text-yellow-400 transition duration-200">Home</a>
           <a href="#services" class="hover:text-yellow-400 transition duration-200">Services</a>
           <a href="#gallery" class="hover:text-yellow-400 transition duration-200">Gallery</a>
@@ -320,9 +323,12 @@
           <a href="#testimonials" class="hover:text-yellow-400 transition duration-200">Reviews</a>
           <a href="#contact" class="hover:text-yellow-400 transition duration-200">Contact</a>
         </nav>
-        
+
         <div class="flex items-center gap-3">
-          <a href="booking.html" class="bg-yellow-400 text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
+          <a href="tel:+254703925826" class="hidden sm:flex items-center gap-2 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">
+            <i class="fas fa-phone-alt text-yellow-400"></i>+254 703 925 826
+          </a>
+          <a href="booking.html" class="bg-yellow-400 text-black px-6 py-3 rounded-full text-base font-bold hover:bg-yellow-300 transition shadow-lg btn-touch">
             <i class="fas fa-calendar-check mr-2"></i>Book Now
           </a>
           <button id="mobileMenuBtn" class="md:hidden text-white focus:outline-none btn-touch">
@@ -395,6 +401,18 @@
         <!-- Injected by loadPosters() -->
       </div>
       <div id="posterDots" class="flex justify-center gap-2 mt-4"></div>
+    </div>
+  </section>
+
+  <!-- ==================== COMPANY UPDATES / ANNOUNCEMENTS ==================== -->
+  <section id="updatesSection" class="hidden bg-white border-b border-gray-100">
+    <div class="container mx-auto px-4 py-8">
+      <div class="flex items-center gap-3 mb-5">
+        <span class="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></span>
+        <h2 class="text-lg font-bold text-gray-900">Latest from <span class="text-yellow-500">Lawie Sounds</span></h2>
+        <span class="ml-auto text-xs text-gray-400">Updated regularly</span>
+      </div>
+      <div id="updatesGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
   </section>
 
@@ -800,9 +818,51 @@
       if (event.key === 'Escape') closeLightbox();
     });
 
+    // ==================== COMPANY UPDATES SECTION ====================
+    async function loadUpdates() {
+      try {
+        const [bannerRes, posterRes] = await Promise.all([
+          apiFetch('/api/banners'),
+          apiFetch('/api/posters')
+        ]);
+        const banners = bannerRes?.data || [];
+        const posters = posterRes?.data || [];
+        const now = new Date();
+        const items = [
+          ...banners.filter(b => b.isActive !== false && (!b.endDate || new Date(b.endDate) >= now))
+            .map(b => ({ type: 'banner', title: b.message, cta: b.ctaText || 'Learn More', ctaLink: b.ctaLink || 'booking.html', icon: '📢', color: 'from-purple-600 to-pink-600' })),
+          ...posters.filter(p => p.is_active !== false && (!p.end_date || new Date(p.end_date) >= now))
+            .slice(0, 3).map(p => ({ type: 'poster', title: p.title, caption: p.caption, imageUrl: p.image_url, icon: '🎨', color: 'from-yellow-500 to-orange-500' }))
+        ].slice(0, 6);
+        if (!items.length) return;
+        const section = document.getElementById('updatesSection');
+        const grid = document.getElementById('updatesGrid');
+        section.classList.remove('hidden');
+        grid.innerHTML = items.map(item => {
+          if (item.type === 'banner') {
+            return `<a href="${item.ctaLink}" class="flex items-start gap-3 p-4 rounded-xl border border-yellow-200 bg-yellow-50 hover:bg-yellow-100 transition group">
+              <span class="text-2xl flex-shrink-0">${item.icon}</span>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-gray-900 text-sm leading-snug">${item.title}</p>
+                <span class="inline-block mt-2 text-xs font-bold text-yellow-600 group-hover:underline">${item.cta} →</span>
+              </div>
+            </a>`;
+          }
+          const bgStyle = item.imageUrl ? `background-image:url('${item.imageUrl}');background-size:cover;background-position:center` : '';
+          return `<div class="rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition group" style="${bgStyle}">
+            <div class="p-4 ${item.imageUrl ? 'bg-black/60 backdrop-blur-sm' : 'bg-gray-50'}">
+              <p class="font-bold ${item.imageUrl ? 'text-white' : 'text-gray-900'} text-sm">${item.icon} ${item.title}</p>
+              ${item.caption ? `<p class="text-xs mt-1 ${item.imageUrl ? 'text-gray-300' : 'text-gray-500'}">${item.caption}</p>` : ''}
+              <a href="booking.html" class="inline-block mt-2 text-xs font-bold text-yellow-400 group-hover:underline">Book for your event →</a>
+            </div>
+          </div>`;
+        }).join('');
+      } catch(e) {}
+    }
+
     // ==================== INITIALIZE ====================
     document.addEventListener('DOMContentLoaded', async function() {
-      await Promise.all([loadServices(), loadReviews(), loadHomepageGallery(), loadPosters()]);
+      await Promise.all([loadServices(), loadReviews(), loadHomepageGallery(), loadPosters(), loadUpdates()]);
     });
   </script>
 </body>

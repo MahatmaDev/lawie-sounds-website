@@ -370,6 +370,40 @@
 
 
   <!-- ====================================================
+       MOMENTS CAPTURED — Service Gallery
+  ===================================================== -->
+  <section id="serviceGallery" class="py-14" style="background:var(--surface)">
+    <div class="container mx-auto px-4">
+      <div class="flex items-end justify-between mb-8 reveal">
+        <div>
+          <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-1">Our Work</p>
+          <h2 class="text-2xl md:text-3xl font-black">Moments <span class="text-yellow-400">Captured</span></h2>
+          <p class="text-gray-500 text-sm mt-1">Real events, real setups, real impact.</p>
+        </div>
+        <a href="gallery.html" class="flex-shrink-0 inline-flex items-center gap-2 text-yellow-400 text-sm font-bold hover:text-yellow-300 transition">
+          View All <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+
+      <!-- Gallery grid -->
+      <div id="svcGalleryGrid" class="columns-2 sm:columns-3 lg:columns-4 gap-3" style="column-gap:12px"></div>
+
+      <!-- Skeleton -->
+      <div id="svcGallerySkel" class="columns-2 sm:columns-3 lg:columns-4 gap-3" style="column-gap:12px">
+        <div class="skeleton rounded-xl mb-3" style="height:180px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3" style="height:240px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3 hidden sm:block" style="height:200px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3 hidden lg:block" style="height:160px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3" style="height:220px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3" style="height:170px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3 hidden sm:block" style="height:250px;break-inside:avoid"></div>
+        <div class="skeleton rounded-xl mb-3 hidden lg:block" style="height:190px;break-inside:avoid"></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ====================================================
        WHY CHOOSE US — Trust strip
   ===================================================== -->
   <section class="py-14 border-y" style="border-color:var(--border);background:var(--surface)">
@@ -669,6 +703,59 @@
       document.getElementById('mobile-menu')?.classList.toggle('hidden');
     });
 
+    // ── Service gallery (Moments Captured) ──
+    const GALLERY_FALLBACK = [
+      '../IMAGES/DJ and MC Services/1.jpg',
+      '../IMAGES/LED Screens/1.jpg',
+      '../IMAGES/Power & Lighting/1.jpg',
+      '../IMAGES/Pyrotechnics/1.jpg',
+      '../IMAGES/Photography/1.jpg',
+      '../IMAGES/Live Streaming & Media/1.jpg',
+      '../IMAGES/360 Booth/1.jpg',
+      '../IMAGES/Drone/1.jpg',
+      '../IMAGES/Public Address Systems/1.jpg',
+      '../IMAGES/DJ and MC Services/2.jpg',
+      '../IMAGES/LED Screens/2.jpg',
+      '../IMAGES/Power & Lighting/2.jpg',
+    ].filter(Boolean);
+
+    async function loadServiceGallery() {
+      const skel = document.getElementById('svcGallerySkel');
+      const grid = document.getElementById('svcGalleryGrid');
+      let items = [];
+      try {
+        const res  = await fetch('/api/gallery');
+        if (res.ok) {
+          const json = await res.json();
+          items = (json.data || []).filter(g => g.type !== 'video').slice(0, 12);
+        }
+      } catch {}
+
+      const imgs = items.length
+        ? items.map(g => ({ url: g.imageUrl || g.image_url, title: g.title || '' }))
+        : GALLERY_FALLBACK.map(url => ({ url, title: '' }));
+
+      skel.classList.add('hidden');
+
+      if (!imgs.length) { document.getElementById('serviceGallery').classList.add('hidden'); return; }
+
+      grid.innerHTML = imgs.map((img, i) => `
+        <div class="reveal mb-3" style="break-inside:avoid;animation-delay:${(i % 4) * 0.06}s">
+          <a href="gallery.html" class="block rounded-xl overflow-hidden group" style="background:#1a1a2e">
+            <img src="${img.url}"
+                 alt="${img.title || 'Lawie Sounds event'}"
+                 loading="lazy"
+                 class="w-full object-cover transition duration-500 group-hover:scale-105 group-hover:brightness-110"
+                 style="display:block"
+                 onerror="this.closest('.reveal').style.display='none'">
+          </a>
+        </div>`).join('');
+
+      requestAnimationFrame(() => {
+        grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+      });
+    }
+
     // ── Boot ──
     async function init() {
       SERVICES   = await fetchServices();
@@ -676,6 +763,7 @@
       buildFilters();
       renderServices();
       document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+      loadServiceGallery();
     }
 
     window.setFilter    = setFilter;

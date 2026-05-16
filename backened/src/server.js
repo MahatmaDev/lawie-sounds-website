@@ -230,13 +230,20 @@ app.post('/api/reviews', async (req, res) => {
 // ==================== ADMIN AUTH ====================
 app.post('/api/admin/auth/login', (req, res) => {
   const { username, password } = req.body;
-  const adminUser = process.env.ADMIN_USERNAME || 'admin';
-  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminUser   = process.env.ADMIN_USERNAME   || 'admin';
+  const adminPass   = process.env.ADMIN_PASSWORD   || 'admin123';
+  const managerUser = process.env.MANAGER_USERNAME;
+  const managerPass = process.env.MANAGER_PASSWORD;
 
-  if (username === adminUser && password === adminPass) {
-    const session = { id: 1, username: adminUser, name: 'Administrator', role: 'admin', loginTime: Date.now(), expires: Date.now() + 7 * 24 * 60 * 60 * 1000 };
-    const token = Buffer.from(JSON.stringify(session)).toString('base64');
-    res.json({ success: true, token, user: { id: 1, name: 'Administrator', role: 'admin' } });
+  let role = null;
+  if (username === adminUser && password === adminPass) role = 'admin';
+  else if (managerUser && managerPass && username === managerUser && password === managerPass) role = 'manager';
+
+  if (role) {
+    const name    = role === 'admin' ? 'Administrator' : 'Website Manager';
+    const session = { id: role === 'admin' ? 1 : 2, username, name, role, loginTime: Date.now(), expires: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+    const token   = Buffer.from(JSON.stringify(session)).toString('base64');
+    res.json({ success: true, token, user: { id: session.id, name, role } });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
   }

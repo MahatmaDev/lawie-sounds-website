@@ -64,12 +64,14 @@ const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
   service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
   gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, createdAt: r.created_at }),
-  review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, isApproved: r.is_approved, createdAt: r.created_at }),
+  review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, clientImage: r.client_image, isApproved: r.is_approved, isFeatured: r.is_featured, adminReply: r.admin_reply, createdAt: r.created_at }),
   banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
-  booking: (r) => r && ({ id: r.id, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, status: r.status, notes: r.notes, createdAt: r.created_at }),
+  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
   poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, createdAt: r.created_at }),
+  notification: (r) => r && ({ id: r.id, type: r.type, title: r.title, message: r.message, isRead: r.is_read, referenceId: r.reference_id, referenceTable: r.reference_table, createdAt: r.created_at }),
+  setting: (r) => r && ({ id: r.id, key: r.key, value: r.value, description: r.description, updatedAt: r.updated_at }),
 };
 
 // ==================== DB CONVERTERS (API camelCase → DB snake_case) ====================
@@ -112,6 +114,13 @@ async function notifyAdmin(message) {
   if (!phone || !apiKey) return;
   try {
     fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`);
+  } catch (e) {}
+}
+
+// Create an in-app notification record (fire-and-forget)
+async function createNotification(type, title, message, referenceId, referenceTable) {
+  try {
+    await supabase.from('notifications').insert({ type, title, message, reference_id: referenceId || null, reference_table: referenceTable || null });
   } catch (e) {}
 }
 
@@ -169,19 +178,52 @@ app.get('/api/posters', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
   const { name, phone } = req.body;
   if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
-  const { data, error } = await supabase.from('bookings').insert({ ...req.body, event_date: req.body.eventDate, event_type: req.body.eventType, guest_count: req.body.guestCount, status: 'pending' }).select().single();
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+  const ua = req.headers['user-agent'] || '';
+  const dbRow = {
+    name, phone,
+    email:            req.body.email           || null,
+    event_date:       req.body.eventDate        || null,
+    event_type:       req.body.eventType        || null,
+    event_id:         req.body.eventId          || null,
+    guest_count:      req.body.guestCount       || null,
+    budget:           req.body.budget           || null,
+    venue:            req.body.venue            || null,
+    services:         req.body.services         || null,
+    selected_package: req.body.selectedPackage  || null,
+    ticket_quantity:  req.body.ticketQuantity   || 1,
+    total_amount:     req.body.totalAmount      || null,
+    notes:            req.body.notes            || null,
+    status:           'pending',
+    user_ip:          ip,
+    user_agent:       ua,
+  };
+  const { data, error } = await supabase.from('bookings').insert(dbRow).select().single();
   if (error) return handleError(res, error);
-  notifyAdmin(`🎉 NEW BOOKING REQUEST!\n\nClient: ${name}\nPhone: ${phone}\nEvent: ${req.body.eventType || 'N/A'} on ${req.body.eventDate || 'TBD'}\nVenue: ${req.body.venue || 'N/A'}\nBudget: KES ${req.body.budget || 'N/A'}\nServices: ${req.body.services || 'N/A'}\n\n👉 Dashboard: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
+  const ref = data.booking_reference || data.id;
+  notifyAdmin(`🎉 NEW BOOKING REQUEST!\n\nRef: ${ref}\nClient: ${name}\nPhone: ${phone}\nEvent: ${req.body.eventType || 'N/A'} on ${req.body.eventDate || 'TBD'}\nVenue: ${req.body.venue || 'N/A'}\nBudget: KES ${req.body.budget || 'N/A'}\nServices: ${req.body.services || 'N/A'}\n\n👉 Dashboard: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
+  createNotification('booking', 'New Booking Request', `${name} (${phone}) — ${req.body.eventType || 'Event'} on ${req.body.eventDate || 'TBD'}`, data.id, 'bookings');
   res.status(201).json({ success: true, data: map.booking(data) });
 });
 
 // Submit review (public — requires approval before showing)
 app.post('/api/reviews', async (req, res) => {
-  const { clientName, rating, comment, eventType } = req.body;
+  const { clientName, rating, comment, eventType, eventDate, serviceId, clientImage } = req.body;
   if (!clientName || !rating) return res.status(400).json({ error: 'Name and rating are required' });
-  const { data, error } = await supabase.from('reviews').insert({ client_name: clientName, rating: parseInt(rating), comment, event_type: eventType, is_approved: false }).select().single();
+  const { data, error } = await supabase.from('reviews').insert({
+    client_name:  clientName,
+    rating:       parseInt(rating),
+    comment,
+    event_type:   eventType   || null,
+    event_date:   eventDate   || null,
+    service_id:   serviceId   || null,
+    client_image: clientImage || null,
+    is_approved:  false,
+    is_featured:  false,
+  }).select().single();
   if (error) return handleError(res, error);
   notifyAdmin(`⭐ NEW REVIEW — Needs Approval!\n\nFrom: ${clientName}\nRating: ${'⭐'.repeat(parseInt(rating))} (${rating}/5)\nEvent: ${eventType || 'N/A'}\nComment: "${(comment || '').slice(0, 120)}"\n\n👉 Approve at: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
+  createNotification('review', 'New Review Submitted', `${clientName} left a ${rating}-star review — pending approval`, data.id, 'reviews');
   res.status(201).json({ success: true, data: map.review(data) });
 });
 
@@ -270,6 +312,19 @@ app.get('/api/admin/reviews', adminAuth, async (req, res) => {
 });
 app.patch('/api/admin/reviews/:id/approve', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('reviews').update({ is_approved: true }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.review(data) });
+});
+app.patch('/api/admin/reviews/:id/reply', adminAuth, async (req, res) => {
+  const { reply } = req.body;
+  if (!reply) return res.status(400).json({ error: 'Reply text is required' });
+  const { data, error } = await supabase.from('reviews').update({ admin_reply: reply }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.review(data) });
+});
+app.patch('/api/admin/reviews/:id/feature', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('reviews').select('is_featured').eq('id', req.params.id).single();
+  const { data, error } = await supabase.from('reviews').update({ is_featured: !cur?.is_featured }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.review(data) });
 });
@@ -391,6 +446,49 @@ app.delete('/api/admin/payroll/:id', adminAuth, async (req, res) => {
   if (error) return handleError(res, error);
   if (rec?.employee_id) await syncEmployeeStats(rec.employee_id);
   res.json({ success: true });
+});
+
+// ==================== ADMIN — NOTIFICATIONS ====================
+app.get('/api/admin/notifications', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50);
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.notification) });
+});
+app.patch('/api/admin/notifications/:id/read', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+app.patch('/api/admin/notifications/read-all', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+app.delete('/api/admin/notifications/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('notifications').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+// ==================== ADMIN — SETTINGS ====================
+app.get('/api/admin/settings', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('settings').select('*').order('key');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.setting) });
+});
+app.patch('/api/admin/settings/:key', adminAuth, async (req, res) => {
+  const { value } = req.body;
+  if (value === undefined) return res.status(400).json({ error: 'value is required' });
+  const { data, error } = await supabase.from('settings').update({ value }).eq('key', req.params.key).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.setting(data) });
+});
+
+// ==================== ADMIN — DASHBOARD STATS ====================
+app.get('/api/admin/stats', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('dashboard_stats').select('*').single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
 });
 
 // ==================== 404 / ERROR HANDLERS ====================

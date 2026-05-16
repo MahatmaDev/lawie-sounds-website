@@ -628,61 +628,50 @@
       
       const seatsSold = currentEditId ? (store.events.find(e => e.id === currentEditId)?.totalSeats || totalSeats) - (store.events.find(e => e.id === currentEditId)?.seatsLeft || totalSeats) : 0;
       const seatsLeft = totalSeats - seatsSold;
-      
-      const newEvent = {
-        id: currentEditId || Date.now().toString(),
-        title: title,
-        date: date,
-        venue: venue,
-        price: price,
-        totalSeats: totalSeats,
-        seatsLeft: seatsLeft,
-        description: description,
+
+      const payload = {
+        title, date, venue, price, totalSeats, seatsLeft,
+        description,
         image: image || 'https://placehold.co/400x300?text=' + encodeURIComponent(title),
-        status: status === 'published' ? 'published' : (status === 'draft' ? 'draft' : status),
+        status,
         isActive: status !== 'draft' && status !== 'cancelled',
-        bookingCount: currentEditId ? (store.events.find(e => e.id === currentEditId)?.bookingCount || 0) : 0,
-        createdAt: currentEditId ? (store.events.find(e => e.id === currentEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString()
       };
-      
+
+      const result = await apiRequest(
+        currentEditId ? 'PUT' : 'POST',
+        currentEditId ? `/api/admin/events/${currentEditId}` : '/api/admin/events',
+        payload
+      );
+
+      if (!result?.data) {
+        Swal.fire({ icon: 'error', title: 'Failed to Save Event', text: result?._error ? result.message : 'Unexpected response from server', background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+
       if (currentEditId) {
-        store.events = store.events.map(e => e.id === currentEditId ? newEvent : e);
+        store.events = store.events.map(e => e.id === currentEditId ? result.data : e);
+        Swal.fire({ icon: 'success', title: 'Event Updated!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
       } else {
-        store.events.push(newEvent);
-      }
-      
-      // Handle recurring events
-      if (isRecurring && !currentEditId) {
-        const recurringType = document.getElementById('recurringType').value;
-        const recurringCount = parseInt(document.getElementById('recurringCount').value);
-        let currentDate = new Date(date);
-        
-        for (let i = 1; i < recurringCount; i++) {
-          if (recurringType === 'weekly') {
-            currentDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
-          } else if (recurringType === 'monthly') {
-            currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+        store.events.push(result.data);
+
+        // Save recurring events to DB individually
+        if (isRecurring) {
+          const recurringType = document.getElementById('recurringType').value;
+          const recurringCount = parseInt(document.getElementById('recurringCount').value);
+          let currentDate = new Date(date);
+          for (let i = 1; i < recurringCount; i++) {
+            if (recurringType === 'weekly') currentDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+            else if (recurringType === 'monthly') currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+            const recurPayload = { ...payload, date: currentDate.toISOString().slice(0, 16), title: `${title} (${recurringType === 'weekly' ? 'Week' : 'Month'} ${i + 1})`, seatsLeft: totalSeats };
+            const recurResult = await apiRequest('POST', '/api/admin/events', recurPayload);
+            if (recurResult?.data) store.events.push(recurResult.data);
           }
-          
-          const recurringEvent = {
-            ...newEvent,
-            id: Date.now().toString() + i,
-            date: currentDate.toISOString().slice(0, 16),
-            title: `${title} (${recurringType === 'weekly' ? 'Week' : 'Month'} ${i + 1})`,
-            recurringParent: newEvent.id,
-            seatsLeft: totalSeats,
-            bookingCount: 0
-          };
-          store.events.push(recurringEvent);
+          Swal.fire({ icon: 'success', title: `Created ${recurringCount} recurring events!`, timer: 2000, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+        } else {
+          Swal.fire({ icon: 'success', title: 'Event Created!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
         }
-        
-        Swal.fire({ icon: 'success', title: `Created ${recurringCount} recurring events!`, timer: 2000, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
-      } else {
-        Swal.fire({ icon: 'success', title: currentEditId ? 'Event Updated!' : 'Event Created!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
       }
-      
-      const _evtPath = currentEditId ? `/api/admin/events/${currentEditId}` : '/api/admin/events';
-      await apiRequest(currentEditId ? 'PUT' : 'POST', _evtPath, newEvent);
+
       closeModal();
       renderEvents();
       updateStats();
@@ -1538,8 +1527,7 @@ function duplicateMarketingBanner(id) {
         Swal.fire({ icon: 'error', title: 'Missing Fields', text: 'Title and image URL are required', background: '#1e1e2a', color: '#fff' });
         return;
       }
-      const newPoster = {
-        id: currentEditId || Date.now().toString(),
+      const payload = {
         title,
         imageUrl,
         caption: document.getElementById('posterCaption').value,
@@ -1547,15 +1535,23 @@ function duplicateMarketingBanner(id) {
         endDate: document.getElementById('posterEndDate').value || null,
         displayOrder: parseInt(document.getElementById('posterOrder').value) || 1,
         isActive: document.getElementById('posterActive').checked,
-        createdAt: currentEditId ? (store.posters.find(p => p.id === currentEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString()
       };
 
+      const result = await apiRequest(
+        currentEditId ? 'PUT' : 'POST',
+        currentEditId ? `/api/admin/posters/${currentEditId}` : '/api/admin/posters',
+        payload
+      );
+
+      if (!result?.data) {
+        Swal.fire({ icon: 'error', title: 'Failed to Save Poster', text: result?._error ? result.message : 'Unexpected response from server', background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+
       if (currentEditId) {
-        store.posters = store.posters.map(p => p.id === currentEditId ? newPoster : p);
-        await apiRequest('PUT', `/api/admin/posters/${currentEditId}`, newPoster);
+        store.posters = store.posters.map(p => p.id === currentEditId ? result.data : p);
       } else {
-        store.posters.push(newPoster);
-        await apiRequest('POST', '/api/admin/posters', newPoster);
+        store.posters.push(result.data);
       }
 
       closeModal();

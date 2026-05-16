@@ -40,6 +40,7 @@ const map = {
   booking: (r) => r && ({ id: r.id, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, status: r.status, notes: r.notes, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
+  poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, createdAt: r.created_at }),
 };
 
 // ==================== DB CONVERTERS (API camelCase → DB snake_case) ====================
@@ -262,25 +263,25 @@ app.delete('/api/admin/banners/:id', adminAuth, async (req, res) => {
 app.get('/api/admin/posters', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('posters').select('*').order('display_order');
   if (error) return handleError(res, error);
-  res.json({ success: true, data });
+  res.json({ success: true, data: data.map(map.poster) });
 });
 app.post('/api/admin/posters', adminAuth, async (req, res) => {
   const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
   const { data, error } = await supabase.from('posters').insert({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).select().single();
   if (error) return handleError(res, error);
-  res.status(201).json({ success: true, data });
+  res.status(201).json({ success: true, data: map.poster(data) });
 });
 app.put('/api/admin/posters/:id', adminAuth, async (req, res) => {
   const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
   const { data, error } = await supabase.from('posters').update({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
-  res.json({ success: true, data });
+  res.json({ success: true, data: map.poster(data) });
 });
 app.patch('/api/admin/posters/:id/toggle', adminAuth, async (req, res) => {
   const { data: cur } = await supabase.from('posters').select('is_active').eq('id', req.params.id).single();
   const { data, error } = await supabase.from('posters').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
-  res.json({ success: true, data });
+  res.json({ success: true, data: map.poster(data) });
 });
 app.delete('/api/admin/posters/:id', adminAuth, async (req, res) => {
   const { error } = await supabase.from('posters').delete().eq('id', req.params.id);

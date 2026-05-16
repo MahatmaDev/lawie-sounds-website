@@ -126,7 +126,13 @@ async function createNotification(type, title, message, referenceId, referenceTa
 
 // ==================== PUBLIC ROUTES ====================
 
-app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/health',     (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+// Tells the login page whether env vars are configured (never reveals values)
+app.get('/api/admin/auth/config', (_, res) => res.json({
+  adminConfigured:   !!(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD),
+  managerConfigured: !!(process.env.MANAGER_USERNAME && process.env.MANAGER_PASSWORD),
+}));
 
 // Services (active only — no prices in response for public)
 app.get('/api/services', async (req, res) => {

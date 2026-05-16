@@ -90,6 +90,9 @@
         <p class="text-gray-400 text-sm mt-1">Enter your credentials to continue</p>
       </div>
 
+      <!-- Server status bar -->
+      <div id="serverStatus" class="hidden mb-4 px-3 py-2 rounded-lg text-xs flex items-center gap-2"></div>
+
       <form id="loginForm" class="space-y-5">
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -150,6 +153,8 @@
     const MAX_ATTEMPTS = 5;
     const LOCKOUT_DURATION = 15 * 60 * 1000;
 
+    const SWAL_DEFAULTS = { background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' };
+
     function showLoading(show) {
       const btn = document.getElementById('loginBtn');
       if (!btn) return;
@@ -180,51 +185,95 @@
       }
     }
 
+    function setServerStatus(type, msg) {
+      const el = document.getElementById('serverStatus');
+      if (!el) return;
+      el.classList.remove('hidden');
+      const styles = {
+        ok:   'bg-green-900/40 border border-green-700/50 text-green-300',
+        warn: 'bg-yellow-900/40 border border-yellow-700/50 text-yellow-300',
+        err:  'bg-red-900/40 border border-red-700/50 text-red-300',
+      };
+      const icons = { ok: 'fa-circle-check', warn: 'fa-triangle-exclamation', err: 'fa-circle-xmark' };
+      el.className = `mb-4 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${styles[type] || styles.warn}`;
+      el.innerHTML = `<i class="fas ${icons[type] || icons.warn}"></i><span>${msg}</span>`;
+    }
+
+    async function checkServerHealth() {
+      try {
+        const [healthRes, configRes] = await Promise.all([
+          fetch('/api/health', { signal: AbortSignal.timeout(5000) }),
+          fetch('/api/admin/auth/config', { signal: AbortSignal.timeout(5000) })
+        ]);
+        if (!healthRes.ok) { setServerStatus('err', 'Server is unreachable — contact your developer.'); return; }
+        const cfg = configRes.ok ? await configRes.json().catch(() => ({})) : {};
+        if (cfg.adminConfigured === false) {
+          setServerStatus('warn', 'Admin credentials are not configured on this server. Contact your developer.');
+        }
+      } catch {
+        setServerStatus('err', 'Cannot reach the server. Check your internet connection.');
+      }
+    }
+
     async function handleLogin(e) {
       e.preventDefault();
 
-      const username = document.getElementById('username')?.value.trim() || '';
-      const password = document.getElementById('password')?.value || '';
+      const username  = document.getElementById('username')?.value.trim() || '';
+      const password  = document.getElementById('password')?.value || '';
       const rememberMe = document.getElementById('rememberMe')?.checked || false;
 
       if (!username || !password) {
-        Swal.fire({ icon: 'warning', title: 'Missing Fields', text: 'Please enter both username and password', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+        Swal.fire({ ...SWAL_DEFAULTS, icon: 'warning', title: 'Missing Fields', text: 'Please enter both username and password.' });
         triggerShake();
         return;
       }
 
       if (lockoutTime > Date.now()) {
-        const remainingMinutes = Math.ceil((lockoutTime - Date.now()) / 60000);
-        Swal.fire({ icon: 'error', title: 'Account Locked', text: `Try again in ${remainingMinutes} minutes`, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
+        const mins = Math.ceil((lockoutTime - Date.now()) / 60000);
+        Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Account Locked', text: `Too many failed attempts. Try again in ${mins} minute${mins > 1 ? 's' : ''}.` });
         return;
       }
 
       showLoading(true);
 
       try {
-        const res = await fetch('/api/admin/auth/login', {
+        const res  = await fetch('/api/admin/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password }),
+          signal: AbortSignal.timeout(10000)
         });
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
           loginAttempts++;
-          if (loginAttempts >= MAX_ATTEMPTS) {
-            lockoutTime = Date.now() + LOCKOUT_DURATION;
-            Swal.fire({ icon: 'error', title: 'Account Locked', text: 'Too many attempts. Try again in 15 minutes.', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
-          } else {
-            Swal.fire({ icon: 'error', title: 'Login Failed', text: `Invalid credentials. ${MAX_ATTEMPTS - loginAttempts} attempts remaining.`, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
-          }
           showLoading(false);
           triggerShake();
+
+          if (res.status === 429) {
+            lockoutTime = Date.now() + LOCKOUT_DURATION;
+            Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Too Many Attempts', text: data.error || 'Rate limited. Please wait 15 minutes before trying again.' });
+          } else if (res.status === 401) {
+            const remaining = MAX_ATTEMPTS - loginAttempts;
+            if (loginAttempts >= MAX_ATTEMPTS) {
+              lockoutTime = Date.now() + LOCKOUT_DURATION;
+              Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Account Locked', text: 'Too many failed attempts. Locked for 15 minutes.' });
+            } else {
+              const hint = data.error ? `${data.error}` : 'Incorrect username or password.';
+              Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Login Failed', text: `${hint} ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.` });
+            }
+          } else if (res.status >= 500) {
+            const detail = data.error || data.message || `Server error (${res.status})`;
+            Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Server Error', text: `${detail} — Please try again or contact your developer.` });
+          } else {
+            Swal.fire({ ...SWAL_DEFAULTS, icon: 'error', title: 'Login Failed', text: data.error || data.message || `Unexpected error (HTTP ${res.status}).` });
+          }
           return;
         }
 
         loginAttempts = 0;
         const token = data.token;
-        const user = data.user || {};
+        const user  = data.user || {};
 
         if (rememberMe) {
           localStorage.setItem('lawie_admin_session', token);
@@ -235,48 +284,42 @@
         }
 
         Swal.fire({
+          ...SWAL_DEFAULTS,
           icon: 'success',
           title: 'Login Successful!',
           text: `Welcome back, ${user.name || 'Administrator'}`,
-          background: '#1e1e2a',
-          color: '#fff',
-          confirmButtonColor: '#7c4dff',
           timer: 1500,
           showConfirmButton: false
-        }).then(() => {
-          window.location.href = 'dashboard.html';
-        });
+        }).then(() => { window.location.href = 'dashboard.html'; });
+
       } catch (err) {
         showLoading(false);
-        Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Cannot reach the server. Check your internet connection.', background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c4dff' });
         triggerShake();
+        const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+        Swal.fire({
+          ...SWAL_DEFAULTS,
+          icon: 'error',
+          title: isTimeout ? 'Request Timed Out' : 'Connection Error',
+          text: isTimeout
+            ? 'The server took too long to respond. Check your internet connection and try again.'
+            : 'Cannot reach the server. Check your internet connection.'
+        });
       }
     }
 
     function togglePasswordVisibility() {
-      const passwordInput = document.getElementById('password');
-      const toggleIcon = document.querySelector('#togglePassword i');
-      if (!passwordInput || !toggleIcon) return;
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleIcon.classList.remove('fa-eye');
-        toggleIcon.classList.add('fa-eye-slash');
-      } else {
-        passwordInput.type = 'password';
-        toggleIcon.classList.remove('fa-eye-slash');
-        toggleIcon.classList.add('fa-eye');
-      }
+      const input = document.getElementById('password');
+      const icon  = document.querySelector('#togglePassword i');
+      if (!input || !icon) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      icon.classList.toggle('fa-eye', !isHidden);
+      icon.classList.toggle('fa-eye-slash', isHidden);
     }
 
     function handleForgotPassword(e) {
       e.preventDefault();
-      Swal.fire({
-        title: 'Reset Password',
-        text: 'Contact the system administrator to reset your password.',
-        background: '#1e1e2a',
-        color: '#fff',
-        confirmButtonColor: '#7c4dff'
-      });
+      Swal.fire({ ...SWAL_DEFAULTS, title: 'Reset Password', text: 'Contact the system administrator to reset your password.' });
     }
 
     // Clear any existing session on login page load
@@ -284,18 +327,20 @@
     sessionStorage.removeItem('lawie_admin_session');
     deleteCookie('lawie_admin_session');
 
-    // Load remembered username if exists
+    // Load remembered username
     const rememberedUser = localStorage.getItem('lawie_remembered_user');
     if (rememberedUser) {
       document.getElementById('username').value = rememberedUser;
       document.getElementById('rememberMe').checked = true;
     }
 
-    // Event listeners
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('togglePassword').addEventListener('click', togglePasswordVisibility);
     document.getElementById('forgotPassword').addEventListener('click', handleForgotPassword);
     document.getElementById('username').focus();
+
+    // Check server health quietly in background
+    checkServerHealth();
   </script>
 </body>
 </html>

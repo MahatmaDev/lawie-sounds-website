@@ -66,13 +66,16 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE TABLE IF NOT EXISTS gallery (
-  id         UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
-  title      TEXT        NOT NULL,
-  category   TEXT        DEFAULT 'General',
-  type       TEXT        DEFAULT 'image',
-  image_url  TEXT        NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  id            UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title         TEXT        NOT NULL,
+  category      TEXT        DEFAULT 'General',
+  type          TEXT        DEFAULT 'image',
+  image_url     TEXT        NOT NULL,
+  service_slug  TEXT,                        -- links image to a specific service (e.g. 'drone-services')
+  is_featured   BOOLEAN     DEFAULT FALSE,   -- pinned to top of gallery page
+  display_order INT         DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -261,7 +264,10 @@ ALTER TABLE reviews ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ DEFAULT NO
 ALTER TABLE settings         ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE settings         ADD COLUMN IF NOT EXISTS updated_at  TIMESTAMPTZ DEFAULT NOW();
 
-ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS type       TEXT        DEFAULT 'image';
+ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS type          TEXT        DEFAULT 'image';
+ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS is_featured   BOOLEAN     DEFAULT FALSE;
+ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS service_slug  TEXT;
+ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS display_order INT         DEFAULT 0;
 ALTER TABLE services         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE events           ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE gallery          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
@@ -341,6 +347,9 @@ CREATE INDEX IF NOT EXISTS idx_notifs_is_read       ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifs_created_at    ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posters_order        ON posters(display_order);
 CREATE INDEX IF NOT EXISTS idx_services_order       ON services(display_order);
+CREATE INDEX IF NOT EXISTS idx_gallery_service_slug ON gallery(service_slug);
+CREATE INDEX IF NOT EXISTS idx_gallery_is_featured  ON gallery(is_featured);
+CREATE INDEX IF NOT EXISTS idx_gallery_created_at   ON gallery(created_at DESC);
 
 -- ==================== DASHBOARD STATS VIEW ====================
 CREATE OR REPLACE VIEW dashboard_stats AS

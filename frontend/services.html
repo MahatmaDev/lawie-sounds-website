@@ -724,16 +724,27 @@
       const grid = document.getElementById('svcGalleryGrid');
       let items = [];
       try {
-        const res  = await fetch('/api/gallery');
+        // Prefer featured items for this showcase; fall back to recents
+        const res  = await fetch('/api/gallery?featured=true');
         if (res.ok) {
           const json = await res.json();
           items = (json.data || []).filter(g => g.type !== 'video').slice(0, 12);
         }
+        // If not enough featured, top up from all gallery
+        if (items.length < 6) {
+          const res2  = await fetch('/api/gallery');
+          if (res2.ok) {
+            const json2 = await res2.json();
+            const ids = new Set(items.map(i => i.id));
+            const more = (json2.data || []).filter(g => g.type !== 'video' && !ids.has(g.id));
+            items = [...items, ...more].slice(0, 12);
+          }
+        }
       } catch {}
 
       const imgs = items.length
-        ? items.map(g => ({ url: g.imageUrl || g.image_url, title: g.title || '' }))
-        : GALLERY_FALLBACK.map(url => ({ url, title: '' }));
+        ? items.map(g => ({ url: g.imageUrl || g.image_url, title: g.title || '', slug: g.serviceSlug || g.service_slug || null }))
+        : GALLERY_FALLBACK.map(url => ({ url, title: '', slug: null }));
 
       skel.classList.add('hidden');
 
@@ -741,13 +752,17 @@
 
       grid.innerHTML = imgs.map((img, i) => `
         <div class="reveal mb-3" style="break-inside:avoid;animation-delay:${(i % 4) * 0.06}s">
-          <a href="gallery.html" class="block rounded-xl overflow-hidden group" style="background:#1a1a2e">
+          <a href="${img.slug ? 'service-detail.html?service=' + encodeURIComponent(img.slug) : 'gallery.html'}"
+             class="block rounded-xl overflow-hidden group relative" style="background:#1a1a2e">
             <img src="${img.url}"
                  alt="${img.title || 'Lawie Sounds event'}"
                  loading="lazy"
                  class="w-full object-cover transition duration-500 group-hover:scale-105 group-hover:brightness-110"
                  style="display:block"
                  onerror="this.closest('.reveal').style.display='none'">
+            ${img.slug ? `<div class="absolute bottom-0 inset-x-0 p-2" style="background:linear-gradient(to top,rgba(0,0,0,0.75),transparent)">
+              <span style="font-size:10px;color:var(--yellow);font-weight:700">${img.slug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} ↗</span>
+            </div>` : ''}
           </a>
         </div>`).join('');
 

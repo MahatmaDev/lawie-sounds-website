@@ -69,7 +69,7 @@ function adminAuth(req, res, next) {
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
   service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
-  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, createdAt: r.created_at }),
+  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, createdAt: r.created_at }),
   review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, clientImage: r.client_image, isApproved: r.is_approved, isFeatured: r.is_featured, adminReply: r.admin_reply, createdAt: r.created_at }),
   banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
   booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, createdAt: r.created_at }),
@@ -86,6 +86,9 @@ function toEventDB(b) {
 }
 function toServiceDB(b) {
   return { name: b.name, slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), category: b.category, icon: b.icon, short_desc: b.shortDesc, long_desc: b.longDesc, image: b.mainImage || b.image, is_active: b.isActive !== false, display_order: b.displayOrder || 0, packages: b.packages || [], features: b.features || [], faqs: b.faqs || [] };
+}
+function toGalleryDB(b) {
+  return { title: b.title, category: b.category, type: b.type || 'image', image_url: b.imageUrl, service_slug: b.serviceSlug || null, is_featured: b.isFeatured || false, display_order: b.displayOrder || 0 };
 }
 function toBannerDB(b) {
   return { type: b.type || 'banner', name: b.name, message: b.message, cta_text: b.ctaText, cta_link: b.ctaLink, is_active: b.isActive !== false, start_date: b.startDate || null, end_date: b.endDate || null, priority: b.priority || 0, views: 0, clicks: 0, ctr: 0 };
@@ -140,11 +143,25 @@ app.get('/api/admin/auth/config', (_, res) => res.json({
   managerConfigured: !!(process.env.MANAGER_USERNAME && process.env.MANAGER_PASSWORD),
 }));
 
-// Services (active only — no prices in response for public)
+// Services (active only — full data so service-detail pages render correctly)
 app.get('/api/services', async (req, res) => {
-  const { data, error } = await supabase.from('services').select('id,name,slug,category,icon,short_desc,image,is_active,display_order,features,faqs').eq('is_active', true).order('display_order');
+  const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.service) });
+});
+
+// Single service by slug or UUID (for service-detail.html)
+app.get('/api/services/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+  const { data, error } = await supabase.from('services').select('*')
+    .eq(isUuid ? 'id' : 'slug', slug).eq('is_active', true).single();
+  if (error || !data) return res.status(404).json({ error: 'Service not found' });
+  // Also fetch approved reviews for this service
+  const { data: reviews } = await supabase.from('reviews').select('client_name,rating,comment,event_type,event_date').eq('is_approved', true).eq('service_id', data.id).order('created_at', { ascending: false }).limit(6);
+  // Fetch gallery images linked to this service (by service_slug field if set, else by slug match)
+  const { data: gallery } = await supabase.from('gallery').select('id,title,category,type,image_url').eq('service_slug', data.slug).order('created_at', { ascending: false }).limit(12);
+  res.json({ success: true, data: { ...map.service(data), reviews: (reviews || []).map(map.review), gallery: (gallery || []).map(map.gallery) } });
 });
 
 // Events (upcoming active)
@@ -154,9 +171,17 @@ app.get('/api/events', async (req, res) => {
   res.json({ success: true, data: data.map(map.event) });
 });
 
-// Gallery (all items)
+// Gallery — supports ?featured=true, ?category=X, ?service=slug
 app.get('/api/gallery', async (req, res) => {
-  const { data, error } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+  let q = supabase.from('gallery').select('*');
+  if (req.query.featured === 'true')   q = q.eq('is_featured', true);
+  if (req.query.category)              q = q.eq('category', req.query.category);
+  if (req.query.service)               q = q.eq('service_slug', req.query.service);
+  // Featured items first (nulls last), then by display_order, then newest
+  q = q.order('is_featured', { ascending: false, nullsFirst: false })
+       .order('display_order', { ascending: true })
+       .order('created_at', { ascending: false });
+  const { data, error } = await q;
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.gallery) });
 });
@@ -312,10 +337,21 @@ app.get('/api/admin/gallery', adminAuth, async (req, res) => {
   res.json({ success: true, data: data.map(map.gallery) });
 });
 app.post('/api/admin/gallery', adminAuth, async (req, res) => {
-  const { title, category, type, imageUrl } = req.body;
-  const { data, error } = await supabase.from('gallery').insert({ title, category, type, image_url: imageUrl }).select().single();
+  const { data, error } = await supabase.from('gallery').insert(toGalleryDB(req.body)).select().single();
   if (error) return handleError(res, error);
   res.status(201).json({ success: true, data: map.gallery(data) });
+});
+app.put('/api/admin/gallery/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('gallery').update(toGalleryDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Gallery item not found' });
+  res.json({ success: true, data: map.gallery(data) });
+});
+app.patch('/api/admin/gallery/:id/feature', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('gallery').select('is_featured').eq('id', req.params.id).single();
+  const { data, error } = await supabase.from('gallery').update({ is_featured: !cur?.is_featured }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.gallery(data) });
 });
 app.delete('/api/admin/gallery/:id', adminAuth, async (req, res) => {
   const { error } = await supabase.from('gallery').delete().eq('id', req.params.id);

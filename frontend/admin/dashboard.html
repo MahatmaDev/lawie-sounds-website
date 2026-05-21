@@ -150,6 +150,8 @@
       <button data-tab="payroll" id="tabPayroll" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">💰 Payroll</button>
       <button data-tab="analytics" id="tabAnalytics" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📈 Analytics</button>
       <button data-tab="training" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📚 Training</button>
+      <button data-tab="beta" id="tabBeta" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🧪 Beta</button>
+      <button data-tab="updates" id="tabUpdates" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap relative">🚀 Updates<span id="updatesBadge" class="ml-1.5 hidden text-xs font-bold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"></span></button>
     </div>
   </header>
 
@@ -189,6 +191,122 @@
     let bookingsChart = null;
     let analyticsCharts = [];
     let bookingViewMode = 'table';
+
+    // ==================== CHANGELOG ====================
+    const CHANGELOG = [
+      {
+        version: '2.1', date: '2026-05-21', title: 'Gallery & Services Overhaul', type: 'feature',
+        affects: ['admin', 'manager'],
+        items: [
+          'Public Gallery: ⭐ Staff Picks spotlight — star any photo to feature it at the top of the gallery page',
+          'Public Gallery: Service tagging — link photos to a specific service; badge shows on hover',
+          'Gallery: Drone 🚁 and Behind the Scenes 🎬 category icons added',
+          'Services Page: Moments Captured now shows your featured photos first',
+          'Service Detail Page: Full dark-theme redesign — live packages, reviews, and gallery per service',
+          'Admin Gallery: Edit metadata, toggle Featured ⭐, link to service — all from the dashboard',
+          'Admin Services: Preview link now opens the correct service detail page',
+          'API: GET /api/gallery now supports ?featured, ?category, ?service query params',
+          'Dashboard: 🧪 Beta Features tab — track what\'s experimental and what\'s shipping next',
+          'Dashboard: 🚀 Updates tab (this page) — changelog with acknowledgment',
+        ],
+      },
+      {
+        version: '2.0', date: '2026-05-21', title: 'Analytics, Manager Mode & Pipeline', type: 'feature',
+        affects: ['admin', 'manager'],
+        items: [
+          'Analytics tab: Business Health Score, booking trend, revenue chart, pipeline funnel',
+          'Manager Mode: Dedicated dashboard with urgency KPIs (no financial data)',
+          'Booking Pipeline: Kanban board view alongside table view',
+          'Security: JWT tokens now cryptographically signed — previous tokens invalidated',
+          'Bug fix: CORS was silently blocking all production API calls',
+          'Bug fix: Login page was clearing session on every load',
+        ],
+      },
+      {
+        version: '1.5', date: '2026-05-20', title: 'Core Fixes & Booking Upgrades', type: 'fix',
+        affects: ['admin'],
+        items: [
+          'Bookings: Booking reference column, delete, and notes editor added',
+          'Marketing: Edit banner now works correctly (was broken)',
+          'Security: XSS fix — HTML escaping now covers quotes and apostrophes',
+          'Fixed: Express 5 preflight request crash on OPTIONS routes',
+        ],
+      },
+      {
+        version: '1.0', date: '2026-05-01', title: 'System Launch', type: 'launch',
+        affects: ['admin', 'manager'],
+        items: [
+          'Core dashboard: Events, Services, Gallery, Reviews, Bookings, Employees, Payroll',
+          'Marketing banners and Posters management',
+          'Admin and Manager roles with separate access controls',
+          'Supabase PostgreSQL database with Row Level Security',
+          'Vercel deployment pipeline — instant global hosting',
+        ],
+      },
+    ];
+
+    // ==================== BETA FEATURES REGISTRY ====================
+    const BETA_FEATURES = [
+      { id:'gallery-featured-spotlight', name:'Gallery Staff Picks Spotlight', icon:'fa-star', color:'text-yellow-400', bg:'bg-yellow-900/20', border:'border-yellow-700/30',
+        desc:'⭐ Starred photos appear in a Staff Picks grid at the top of the public gallery page. Requires at least 2 starred photos.',
+        status:'active', affects:'Public Gallery', since:'2.1', adminOnly:false },
+      { id:'gallery-service-links', name:'Gallery Service Tagging', icon:'fa-link', color:'text-blue-400', bg:'bg-blue-900/20', border:'border-blue-700/30',
+        desc:'Tag any gallery photo to a specific service (Drone, DJ, etc.). The service name appears as a badge when visitors hover over the photo.',
+        status:'active', affects:'Public Gallery', since:'2.1', adminOnly:false },
+      { id:'api-gallery-filters', name:'Gallery API Smart Filters', icon:'fa-filter', color:'text-purple-400', bg:'bg-purple-900/20', border:'border-purple-700/30',
+        desc:'The gallery API now supports filtering by featured status, category, and service slug. Makes page loads faster when many images exist.',
+        status:'active', affects:'API / Backend', since:'2.1', adminOnly:true },
+      { id:'business-health-score', name:'Business Health Score', icon:'fa-heartbeat', color:'text-green-400', bg:'bg-green-900/20', border:'border-green-700/30',
+        desc:'A 0–100 composite score measuring conversion rate, review ratings, content freshness, and pipeline health. Visible on the admin Dashboard tab.',
+        status:'active', affects:'Admin Dashboard', since:'2.0', adminOnly:true },
+      { id:'booking-pipeline', name:'Booking Pipeline / Kanban View', icon:'fa-columns', color:'text-indigo-400', bg:'bg-indigo-900/20', border:'border-indigo-700/30',
+        desc:'Toggle between a table list and a visual 4-column Kanban board (New → Confirmed → Completed → Cancelled) inside the Bookings tab.',
+        status:'active', affects:'Admin Bookings', since:'2.0', adminOnly:false },
+      { id:'whatsapp-alerts', name:'WhatsApp Booking Alerts', icon:'fa-bell', color:'text-green-400', bg:'bg-green-900/20', border:'border-green-700/30',
+        desc:'Sends a WhatsApp message to the admin\'s phone the moment a new booking comes in. Requires one-time setup (see note below).',
+        status:'experimental', affects:'Backend / Notifications', since:'2.0', adminOnly:true,
+        setupNote:'1. WhatsApp the number <strong>+34 644 38 11 72</strong> with: <em>"I allow callmebot to send me messages"</em>. 2. Add <code>ADMIN_PHONE</code> and <code>CALLMEBOT_APIKEY</code> to Vercel environment variables. 3. Redeploy.' },
+      { id:'client-booking-portal', name:'Client Booking Status Portal', icon:'fa-user-check', color:'text-cyan-400', bg:'bg-cyan-900/20', border:'border-cyan-700/30',
+        desc:'Clients can look up their booking status using their reference number — no login needed. Reduces "have you received my booking?" calls.',
+        status:'planned', affects:'Public Website', since:null, adminOnly:false },
+      { id:'auto-review-request', name:'Auto Review Request (Post-Event SMS)', icon:'fa-comment-dots', color:'text-pink-400', bg:'bg-pink-900/20', border:'border-pink-700/30',
+        desc:'Automatically sends the client a WhatsApp/SMS asking for a review 24–48 hours after their event is marked as Completed.',
+        status:'planned', affects:'Backend / Automation', since:null, adminOnly:true },
+      { id:'pos-integration', name:'M-Pesa / Payment Confirmation', icon:'fa-mobile-alt', color:'text-orange-400', bg:'bg-orange-900/20', border:'border-orange-700/30',
+        desc:'Clients send M-Pesa payment confirmation codes directly through the booking form. Admin sees payment status per booking automatically.',
+        status:'planned', affects:'Bookings / Finance', since:null, adminOnly:true },
+    ];
+
+    function isBetaEnabled(id) { return localStorage.getItem('beta_' + id) === 'true'; }
+    function toggleBetaFeature(id) {
+      const current = isBetaEnabled(id);
+      localStorage.setItem('beta_' + id, (!current).toString());
+      renderBeta();
+    }
+
+    // ==================== UPDATES HELPERS ====================
+    function getReadUpdates() {
+      try { return JSON.parse(localStorage.getItem('lawie_updates_read') || '[]'); } catch { return []; }
+    }
+    function markUpdateRead(version) {
+      const read = getReadUpdates();
+      if (!read.includes(version)) { read.push(version); localStorage.setItem('lawie_updates_read', JSON.stringify(read)); }
+      updateBadge();
+      renderUpdates();
+    }
+    function markAllUpdatesRead() {
+      localStorage.setItem('lawie_updates_read', JSON.stringify(CHANGELOG.map(c => c.version)));
+      updateBadge();
+      renderUpdates();
+    }
+    function updateBadge() {
+      const read = getReadUpdates();
+      const unread = CHANGELOG.filter(c => !read.includes(c.version)).length;
+      const badge = document.getElementById('updatesBadge');
+      if (!badge) return;
+      if (unread > 0) { badge.textContent = unread; badge.classList.remove('hidden'); }
+      else { badge.classList.add('hidden'); }
+    }
 
     // ==================== API HELPERS ====================
     function getAdminToken() {
@@ -1047,7 +1165,7 @@
 
                 <!-- Actions (pinned to bottom) -->
                 <div class="flex gap-1.5 pt-2 border-t border-gray-800 mt-auto">
-                  <a href="https://lawie-sounds-website.vercel.app/#services" target="_blank"
+                  <a href="../service-detail.html?service=${escapeHtml(s.slug || s.id)}" target="_blank"
                     class="flex-1 text-center py-1.5 bg-purple-600/15 hover:bg-purple-600/30 text-purple-400 rounded-lg text-xs font-medium transition">
                     <i class="fas fa-eye mr-1"></i>Preview
                   </a>
@@ -1114,7 +1232,7 @@
 
         <div id="tabBasic" class="tab-service-content active space-y-3">
           <div><label class="block text-sm mb-1">Service Name *</label><input type="text" id="serviceName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(service?.name || '')}" required></div>
-          <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm mb-1">Category</label><select id="serviceCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${service?.category === 'Audio' ? 'selected' : ''}>Audio</option><option ${service?.category === 'Visual' ? 'selected' : ''}>Visual</option><option ${service?.category === 'Lighting' ? 'selected' : ''}>Lighting</option><option ${service?.category === 'Effects' ? 'selected' : ''}>Effects</option><option ${service?.category === 'Media' ? 'selected' : ''}>Media</option></select></div>
+          <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm mb-1">Category</label><select id="serviceCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${service?.category === 'Audio' ? 'selected' : ''}>Audio</option><option ${service?.category === 'Visual' ? 'selected' : ''}>Visual</option><option ${service?.category === 'Lighting' ? 'selected' : ''}>Lighting</option><option ${service?.category === 'Effects' ? 'selected' : ''}>Effects</option><option ${service?.category === 'Media' ? 'selected' : ''}>Media</option><option ${service?.category === 'Drone' ? 'selected' : ''}>Drone</option><option ${service?.category === 'Photography' ? 'selected' : ''}>Photography</option><option ${service?.category === 'Streaming' ? 'selected' : ''}>Streaming</option><option ${service?.category === 'General' ? 'selected' : ''}>General</option></select></div>
           <div><label class="block text-sm mb-1">Icon Class</label><input type="text" id="serviceIcon" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${service?.icon || 'fa-star'}" placeholder="fa-headphones"></div></div>
           <div><label class="block text-sm mb-1">Base Price (KES) <span class="text-gray-500 font-normal">(optional)</span></label><input type="number" id="servicePrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${service?.price || ''}" placeholder="Leave blank → 'Contact for pricing'"><p class="text-xs text-gray-500 mt-1">If left empty the website will show "Contact us for a quote" instead.</p></div>
           <div><label class="block text-sm mb-1">Short Description</label><textarea id="serviceShortDesc" rows="2" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(service?.shortDesc || '')}</textarea></div>
@@ -1587,18 +1705,34 @@ function renderGallery() {
       const isVideo = item.type === 'video';
       const thumb = isVideo
         ? `<video src="${item.imageUrl}" class="w-full h-full object-cover"></video><div class="absolute inset-0 flex items-center justify-center"><div class="w-10 h-10 bg-black/60 rounded-full flex items-center justify-center"><i class="fas fa-play text-white text-sm ml-0.5"></i></div></div>`
-        : `<img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" loading="lazy" class="w-full h-full object-cover transition duration-300 group-hover:scale-105" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center bg-gray-700 text-gray-500\'><i class=\'fas fa-image text-2xl mb-1\'></i><p class=\'text-xs\'>Image unavailable</p></div>'">`;
-      const dateStr = item.createdAt || item.created_at ? new Date(item.createdAt || item.created_at).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }) : '';
+        : `<img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" loading="lazy" class="w-full h-full object-cover transition duration-300 group-hover:scale-105" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center bg-gray-700 text-gray-500\'><i class=\'fas fa-image text-2xl mb-1\'></i><p class=\'text-xs\'>Unavailable</p></div>'">`;
+      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-KE', { day:'numeric', month:'short' }) : '';
+      const svcBadge = item.serviceSlug ? `<span class="absolute bottom-2 left-2 text-xs bg-purple-700/80 text-purple-200 px-1.5 py-0.5 rounded-full backdrop-blur-sm">${item.serviceSlug.replace(/-/g,' ')}</span>` : '';
+      const featBadge = item.isFeatured ? `<span class="absolute top-2 right-2 text-xs bg-yellow-500/90 text-black px-1.5 py-0.5 rounded-full font-bold">⭐</span>` : '';
       return `
-        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-purple-500/60 transition group flex flex-col">
+        <div class="bg-gray-900 rounded-xl border ${item.isFeatured ? 'border-yellow-500/40' : 'border-gray-800'} overflow-hidden hover:border-purple-500/60 transition group flex flex-col">
           <div class="relative h-36 bg-gray-800 overflow-hidden">
             ${thumb}
-            <span class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${isVideo ? 'bg-blue-600/80 text-white' : 'bg-black/60 text-gray-200'}">${isVideo ? '🎬 Video' : '📷 Photo'}</span>
+            <span class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${isVideo ? 'bg-blue-600/80 text-white' : 'bg-black/60 text-gray-200'}">${isVideo ? '🎬' : '📷'}</span>
+            ${featBadge}${svcBadge}
           </div>
           <div class="p-2.5 flex-1 flex flex-col">
             <p class="text-xs font-semibold text-white truncate">${escapeHtml(item.title)}</p>
             <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(item.category || '')}${dateStr ? ' · ' + dateStr : ''}</p>
-            <button onclick="deleteGalleryItem('${item.id}')" class="mt-auto pt-2 w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-600/10 rounded-lg py-1 transition flex items-center justify-center gap-1"><i class="fas fa-trash text-xs"></i> Remove</button>
+            <div class="flex gap-1 mt-auto pt-2">
+              <button onclick="toggleGalleryFeatured('${item.id}')" title="${item.isFeatured ? 'Unfeature' : 'Feature this'}"
+                class="flex-none px-2 py-1 rounded-lg text-xs transition ${item.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-500 hover:text-yellow-400 hover:bg-gray-700'}">
+                <i class="fas fa-star"></i>
+              </button>
+              <button onclick="openGalleryEditForm('${item.id}')"
+                class="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                <i class="fas fa-pen text-xs"></i> Edit
+              </button>
+              <button onclick="deleteGalleryItem('${item.id}')"
+                class="flex-none px-2 py-1 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
           </div>
         </div>`;
     }
@@ -1757,39 +1891,105 @@ async function seedExistingImages() {
   });
 }
 
+// Shared category + service-slug options for gallery forms
+const GALLERY_CATEGORIES = ['Weddings','Ruracio','Corporate','Parties','Sound & Equipment','Behind the Scenes','Drone','General'];
+const SERVICE_SLUG_OPTIONS = [
+  { slug: '', label: '— None (not linked to a service) —' },
+  { slug: 'dj-mc-services',  label: 'DJ & MC Services' },
+  { slug: 'led-screens',     label: 'LED Screens' },
+  { slug: 'power-lighting',  label: 'Power & Lighting' },
+  { slug: 'pyrotechnics',    label: 'Pyrotechnics' },
+  { slug: 'photography',     label: 'Photography' },
+  { slug: 'live-streaming',  label: 'Live Streaming' },
+  { slug: '360-booth',       label: '360 Booth' },
+  { slug: 'drone-services',  label: 'Drone Services' },
+  { slug: 'public-address',  label: 'Public Address Systems' },
+];
+function galleryCategoryOptions(selected = '') {
+  return GALLERY_CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+}
+function galleryServiceOptions(selected = '') {
+  return SERVICE_SLUG_OPTIONS.map(o => `<option value="${o.slug}" ${o.slug === selected ? 'selected' : ''}>${o.label}</option>`).join('');
+}
+
 function openGalleryForm() {
     currentEditId = null;
     document.getElementById('modalTitle').textContent = 'Add Gallery Item';
     document.getElementById('modalForm').innerHTML = `
-        <div class="modal-header pb-3 border-b border-gray-700 mb-3"><p class="text-sm text-gray-400">📸 Upload Image or Video</p></div>
-        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required></div>
-        <div><label class="block text-sm mb-1">Category</label><select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option>Weddings</option><option>Ruracio</option><option>Corporate</option><option>Parties</option><option>Sound & Equipment</option><option>Audio</option><option>Visual</option><option>Media</option><option>Effects</option></select></div>
-        <div><label class="block text-sm mb-1">Type</label><select id="galleryType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option value="image">Image</option><option value="video">Video</option></select></div>
-        <div><label class="block text-sm mb-1">Select File *</label><input type="file" id="galleryFile" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/heic,image/heif,image/*,video/mp4,video/webm,video/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required><p class="text-xs text-gray-500 mt-1">Tap to open gallery, camera roll, or Files. JPG · PNG · WebP · HEIC · MP4 — images auto-compressed.</p></div>
+        <div class="pb-3 border-b border-gray-700 mb-3"><p class="text-sm text-gray-400">📸 Upload image or video — it appears on your website immediately after saving.</p></div>
+        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. Wedding — Mombasa Beach" required></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-sm mb-1">Category</label><select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions()}</select></div>
+          <div><label class="block text-sm mb-1">Type</label><select id="galleryType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option value="image">📷 Image</option><option value="video">🎬 Video</option></select></div>
+        </div>
+        <div><label class="block text-sm mb-1">Link to Service <span class="text-gray-500 font-normal text-xs">(optional — shows this photo on that service's page)</span></label><select id="galleryServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions()}</select></div>
+        <div><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="galleryFeatured" class="accent-yellow-400"> <span class="text-sm">⭐ Feature this item <span class="text-gray-500 font-normal text-xs">(pinned to the top of the gallery)</span></span></label></div>
+        <div><label class="block text-sm mb-1">Select File *</label><input type="file" id="galleryFile" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/heic,image/heif,image/*,video/mp4,video/webm,video/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required><p class="text-xs text-gray-500 mt-1">JPG · PNG · WebP · HEIC · MP4 — images auto-compressed to under 1MB.</p></div>
         <div id="previewArea" class="hidden bg-gray-800/50 rounded-lg p-4 text-center"><p class="text-sm text-gray-400 mb-2">Preview:</p><img id="imagePreview" class="mx-auto max-h-32 rounded-lg hidden"><video id="videoPreview" class="mx-auto max-h-32 rounded-lg hidden" controls></video></div>
-        <div id="uploadProgressArea" class="hidden"><div class="flex items-center gap-3"><div class="flex-1 bg-gray-700 rounded-full h-2"><div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width:0%"></div></div><span id="uploadPercent" class="text-xs text-gray-400">0%</span></div><p id="uploadStatusMsg" class="text-xs text-gray-400 mt-2 text-center">Processing file...</p></div>
+        <div id="uploadProgressArea" class="hidden"><div class="flex items-center gap-3"><div class="flex-1 bg-gray-700 rounded-full h-2"><div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width:0%"></div></div><span id="uploadPercent" class="text-xs text-gray-400">0%</span></div><p id="uploadStatusMsg" class="text-xs text-gray-400 mt-2 text-center">Processing file…</p></div>
     `;
-    
     const typeSelect = document.getElementById('galleryType');
-    const fileInput = document.getElementById('galleryFile');
+    const fileInput  = document.getElementById('galleryFile');
     const previewArea = document.getElementById('previewArea');
     const imagePreview = document.getElementById('imagePreview');
     const videoPreview = document.getElementById('videoPreview');
-    
     typeSelect?.addEventListener('change', () => { previewArea.classList.remove('hidden'); imagePreview.classList.add('hidden'); videoPreview.classList.add('hidden'); });
-    
     fileInput?.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            if (file.size > 50 * 1024 * 1024) { Swal.fire({ icon: 'error', title: 'File Too Large', text: 'Maximum file size is 50MB', background: '#1e1e2a', color: '#fff' }); fileInput.value = ''; return; }
-            const url = URL.createObjectURL(file);
-            previewArea.classList.remove('hidden');
-            if (typeSelect.value === 'image') { imagePreview.src = url; imagePreview.classList.remove('hidden'); videoPreview.classList.add('hidden'); }
-            else { videoPreview.src = url; videoPreview.classList.remove('hidden'); imagePreview.classList.add('hidden'); }
-        }
+        if (!file) return;
+        if (file.size > 50 * 1024 * 1024) { Swal.fire({ icon: 'error', title: 'File Too Large', text: 'Maximum 50MB.', background: '#1e1e2a', color: '#fff' }); fileInput.value = ''; return; }
+        const url = URL.createObjectURL(file);
+        previewArea.classList.remove('hidden');
+        if (typeSelect.value === 'image') { imagePreview.src = url; imagePreview.classList.remove('hidden'); videoPreview.classList.add('hidden'); }
+        else { videoPreview.src = url; videoPreview.classList.remove('hidden'); imagePreview.classList.add('hidden'); }
     });
-    
     document.getElementById('formModal').classList.remove('hidden');
+}
+
+// Edit an existing gallery item (title, category, service link, featured)
+function openGalleryEditForm(id) {
+    const item = store.gallery.find(i => i.id === id);
+    if (!item) return;
+    currentEditId = id;
+    document.getElementById('modalTitle').textContent = '✏️ Edit Gallery Item';
+    document.getElementById('modalForm').innerHTML = `
+        <div class="pb-3 border-b border-gray-700 mb-3"><p class="text-xs text-gray-500">Edit details — image cannot be replaced here. Delete and re-upload to change the image.</p></div>
+        <div class="mb-3 rounded-xl overflow-hidden" style="height:120px;background:#1a1a2e">
+          <img src="${escapeHtml(item.imageUrl)}" class="w-full h-full object-cover opacity-80">
+        </div>
+        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryEditTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(item.title)}" required></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-sm mb-1">Category</label><select id="galleryEditCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions(item.category || '')}</select></div>
+          <div><label class="block text-sm mb-1">Type</label><select id="galleryEditType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option value="image" ${item.type !== 'video' ? 'selected' : ''}>📷 Image</option><option value="video" ${item.type === 'video' ? 'selected' : ''}>🎬 Video</option></select></div>
+        </div>
+        <div><label class="block text-sm mb-1">Link to Service</label><select id="galleryEditServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions(item.serviceSlug || '')}</select></div>
+        <div><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="galleryEditFeatured" class="accent-yellow-400" ${item.isFeatured ? 'checked' : ''}> <span class="text-sm">⭐ Featured item <span class="text-gray-500 font-normal text-xs">(pinned to top of gallery)</span></span></label></div>
+    `;
+    document.getElementById('formModal').classList.remove('hidden');
+}
+
+async function saveGalleryEdit() {
+    const title      = document.getElementById('galleryEditTitle')?.value?.trim();
+    const category   = document.getElementById('galleryEditCategory')?.value;
+    const type       = document.getElementById('galleryEditType')?.value;
+    const serviceSlug = document.getElementById('galleryEditServiceSlug')?.value || null;
+    const isFeatured = document.getElementById('galleryEditFeatured')?.checked || false;
+    if (!title) { Swal.fire({ icon: 'error', title: 'Missing Title', background: '#1e1e2a', color: '#fff' }); return; }
+    const item = store.gallery.find(i => i.id === currentEditId);
+    if (!item) return;
+    const result = await apiRequest('PUT', `/api/admin/gallery/${currentEditId}`, { title, category, type, imageUrl: item.imageUrl, serviceSlug, isFeatured });
+    if (!result?.data) { Swal.fire({ icon: 'error', title: 'Save Failed', background: '#1e1e2a', color: '#fff' }); return; }
+    store.gallery = store.gallery.map(i => i.id === currentEditId ? result.data : i);
+    closeModal();
+    renderGallery();
+    Swal.fire({ icon: 'success', title: 'Updated!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+}
+
+async function toggleGalleryFeatured(id) {
+    const result = await apiRequest('PATCH', `/api/admin/gallery/${id}/feature`);
+    if (!result?.data) return;
+    store.gallery = store.gallery.map(i => i.id === id ? result.data : i);
+    renderGallery();
 }
 
 async function saveGalleryItem() {
@@ -1827,7 +2027,9 @@ async function saveGalleryItem() {
     if (progressBar) progressBar.style.width = '100%';
     if (percentSpan) percentSpan.textContent = '100%';
 
-    const result = await apiRequest('POST', '/api/admin/gallery', { title, category, type, imageUrl });
+    const serviceSlug = document.getElementById('galleryServiceSlug')?.value || null;
+    const isFeatured  = document.getElementById('galleryFeatured')?.checked || false;
+    const result = await apiRequest('POST', '/api/admin/gallery', { title, category, type, imageUrl, serviceSlug, isFeatured });
 
     if (progressArea) progressArea.classList.add('hidden');
     if (progressBar) progressBar.style.width = '0%';
@@ -2626,28 +2828,219 @@ function duplicateMarketingBanner(id) {
     }
 
     // ==================== TRAINING / ONBOARDING ====================
+    // ==================== UPDATES / CHANGELOG ====================
+    function renderUpdates() {
+      const container = document.getElementById('sectionContent');
+      if (!container) return;
+      const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
+      const read = getReadUpdates();
+      const unread = CHANGELOG.filter(c => !read.includes(c.version)).length;
+      const typeColor = { feature:'purple', fix:'yellow', launch:'green', improvement:'blue' };
+      const typeLabel = { feature:'New Feature', fix:'Bug Fix', launch:'Launch', improvement:'Improvement' };
+
+      const entries = CHANGELOG
+        .filter(c => c.affects.includes(role))
+        .map(c => {
+          const isRead = read.includes(c.version);
+          const tc = typeColor[c.type] || 'gray';
+          return `
+            <div class="bg-gray-900 border ${isRead ? 'border-gray-800' : 'border-purple-600/50'} rounded-2xl overflow-hidden transition-all">
+              <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-${tc}-900/30 border border-${tc}-700/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span class="text-${tc}-400 text-xs font-black">v${c.version}</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h3 class="font-bold text-white text-sm">${c.title}</h3>
+                      <span class="text-xs bg-${tc}-900/40 text-${tc}-300 px-2 py-0.5 rounded-full border border-${tc}-700/30">${typeLabel[c.type] || c.type}</span>
+                      ${!isRead ? '<span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">NEW</span>' : ''}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">${c.date}</p>
+                  </div>
+                </div>
+                ${!isRead ? `<button onclick="markUpdateRead('${c.version}')" class="flex-shrink-0 text-xs bg-purple-600/20 border border-purple-600/40 text-purple-300 px-3 py-1.5 rounded-lg hover:bg-purple-600/40 transition font-semibold">
+                  <i class="fas fa-check mr-1"></i>Acknowledge
+                </button>` : '<span class="flex-shrink-0 text-xs text-gray-600 flex items-center gap-1"><i class="fas fa-check-circle"></i> Read</span>'}
+              </div>
+              <div class="px-5 pb-4 border-t border-gray-800/60 pt-3">
+                <ul class="space-y-1.5">
+                  ${c.items.map(item => `<li class="flex items-start gap-2 text-xs text-gray-400"><i class="fas fa-circle text-${tc}-500 mt-1.5 flex-shrink-0" style="font-size:5px"></i>${item}</li>`).join('')}
+                </ul>
+              </div>
+            </div>`;
+        }).join('');
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-4">
+
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-purple-900/40 to-indigo-900/30 border border-purple-700/30 rounded-2xl p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-600/30">
+                  <i class="fas fa-rocket text-purple-400 text-xl"></i>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-white">System Updates</h2>
+                  <p class="text-sm text-gray-400 mt-0.5">Every change made to your website — features, fixes, and improvements.</p>
+                  ${unread > 0 ? `<p class="text-xs text-purple-300 mt-1 font-semibold"><i class="fas fa-bell mr-1"></i>${unread} new update${unread > 1 ? 's' : ''} to review</p>` : '<p class="text-xs text-green-400 mt-1"><i class="fas fa-check-circle mr-1"></i>All caught up!</p>'}
+                </div>
+              </div>
+              ${unread > 0 ? `<button onclick="markAllUpdatesRead()" class="flex-shrink-0 text-sm bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition font-semibold"><i class="fas fa-check-double mr-1.5"></i>Acknowledge All</button>` : ''}
+            </div>
+          </div>
+
+          <!-- Why this matters -->
+          <div class="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex gap-4">
+            <i class="fas fa-info-circle text-blue-400 mt-0.5 flex-shrink-0"></i>
+            <div class="text-xs text-gray-400 leading-relaxed">
+              <strong class="text-white">Why acknowledge updates?</strong> Acknowledging keeps a record of what you've reviewed and helps the developer track which changes are live and accepted. It also gives you a clear picture of how the system has grown over time — your own company's product roadmap.
+            </div>
+          </div>
+
+          <!-- Changelog entries -->
+          ${entries}
+
+          <!-- Developer note -->
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
+            <i class="fas fa-code text-gray-600 text-2xl mb-3 block"></i>
+            <p class="text-xs text-gray-500 leading-relaxed">
+              Built by <strong class="text-gray-400">Mahatma Dev</strong> · Every update here represents real growth in the system's capabilities.<br>
+              Questions or requests? Contact the developer with specifics — the faster the feedback, the faster improvements ship.
+            </p>
+          </div>
+
+        </div>`;
+    }
+
+    // ==================== BETA FEATURES TAB ====================
+    function renderBeta() {
+      const container = document.getElementById('sectionContent');
+      if (!container) return;
+      const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
+      const isAdmin = role === 'admin';
+
+      const statusCfg = {
+        active:       { label:'Active',       color:'green',  icon:'fa-check-circle',  desc:'Live on the website now.' },
+        experimental: { label:'Experimental', color:'orange', icon:'fa-flask',         desc:'Works but needs setup or may have rough edges.' },
+        beta:         { label:'Beta',         color:'purple', icon:'fa-vial',          desc:'Deployed but may change. Feedback welcome.' },
+        planned:      { label:'Coming Soon',  color:'gray',   icon:'fa-clock',         desc:'Not yet built. On the roadmap.' },
+      };
+
+      const visibleFeatures = BETA_FEATURES.filter(f => isAdmin || !f.adminOnly);
+
+      const cards = visibleFeatures.map(f => {
+        const sc = statusCfg[f.status] || statusCfg.planned;
+        const canToggle = f.status === 'beta' || f.status === 'experimental';
+        const isOn = isBetaEnabled(f.id);
+        return `
+          <div class="bg-gray-900 border ${f.status === 'planned' ? 'border-gray-800' : isOn ? 'border-' + sc.color + '-600/50' : f.border} rounded-2xl p-5 ${f.status === 'planned' ? 'opacity-60' : ''}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3 flex-1">
+                <div class="w-10 h-10 ${f.bg} border ${f.border} rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i class="fas ${f.icon} ${f.color}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-bold text-white text-sm">${f.name}</h3>
+                    ${f.adminOnly ? '<span class="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">Admin only</span>' : ''}
+                  </div>
+                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                    <span class="inline-flex items-center gap-1 text-xs text-${sc.color}-400 bg-${sc.color}-900/20 border border-${sc.color}-700/30 px-2 py-0.5 rounded-full font-semibold">
+                      <i class="fas ${sc.icon}" style="font-size:9px"></i>${sc.label}
+                    </span>
+                    <span class="text-xs text-gray-600">${f.affects}</span>
+                    ${f.since ? `<span class="text-xs text-gray-700">since v${f.since}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              ${canToggle ? `
+                <button onclick="toggleBetaFeature('${f.id}')"
+                  class="flex-shrink-0 w-11 h-6 rounded-full border transition-all duration-200 relative ${isOn ? 'bg-purple-600 border-purple-500' : 'bg-gray-700 border-gray-600'}"
+                  title="${isOn ? 'Disable' : 'Enable'} this feature">
+                  <span class="absolute top-0.5 ${isOn ? 'right-0.5' : 'left-0.5'} w-5 h-5 bg-white rounded-full shadow transition-all duration-200"></span>
+                </button>` : `
+                <span class="flex-shrink-0 text-xs text-${sc.color}-400 font-semibold"><i class="fas ${sc.icon}"></i></span>`}
+            </div>
+            <p class="text-xs text-gray-400 leading-relaxed mt-3">${f.desc}</p>
+            ${f.setupNote ? `<div class="mt-3 bg-orange-900/15 border border-orange-700/25 rounded-xl p-3 text-xs text-orange-300 leading-relaxed"><i class="fas fa-wrench mr-1.5"></i><strong>Setup required:</strong> ${f.setupNote}</div>` : ''}
+          </div>`;
+      }).join('');
+
+      const activeCount  = visibleFeatures.filter(f => f.status === 'active').length;
+      const expCount     = visibleFeatures.filter(f => f.status === 'experimental').length;
+      const plannedCount = visibleFeatures.filter(f => f.status === 'planned').length;
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-4">
+
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-indigo-900/40 to-purple-900/30 border border-indigo-700/30 rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-600/30">
+                <i class="fas fa-flask text-indigo-400 text-xl"></i>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-bold text-white">Beta Features</h2>
+                <p class="text-sm text-gray-400 mt-0.5">Features being tested before full release. Some are already live — others are coming soon.</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <span class="text-xs bg-green-900/30 text-green-300 px-3 py-1 rounded-full border border-green-700/30"><i class="fas fa-check-circle mr-1"></i>${activeCount} Active</span>
+                  ${expCount > 0 ? `<span class="text-xs bg-orange-900/30 text-orange-300 px-3 py-1 rounded-full border border-orange-700/30"><i class="fas fa-flask mr-1"></i>${expCount} Experimental</span>` : ''}
+                  <span class="text-xs bg-gray-700/50 text-gray-400 px-3 py-1 rounded-full border border-gray-600/30"><i class="fas fa-clock mr-1"></i>${plannedCount} Planned</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disclaimer -->
+          <div class="bg-yellow-900/10 border border-yellow-700/20 rounded-xl px-5 py-3 flex gap-3">
+            <i class="fas fa-exclamation-triangle text-yellow-500 mt-0.5 flex-shrink-0 text-sm"></i>
+            <p class="text-xs text-yellow-300/80 leading-relaxed">
+              <strong>Beta disclaimer:</strong> Features marked <em>Experimental</em> or <em>Beta</em> may behave unexpectedly. They are available for preview before full production release. If something breaks, open the Updates tab or contact the developer.
+            </p>
+          </div>
+
+          <!-- Feature cards -->
+          ${cards}
+
+          <!-- Feedback -->
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
+            <i class="fas fa-comments text-purple-400 text-2xl mb-3 block"></i>
+            <p class="text-sm font-semibold text-white mb-1">Have a feature idea?</p>
+            <p class="text-xs text-gray-500 mb-4 max-w-md mx-auto">Your feedback directly shapes what gets built next. Send specifics — what would save you time, what's missing, what would help you close more bookings.</p>
+            <a href="https://wa.me/254703925826?text=Feature%20request%20for%20Lawie%20Sounds%20dashboard:" target="_blank"
+              class="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
+              <i class="fab fa-whatsapp"></i> Send Feedback
+            </a>
+          </div>
+
+        </div>`;
+    }
+
     function renderTraining() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
 
       const guides = [
         {
-          id: 'gallery', icon: 'fa-images', color: 'text-blue-400', bg: 'bg-blue-900/20', border: 'border-blue-700/30', label: 'Gallery',
-          intro: 'Your gallery is the portfolio that clients browse before booking. Keep it fresh — upload photos after every event.',
+          id: 'gallery', icon: 'fa-images', color: 'text-blue-400', bg: 'bg-blue-900/20', border: 'border-blue-700/30', label: 'Gallery — Upload & Manage',
+          intro: 'Your gallery is the portfolio clients browse before booking. Keep it fresh — upload photos after every event. New: star photos to feature them prominently.',
           steps: [
             { n:1, title:'Open the Gallery tab', body:'Click <strong>🖼️ Gallery</strong> in the top navigation bar.' },
-            { n:2, title:'Import your existing photos (first time)', body:'Click <strong>Import Existing Photos</strong> — this adds all 45 photos already in your service library with one click. Done in about 30 seconds.' },
-            { n:3, title:'Upload a new photo or video', body:'Click <strong>Upload New</strong>. Choose your file from your phone, camera roll, or computer. Images are automatically compressed so they load fast on the website.' },
-            { n:4, title:'Fill in the title and category', body:'Give the photo a clear title like <em>"Corporate Event — Nairobi 2025"</em>. Choose the right category (Weddings, Corporate, Equipment, etc.) so visitors can filter.' },
-            { n:5, title:'Save — it\'s live immediately', body:'Click <strong>Save</strong>. The photo appears on your website\'s gallery page within seconds. No waiting, no developer needed.' },
-            { n:6, title:'Remove old or blurry photos', body:'Find the photo and click <strong>Remove</strong>. It disappears from the website instantly.' },
+            { n:2, title:'Upload a new photo', body:'Click <strong>Upload New</strong>. Choose your file from your phone or computer. Images are automatically compressed so they load fast.' },
+            { n:3, title:'Fill in title and category', body:'Give the photo a clear title (e.g. <em>"Ruracio — Itara Hills 2026"</em>). Choose the right category: Weddings, Ruracio, Corporate, Parties, Sound & Equipment, Behind the Scenes, Drone, or General.' },
+            { n:4, title:'Link to a service (optional but powerful)', body:'Use the <strong>Service</strong> dropdown to tag which service the photo belongs to (e.g. "Drone Services"). Tagged photos appear inside the service detail page automatically, giving clients real evidence of your work.' },
+            { n:5, title:'Star a photo as Featured ⭐', body:'Toggle the <strong>Featured ⭐</strong> checkbox. Featured photos appear in the <em>Staff Picks</em> spotlight grid at the very top of your public gallery — the first thing visitors see. Use this for your absolute best shots.' },
+            { n:6, title:'Save — live immediately', body:'Click <strong>Save</strong>. The photo appears on your website within seconds.' },
+            { n:7, title:'Edit or remove later', body:'Each gallery card has an <strong>Edit</strong> button to change title/category/service/featured, a <strong>⭐ star button</strong> to toggle featured instantly, and a <strong>Delete</strong> button to remove permanently.' },
           ],
           sections: [
-            { label:'🆕 Fresh Uploads', desc:'Photos added in the last 30 days — your newest content.' },
-            { label:'📸 Recent Work', desc:'31–90 days old — shows your recent event history.' },
-            { label:'🗂️ Archive', desc:'Older uploads — still visible on the website unless deleted.' },
+            { label:'⭐ Staff Picks', desc:'Photos you\'ve starred as Featured. These appear in a spotlight grid at the top of the public gallery page. Aim for 4–6 of your very best shots.' },
+            { label:'🔗 Service-Tagged', desc:'Photos linked to a specific service. They appear automatically on that service\'s detail page alongside packages and reviews.' },
+            { label:'📂 All Photos', desc:'Your full gallery by category — Weddings, Ruracio, Corporate, Drone, etc. Visitors can filter by category.' },
           ],
-          tips: ['Upload at least 3–5 photos after every event.', 'Use landscape (horizontal) photos — they look better in the gallery grid.', 'Delete blurry, dark, or duplicate photos to keep the gallery looking professional.', 'Add a mix: crowd shots, equipment setups, DJ booth, and venue wide shots.']
+          tips: ['Star your best 4–6 photos — they become the "first impression" spotlight on the gallery page.', 'After a drone shoot, tag all aerial shots to "Drone Services" — they\'ll appear on the service page automatically.', 'Upload at least 3 photos after every event, same day if possible — fresh content drives bookings.', 'Use the Edit button to change category/service — you never need to delete and re-upload.']
         },
         {
           id: 'services', icon: 'fa-headphones', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-700/30', label: 'Services',
@@ -2707,6 +3100,29 @@ function duplicateMarketingBanner(id) {
             { n:4, title:'Upload a promotional poster', body:'Click <strong>🖼️ Posters</strong> → upload a designed poster image (from Canva or similar). Set an order number to control which appears first.' },
           ],
           tips: ['Change your banner at least once a month to keep the site feeling fresh.', 'Seasonal banners (Christmas, New Year, Valentine\'s) get much higher engagement.', 'Use Canva (free) to design professional posters — export at 1200×628px for best quality.']
+        },
+        {
+          id: 'updates', icon: 'fa-rocket', color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-700/30', label: 'Updates & Changelog',
+          intro: 'The Updates tab shows every change, fix, and new feature added to your system — and lets you acknowledge that you\'ve reviewed them.',
+          steps: [
+            { n:1, title:'Open the Updates tab', body:'Click <strong>🚀 Updates</strong> in the navigation. A purple badge shows how many updates you haven\'t reviewed yet.' },
+            { n:2, title:'Read what changed', body:'Each entry shows the version number, release date, and a bullet list of what was added or fixed.' },
+            { n:3, title:'Acknowledge the update', body:'Click <strong>Acknowledge</strong> on each update you\'ve read. This marks it as reviewed — the badge count decreases. It also signals to the developer that the change is accepted and live.' },
+            { n:4, title:'Acknowledge All at once', body:'Use the <strong>Acknowledge All</strong> button at the top to clear all pending updates in one click.' },
+          ],
+          tips: ['Check the Updates tab weekly — it shows your system growing over time.', 'Acknowledging updates is your confirmation that you\'ve seen what changed. It helps the developer know what\'s understood and accepted.', 'If an update broke something, note the version number when contacting the developer — it speeds up diagnosis.']
+        },
+        {
+          id: 'beta', icon: 'fa-flask', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-700/30', label: 'Beta Features',
+          intro: 'The Beta tab is your preview window — features being tested before full release, features that need setup, and what\'s being built next.',
+          steps: [
+            { n:1, title:'Open the Beta tab', body:'Click <strong>🧪 Beta</strong> in the navigation bar.' },
+            { n:2, title:'Read the status labels', body:'Each feature shows a status: <strong>Active</strong> (live now), <strong>Experimental</strong> (works but needs setup), or <strong>Coming Soon</strong> (on the roadmap).' },
+            { n:3, title:'Enable an Experimental feature', body:'Features with a toggle switch can be turned on or off. Your preference is saved on this device. Toggling won\'t break anything — you can always turn it back off.' },
+            { n:4, title:'Set up WhatsApp Alerts', body:'If you want instant WhatsApp notifications for new bookings, follow the setup note on the <em>WhatsApp Booking Alerts</em> card. Takes 2 minutes and requires no code.' },
+            { n:5, title:'Send feature feedback', body:'Use the <strong>Send Feedback</strong> button to WhatsApp the developer. The more specific your request, the faster it can be built.' },
+          ],
+          tips: ['Active features are already live on your website — no action needed.', 'Experimental features are safe to try — they won\'t crash the site.', 'Planned features show what\'s being worked on. Your feedback can move them up the priority list.']
         },
       ];
 
@@ -2776,10 +3192,13 @@ function duplicateMarketingBanner(id) {
             <p class="text-sm font-bold text-white mb-3">🚀 Quick Reference — What to Do After Every Event</p>
             <div class="grid sm:grid-cols-2 gap-2">
               ${[
-                { icon:'fa-upload', color:'text-blue-400', text:'Upload 3–10 gallery photos' },
-                { icon:'fa-star',   color:'text-yellow-400', text:'Check for new client reviews to approve' },
+                { icon:'fa-upload',         color:'text-blue-400',   text:'Upload 3–10 gallery photos' },
+                { icon:'fa-star',           color:'text-yellow-400', text:'Star your best 4–6 photos as Featured ⭐' },
+                { icon:'fa-link',           color:'text-indigo-400', text:'Tag photos to the right service' },
                 { icon:'fa-clipboard-list', color:'text-purple-400', text:'Respond to any pending bookings' },
-                { icon:'fa-bullhorn', color:'text-pink-400', text:'Update your marketing banner if needed' },
+                { icon:'fa-comment-dots',   color:'text-orange-400', text:'Approve any new client reviews' },
+                { icon:'fa-bullhorn',       color:'text-pink-400',   text:'Update your marketing banner if needed' },
+                { icon:'fa-rocket',         color:'text-green-400',  text:'Check Updates tab — acknowledge new changes' },
               ].map(q => `
                 <div class="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl text-sm">
                   <i class="fas ${q.icon} ${q.color}"></i>
@@ -3064,7 +3483,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
 
     // ==================== SWITCH TAB & CLOSE MODAL ====================
-    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') renderPosters(); else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); }
+    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') renderPosters(); else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); else if (tab === 'beta') renderBeta(); else if (tab === 'updates') renderUpdates(); }
     function closeModal() { document.getElementById('formModal').classList.add('hidden'); currentEditId = null; }
     function logout() { localStorage.removeItem('lawie_admin_session'); sessionStorage.removeItem('lawie_admin_session'); window.location.href = 'login.html?logout=1'; }
 
@@ -3085,9 +3504,10 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
       await loadAllDataFromAPI();
       updateStats();
       const urlTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['dashboard','events','services','gallery','reviews','marketing','posters','bookings','employees','payroll','analytics','training'];
+      const validTabs = ['dashboard','events','services','gallery','reviews','marketing','posters','bookings','employees','payroll','analytics','training','beta','updates'];
       switchTab(validTabs.includes(urlTab) ? urlTab : 'dashboard');
       updateNotifBadge();
+      updateBadge();
       startAutoRefresh();
       document.getElementById('notifBtn')?.addEventListener('click', () => switchTab('bookings'));
 
@@ -3104,6 +3524,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
           if (document.getElementById('posterTitle')) savePoster();
           else if (document.getElementById('eventTitle')) saveEvent();
           else if (document.getElementById('galleryTitle')) saveGalleryItem();
+          else if (document.getElementById('galleryEditTitle')) saveGalleryEdit();
           else if (document.getElementById('bannerMessage')) saveMarketingBanner();
           else if (document.getElementById('empName')) saveEmployee();
           else if (document.getElementById('payrollEmployee')) savePayroll();
@@ -3119,7 +3540,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.deleteGalleryItem = deleteGalleryItem; window.approveReview = approveReview; window.deleteReview = deleteReview; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.seedExistingImages = seedExistingImages; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.toggleGalleryFeatured = toggleGalleryFeatured; window.deleteGalleryItem = deleteGalleryItem; window.approveReview = approveReview; window.deleteReview = deleteReview; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.seedExistingImages = seedExistingImages; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts;
   </script>
 </body>
 </html>

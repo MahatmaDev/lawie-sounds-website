@@ -453,6 +453,8 @@
       'Ruracio':           '🎎',
       'Corporate':         '🏢',
       'Parties':           '🎉',
+      'Behind the Scenes': '🎬',
+      'Drone':             '🚁',
       'General':           '📸',
     };
     function catEmoji(cat) { return CAT_EMOJI[cat] || '📸'; }
@@ -495,7 +497,7 @@
       { id:'lf34', title:'Corporate Event 6',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/6.jpg' },
     ];
 
-    // ── Fetch from API, fallback to LOCAL_FALLBACK if DB is empty ──
+    // ── Fetch from API (featured items sorted first), fallback to LOCAL_FALLBACK if DB is empty ──
     async function fetchGallery() {
       try {
         const res  = await fetch('/api/gallery');
@@ -557,7 +559,55 @@
 
       const cats = currentFilter === 'all' ? getCategories(allItems) : [currentFilter];
 
-      content.innerHTML = cats.map(cat => {
+      // ── Featured spotlight (only when showing all, only if any are starred) ──
+      let featuredHtml = '';
+      if (currentFilter === 'all') {
+        const starred = allItems.filter(i => i.isFeatured || i.is_featured).filter(i => i.type !== 'video');
+        if (starred.length >= 2) {
+          const hero = starred[0];
+          const rest = starred.slice(1, 4);
+
+          const heroCard = `
+            <a href="${hero.imageUrl}" class="gallery-card block rounded-xl overflow-hidden h-full" style="min-height:260px">
+              <img src="${hero.imageUrl}" alt="${hero.title || 'Featured'}" loading="lazy"
+                onerror="this.closest('a').style.display='none'"
+                style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.4,0,.2,1)">
+              <div class="card-overlay">
+                ${hero.serviceSlug ? `<span style="font-size:10px;background:rgba(250,204,21,0.9);color:#000;padding:2px 7px;border-radius:999px;font-weight:700;margin-bottom:4px;display:inline-block">${hero.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>` : ''}
+                <p>${hero.title || 'Featured Moment'}</p>
+                <span>${hero.category || ''}</span>
+              </div>
+            </a>`;
+
+          const sideCards = rest.map(item => `
+            <a href="${item.imageUrl}" class="gallery-card block rounded-xl overflow-hidden" style="flex:1;min-height:120px">
+              <img src="${item.imageUrl}" alt="${item.title || 'Featured'}" loading="lazy"
+                onerror="this.closest('a').style.display='none'"
+                style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.4,0,.2,1)">
+              <div class="card-overlay">
+                ${item.serviceSlug ? `<span style="font-size:10px;background:rgba(250,204,21,0.9);color:#000;padding:2px 7px;border-radius:999px;font-weight:700;margin-bottom:3px;display:inline-block">${item.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>` : ''}
+                <p style="font-size:11px">${item.title || ''}</p>
+              </div>
+            </a>`).join('');
+
+          featuredHtml = `
+            <section class="reveal mb-16" id="featuredSpotlight">
+              <div class="flex items-center justify-between mb-5">
+                <h2 class="section-heading" style="margin-bottom:0">
+                  ⭐ Staff Picks
+                  <span style="font-size:.8rem;font-weight:500;color:rgba(255,255,255,0.3)">${starred.length} featured</span>
+                </h2>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;height:340px"
+                   class="lg-featured-grid">
+                <div style="height:100%">${heroCard}</div>
+                <div style="display:flex;flex-direction:column;gap:10px;height:100%">${sideCards}</div>
+              </div>
+            </section>`;
+        }
+      }
+
+      content.innerHTML = featuredHtml + cats.map(cat => {
         const items    = filtered.filter(i => (i.category || 'General') === cat);
         if (!items.length) return '';
         const imgItems = items.filter(i => i.type !== 'video');
@@ -574,8 +624,9 @@
                 <a href="${item.imageUrl}" class="masonry-item gallery-card">
                   <img src="${item.imageUrl}" alt="${item.title || cat}" loading="lazy" onerror="this.closest('a').style.display='none'">
                   <div class="card-overlay">
+                    ${(item.isFeatured || item.is_featured) ? `<span style="font-size:10px;color:var(--yellow);margin-bottom:3px;display:block">⭐ Featured</span>` : ''}
                     <p>${item.title || cat}</p>
-                    <span>${cat}</span>
+                    <span>${cat}${item.serviceSlug ? ' · ' + item.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : ''}</span>
                   </div>
                 </a>
               `).join('')}
@@ -596,6 +647,18 @@
       }).join('');
 
       content.classList.remove('hidden');
+
+      // Init lightGallery on featured spotlight grid
+      const lgFeatEl = document.querySelector('#featuredSpotlight');
+      if (lgFeatEl && typeof lightGallery !== 'undefined') {
+        const lgFeatInstance = lightGallery(lgFeatEl, {
+          selector: 'a.gallery-card',
+          plugins: [lgZoom, lgThumbnail],
+          speed: 380, thumbnail: true, zoom: true, download: false, counter: true,
+          mobileSettings: { controls: true, showCloseIcon: true, download: false }
+        });
+        lgInstances.push(lgFeatInstance);
+      }
 
       // Init lightGallery on each image grid
       cats.forEach(cat => {

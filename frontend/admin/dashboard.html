@@ -1228,7 +1228,16 @@
 
       document.getElementById('modalTitle').innerHTML = id ? '✏️ Edit Service' : '➕ Add New Service';
       document.getElementById('modalForm').innerHTML = `
-        <div class="tabs flex gap-2 border-b border-gray-700 mb-4"><button class="tab-service active px-3 py-1 text-sm" data-tab="basic">Basic</button><button class="tab-service px-3 py-1 text-sm" data-tab="packages">💰 Packages</button><button class="tab-service px-3 py-1 text-sm" data-tab="features">✨ Features</button><button class="tab-service px-3 py-1 text-sm" data-tab="faqs">❓ FAQs</button></div>
+        <div class="tabs flex gap-2 border-b border-gray-700 mb-4">
+          <button class="tab-service active px-3 py-1 text-sm" data-tab="basic">Basic</button>
+          ${id ? `
+          <button class="tab-service px-3 py-1 text-sm" data-tab="packages">💰 Packages</button>
+          <button class="tab-service px-3 py-1 text-sm" data-tab="features">✨ Features</button>
+          <button class="tab-service px-3 py-1 text-sm" data-tab="faqs">❓ FAQs</button>
+          ` : `
+          <span class="px-3 py-1 text-xs text-gray-600 self-center italic">Save service first to add packages, features &amp; FAQs</span>
+          `}
+        </div>
 
         <div id="tabBasic" class="tab-service-content active space-y-3">
           <div><label class="block text-sm mb-1">Service Name *</label><input type="text" id="serviceName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(service?.name || '')}" required></div>
@@ -1581,6 +1590,7 @@
 
       const features = featuresText.split('\n').filter(f => f.trim());
       const service = store.services.find(s => s.id === currentEditId);
+      if (!service) { Swal.fire({ icon: 'error', title: 'Save the service first', text: 'Please save the service before adding packages.', background: '#1e1e2a', color: '#fff' }); return; }
 
       if (!service.packages) service.packages = [];
 

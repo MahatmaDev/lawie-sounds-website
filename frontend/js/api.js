@@ -4,8 +4,8 @@
 
 // ==================== CONFIGURATION ====================
 const API_CONFIG = {
-    baseURL: 'http://localhost:5000/api/admin',  // Change to production URL when deploying
-    timeout: 30000, // 30 seconds
+    baseURL: '/api/admin',
+    timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000
 };
@@ -414,7 +414,7 @@ const MarketingAPI = {
 const AuthAPI = {
     // Admin login
     async login(username, password) {
-        const url = `${API_CONFIG.baseURL}/auth/login`;
+        const url = `/api/admin/auth/login`;
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -3,9 +3,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
 require('dotenv').config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'lawie-sounds-dev-secret-CHANGE-IN-PRODUCTION';
 
 const app = express();
 
@@ -15,22 +18,24 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false 
 // HTTP request logging
 app.use(morgan('combined'));
 
-// CORS — allow Vercel deployments + localhost dev
+// CORS — allow production domain + localhost dev
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL, // e.g. https://lawie-sounds-website.vercel.app
+  'http://localhost:3000',
+  'http://127.0.0.1:5500',
+  'https://127.0.0.1:5500',
+].filter(Boolean);
+
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // server-to-server / same-origin
-    if (
-      origin.endsWith('.vercel.app') ||
-      origin === 'http://localhost:3000' ||
-      origin === 'http://127.0.0.1:5500' ||
-      origin === 'https://127.0.0.1:5500'
-    ) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.options('*', cors()); // handle preflight for all routes
+app.options(/.*/, cors()); // handle preflight for all routes (Express 5 regex syntax)
 
 app.use(express.json({ limit: '20mb' })); // support base64 image uploads
 
@@ -51,12 +56,11 @@ function adminAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const decoded = JSON.parse(Buffer.from(auth.split(' ')[1], 'base64').toString());
-    const expiry = decoded.expires || decoded.exp;
-    if (!expiry || expiry < Date.now()) return res.status(401).json({ error: 'Session expired' });
+    const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
     req.admin = decoded;
     next();
-  } catch {
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'Session expired' });
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
@@ -249,9 +253,9 @@ app.post('/api/admin/auth/login', (req, res) => {
 
   if (role) {
     const name    = role === 'admin' ? 'Administrator' : 'Website Manager';
-    const session = { id: role === 'admin' ? 1 : 2, username, name, role, loginTime: Date.now(), expires: Date.now() + 7 * 24 * 60 * 60 * 1000 };
-    const token   = Buffer.from(JSON.stringify(session)).toString('base64');
-    res.json({ success: true, token, user: { id: session.id, name, role } });
+    const payload = { id: role === 'admin' ? 1 : 2, username, name, role, loginTime: Date.now() };
+    const token   = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ success: true, token, user: { id: payload.id, name, role } });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -360,6 +364,11 @@ app.post('/api/admin/banners', adminAuth, async (req, res) => {
   if (error) return handleError(res, error);
   res.status(201).json({ success: true, data: map.banner(data) });
 });
+app.put('/api/admin/banners/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('marketing_banners').update(toBannerDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.banner(data) });
+});
 app.patch('/api/admin/banners/:id/toggle', adminAuth, async (req, res) => {
   const { data: cur } = await supabase.from('marketing_banners').select('is_active').eq('id', req.params.id).single();
   const { data, error } = await supabase.from('marketing_banners').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
@@ -412,6 +421,18 @@ app.patch('/api/admin/bookings/:id/status', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('bookings').update({ status: req.body.status }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.booking(data) });
+});
+app.patch('/api/admin/bookings/:id/notes', adminAuth, async (req, res) => {
+  const { notes } = req.body;
+  if (notes === undefined) return res.status(400).json({ error: 'notes field is required' });
+  const { data, error } = await supabase.from('bookings').update({ notes }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.booking(data) });
+});
+app.delete('/api/admin/bookings/:id', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('bookings').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
 });
 
 // ==================== ADMIN — EMPLOYEES ====================

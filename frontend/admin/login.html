@@ -322,10 +322,28 @@
       Swal.fire({ ...SWAL_DEFAULTS, title: 'Reset Password', text: 'Contact the system administrator to reset your password.' });
     }
 
-    // Clear any existing session on login page load
-    localStorage.removeItem('lawie_admin_session');
-    sessionStorage.removeItem('lawie_admin_session');
-    deleteCookie('lawie_admin_session');
+    // If already logged in, skip to dashboard
+    (function () {
+      const stored = localStorage.getItem('lawie_admin_session') || sessionStorage.getItem('lawie_admin_session');
+      if (stored) {
+        try {
+          const parts = stored.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload.exp && payload.exp * 1000 > Date.now()) {
+              window.location.replace('dashboard.html');
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+      // Clear stale/invalid session only on explicit logout or expired token
+      if (new URLSearchParams(location.search).get('logout') === '1') {
+        localStorage.removeItem('lawie_admin_session');
+        sessionStorage.removeItem('lawie_admin_session');
+        deleteCookie('lawie_admin_session');
+      }
+    })();
 
     // Load remembered username
     const rememberedUser = localStorage.getItem('lawie_remembered_user');

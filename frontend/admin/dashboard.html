@@ -1015,6 +1015,25 @@
       }).length;
     }
 
+    function _svcPriceRange(svc) {
+      const prices = (svc.packages || []).map(p => parseInt(p.price) || 0).filter(p => p > 0);
+      if (!prices.length) return null;
+      const min = Math.min(...prices), max = Math.max(...prices);
+      const fmt = n => n >= 1000 ? (n / 1000).toFixed(0) + 'K' : n.toString();
+      return min === max ? `KES ${fmt(min)}` : `KES ${fmt(min)} – ${fmt(max)}`;
+    }
+
+    function _svcCompleteness(svc) {
+      let s = 0;
+      if (svc.mainImage && !svc.mainImage.includes('placehold')) s += 25;
+      if (svc.shortDesc) s += 10;
+      if (svc.longDesc)  s += 10;
+      if ((svc.packages  || []).length) s += 25;
+      if ((svc.features  || []).length) s += 15;
+      if ((svc.faqs      || []).length) s += 15;
+      return s;
+    }
+
     function renderServices() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
@@ -1102,86 +1121,125 @@
         <!-- Services Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           ${filtered.map(s => {
-            const isActive  = s.isActive !== false;
-            const hasImg    = !!(s.mainImage);
-            const pkgCount  = (s.packages  || []).length;
-            const featCount = (s.features   || []).length;
-            const demand    = s.demand;
-            const demandPct = Math.min(100, demand * 20); // bar width
-            const incomplete = !hasImg || pkgCount === 0;
-            const hint = !hasImg
-              ? 'Add a service image — clients are 3× more likely to enquire when they can see the equipment.'
-              : 'Add pricing packages — most clients want to know costs before reaching out.';
+            const isActive   = s.isActive !== false;
+            const hasImg     = !!(s.mainImage && !s.mainImage.includes('placehold'));
+            const pkgCount   = (s.packages  || []).length;
+            const featCount  = (s.features  || []).length;
+            const faqCount   = (s.faqs      || []).length;
+            const demand     = s.demand;
+            const demandPct  = Math.min(100, demand * 20);
+            const priceRange = _svcPriceRange(s);
+            const complete   = _svcCompleteness(s);
+            const completeColor = complete >= 80 ? 'bg-green-500' : complete >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+            const missingImg = !hasImg;
+            const missingPkg = pkgCount === 0;
+            const hint = missingImg
+              ? '📸 Add a cover image — clients are 3× more likely to enquire.'
+              : missingPkg
+                ? '💰 Add pricing packages — clients want to know costs upfront.'
+                : null;
             return `
-            <div class="bg-gray-900 rounded-2xl border ${isActive ? 'border-gray-700 hover:border-purple-500' : 'border-gray-800 hover:border-yellow-600/50'} overflow-hidden transition group flex flex-col">
+            <div class="bg-gray-900 rounded-2xl border ${isActive ? 'border-gray-700/60 hover:border-purple-500/70' : 'border-gray-800 hover:border-yellow-600/40'} overflow-hidden transition-all duration-200 group flex flex-col shadow-lg">
+
               <!-- Image hero -->
-              <div class="relative h-40 bg-gray-800 overflow-hidden">
+              <div class="relative h-44 bg-gray-800 overflow-hidden">
                 ${hasImg
-                  ? `<img src="${escapeHtml(s.mainImage)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')"><div class="hidden w-full h-full flex flex-col items-center justify-center text-gray-600 absolute inset-0"><i class='fas fa-image text-3xl mb-1'></i><p class='text-xs'>Image unavailable</p></div>`
-                  : `<div class="w-full h-full flex flex-col items-center justify-center text-gray-600"><i class="fas fa-image text-3xl mb-1"></i><p class="text-xs">No image</p></div>`}
-                <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent"></div>
+                  ? `<img src="${escapeHtml(s.mainImage)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
+                     <div class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-600 bg-gray-800"><i class='fas fa-image text-3xl mb-1'></i><p class='text-xs'>Image unavailable</p></div>`
+                  : `<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                       <i class="fas fa-${s.icon || 'star'} text-4xl text-gray-600 mb-2"></i>
+                       <p class="text-xs text-gray-600">No cover image</p>
+                     </div>`}
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent pointer-events-none"></div>
+
                 <!-- Live / Draft badge -->
-                <div class="absolute top-2 left-2">
+                <div class="absolute top-3 left-3">
                   ${isActive
-                    ? `<span class="flex items-center gap-1 bg-green-600/90 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>LIVE</span>`
-                    : `<span class="bg-yellow-600/90 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">DRAFT</span>`}
+                    ? `<span class="flex items-center gap-1.5 bg-green-600/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>LIVE</span>`
+                    : `<span class="bg-yellow-600/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">DRAFT</span>`}
                 </div>
-                <!-- Category -->
-                <div class="absolute top-2 right-2">
-                  <span class="bg-black/50 text-gray-300 text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">${escapeHtml(s.category || 'General')}</span>
+
+                <!-- Category + Icon -->
+                <div class="absolute top-3 right-3">
+                  <span class="bg-black/60 backdrop-blur-sm text-gray-300 text-xs px-2.5 py-1 rounded-full">
+                    <i class="fas ${escapeHtml(s.icon || 'fa-star')} mr-1 text-purple-400"></i>${escapeHtml(s.category || 'General')}
+                  </span>
                 </div>
-                <!-- Demand badge -->
-                ${demand > 0 ? `<div class="absolute bottom-2 right-2"><span class="bg-orange-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">${demand} booking${demand !== 1 ? 's' : ''}</span></div>` : ''}
+
+                <!-- Demand badge (bottom right) -->
+                ${demand > 0 ? `<div class="absolute bottom-3 right-3"><span class="bg-orange-500/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">🔥 ${demand} booking${demand !== 1 ? 's' : ''}</span></div>` : ''}
+
+                <!-- Completeness bar (bottom) -->
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-800/60">
+                  <div class="h-full ${completeColor} transition-all" style="width:${complete}%" title="${complete}% complete"></div>
+                </div>
               </div>
 
               <!-- Body -->
-              <div class="flex-1 flex flex-col p-4">
-                <h3 class="font-bold text-white mb-0.5">${escapeHtml(s.name)}</h3>
-                <p class="text-xs text-gray-400 line-clamp-2 mb-3">${escapeHtml(s.shortDesc || 'No description added')}</p>
+              <div class="flex-1 flex flex-col p-4 gap-3">
+
+                <!-- Name + slug -->
+                <div>
+                  <h3 class="font-bold text-white text-base leading-tight">${escapeHtml(s.name)}</h3>
+                  <p class="text-xs font-mono text-gray-600 mt-0.5">#${escapeHtml(s.slug || s.id)}</p>
+                </div>
+
+                <p class="text-xs text-gray-400 line-clamp-2 -mt-1">${escapeHtml(s.shortDesc || 'No description yet.')}</p>
+
+                <!-- Price range + stats row -->
+                <div class="flex flex-wrap gap-1.5">
+                  ${priceRange
+                    ? `<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-800/40">${priceRange}</span>`
+                    : `<span class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-500">Contact for pricing</span>`}
+                  <span class="text-xs px-2.5 py-1 rounded-full ${hasImg ? 'bg-green-900/30 text-green-400' : 'bg-red-900/20 text-red-400'}">
+                    ${hasImg ? '✓ Image' : '⚠ No image'}
+                  </span>
+                  <span class="text-xs px-2.5 py-1 rounded-full ${pkgCount > 0 ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/20 text-yellow-500'}">
+                    ${pkgCount > 0 ? `${pkgCount} pkg${pkgCount !== 1 ? 's' : ''}` : '+ Packages'}
+                  </span>
+                  ${featCount > 0 ? `<span class="text-xs px-2.5 py-1 rounded-full bg-purple-900/20 text-purple-400">${featCount} feat${featCount !== 1 ? 's' : ''}</span>` : ''}
+                  ${faqCount  > 0 ? `<span class="text-xs px-2.5 py-1 rounded-full bg-blue-900/20 text-blue-400">${faqCount} FAQ${faqCount !== 1 ? 's' : ''}</span>` : ''}
+                </div>
 
                 <!-- Demand bar -->
                 ${demand > 0 ? `
-                <div class="mb-3">
-                  <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Client demand</span><span>${demand} enquir${demand !== 1 ? 'ies' : 'y'}</span></div>
-                  <div class="h-1.5 bg-gray-800 rounded-full"><div class="h-1.5 bg-gradient-to-r from-orange-500 to-yellow-400 rounded-full transition-all" style="width:${demandPct}%"></div></div>
+                <div>
+                  <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Client demand</span><span>${demand} enquir${demand !== 1 ? 'ies' : 'y'}</span>
+                  </div>
+                  <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-orange-500 to-yellow-400 rounded-full" style="width:${demandPct}%"></div>
+                  </div>
                 </div>` : ''}
 
-                <!-- Completeness pills -->
-                <div class="flex flex-wrap gap-1.5 mb-3">
-                  <span class="text-xs px-2 py-0.5 rounded-full ${hasImg ? 'bg-green-900/40 text-green-400' : 'bg-red-900/30 text-red-400'}">
-                    ${hasImg ? '✓ Image' : '⚠ No image'}
-                  </span>
-                  <span class="text-xs px-2 py-0.5 rounded-full ${pkgCount > 0 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/30 text-yellow-500'}">
-                    ${pkgCount > 0 ? `✓ ${pkgCount} package${pkgCount > 1 ? 's' : ''}` : '+ Add packages'}
-                  </span>
-                  ${featCount > 0 ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">✓ ${featCount} feature${featCount > 1 ? 's' : ''}</span>` : ''}
-                </div>
+                <!-- Completeness hint -->
+                ${hint ? `
+                <div class="text-xs text-yellow-400/80 bg-yellow-900/15 border border-yellow-800/25 rounded-xl px-3 py-2 leading-relaxed">
+                  ${hint}
+                </div>` : `
+                <div class="text-xs text-green-400/70 bg-green-900/10 border border-green-800/20 rounded-xl px-3 py-2">
+                  <i class="fas fa-check-circle mr-1"></i>${complete}% complete — looking great!
+                </div>`}
 
-                <!-- Growth hint -->
-                ${incomplete ? `
-                <div class="text-xs text-yellow-400/80 bg-yellow-900/20 border border-yellow-800/30 rounded-lg px-3 py-2 mb-3 leading-relaxed">
-                  💡 ${hint}
-                </div>` : ''}
-
-                <!-- Actions (pinned to bottom) -->
-                <div class="flex gap-1.5 pt-2 border-t border-gray-800 mt-auto">
+                <!-- Action bar -->
+                <div class="flex gap-1.5 pt-2 border-t border-gray-800/80 mt-auto">
                   <a href="../service-detail.html?service=${escapeHtml(s.slug || s.id)}" target="_blank"
-                    class="flex-1 text-center py-1.5 bg-purple-600/15 hover:bg-purple-600/30 text-purple-400 rounded-lg text-xs font-medium transition">
+                    class="flex-1 text-center py-1.5 bg-purple-600/10 hover:bg-purple-600/25 text-purple-400 rounded-lg text-xs font-medium transition" title="Preview on site">
                     <i class="fas fa-eye mr-1"></i>Preview
                   </a>
                   <button onclick="editService('${s.id}')"
                     class="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition">
                     <i class="fas fa-edit mr-1"></i>Edit
                   </button>
-                  <button onclick="duplicateService('${s.id}')"
-                    class="py-1.5 px-2.5 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs transition" title="Duplicate service">
+                  <button onclick="duplicateService('${s.id}')" title="Duplicate"
+                    class="py-1.5 px-2.5 bg-blue-600/10 hover:bg-blue-600/25 text-blue-400 rounded-lg text-xs transition">
                     <i class="fas fa-copy"></i>
                   </button>
-                  <button onclick="toggleServiceActive('${s.id}')"
-                    class="py-1.5 px-3 ${isActive ? 'bg-yellow-600/15 hover:bg-yellow-600/30 text-yellow-400' : 'bg-green-600/15 hover:bg-green-600/30 text-green-400'} rounded-lg text-xs font-medium transition">
-                    ${isActive ? 'Hide' : 'Go Live'}
+                  <button onclick="toggleServiceActive('${s.id}')" title="${isActive ? 'Hide from site' : 'Publish to site'}"
+                    class="py-1.5 px-2.5 ${isActive ? 'bg-yellow-600/10 hover:bg-yellow-600/25 text-yellow-400' : 'bg-green-600/10 hover:bg-green-600/25 text-green-400'} rounded-lg text-xs font-medium transition">
+                    ${isActive ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-globe"></i>'}
                   </button>
-                  <button onclick="deleteService('${s.id}')"
+                  <button onclick="deleteService('${s.id}')" title="Delete"
                     class="py-1.5 px-2.5 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -1226,29 +1284,133 @@
       currentEditId = id;
       const service = id ? store.services.find(s => s.id === id) : null;
 
-      document.getElementById('modalTitle').innerHTML = id ? '✏️ Edit Service' : '➕ Add New Service';
+      const pkgCount  = (service?.packages  || []).length;
+      const featCount = (service?.features  || []).length;
+      const faqCount  = (service?.faqs      || []).length;
+      const countBadge = n => n ? `<span class="ml-1 text-xs bg-purple-800/60 text-purple-300 rounded-full px-1.5 py-0.5 font-bold">${n}</span>` : '';
+
+      const pkgListHtml = (service?.packages || []).map((pkg, idx) => `
+        <div class="bg-gray-800/70 border border-gray-700/50 rounded-xl p-3 flex justify-between items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="font-semibold text-white text-sm">${escapeHtml(pkg.name)}</span>
+              ${pkg.price ? `<span class="text-yellow-400 text-xs font-bold">KES ${parseInt(pkg.price).toLocaleString()}</span>` : '<span class="text-gray-500 text-xs">Contact for pricing</span>'}
+              ${pkg.duration ? `<span class="text-gray-500 text-xs">· ${escapeHtml(pkg.duration)}</span>` : ''}
+            </div>
+            ${(pkg.features||[]).length ? `<p class="text-xs text-gray-500 line-clamp-1">${(pkg.features).slice(0,3).map(f=>escapeHtml(f)).join(' · ')}${pkg.features.length>3?' …':''}</p>` : ''}
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button onclick="editPackage(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button onclick="deletePackage(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Del</button>
+          </div>
+        </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No packages yet — add your pricing tiers below.</p>';
+
+      const featListHtml = (service?.features || []).map((feat, idx) => `
+        <div class="bg-gray-800/70 border border-gray-700/50 rounded-xl p-3 flex justify-between items-start gap-3">
+          <div class="flex items-start gap-2.5 flex-1 min-w-0">
+            <div class="w-8 h-8 bg-purple-900/40 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+              <i class="fas ${escapeHtml(feat.icon || 'fa-star')} text-purple-400 text-sm"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold text-white text-sm">${escapeHtml(feat.title)}</p>
+              <p class="text-xs text-gray-400 line-clamp-1 mt-0.5">${escapeHtml(feat.desc || '')}</p>
+            </div>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button onclick="editFeature(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button onclick="deleteFeature(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Del</button>
+          </div>
+        </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No features yet — highlight what makes this service special.</p>';
+
+      const faqListHtml = (service?.faqs || []).map((faq, idx) => `
+        <div class="bg-gray-800/70 border border-gray-700/50 rounded-xl p-3 flex justify-between items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-sm text-white">❓ ${escapeHtml(faq.q)}</p>
+            <p class="text-xs text-gray-400 mt-1 line-clamp-2">${escapeHtml(faq.a)}</p>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button onclick="editFaq(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button onclick="deleteFaq(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Del</button>
+          </div>
+        </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No FAQs yet — answer common client questions.</p>';
+
+      document.getElementById('modalTitle').innerHTML = id
+        ? `✏️ Edit Service <span class="text-sm font-normal text-gray-400 ml-2">${escapeHtml(service?.name || '')}</span>`
+        : '➕ Add New Service';
+
       document.getElementById('modalForm').innerHTML = `
-        <div class="tabs flex gap-2 border-b border-gray-700 mb-4">
-          <button class="tab-service active px-3 py-1 text-sm" data-tab="basic">Basic</button>
+        <!-- Tab navigation -->
+        <div class="flex gap-0.5 border-b border-gray-700 mb-4 overflow-x-auto">
+          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="basic">
+            📝 Info
+          </button>
           ${id ? `
-          <button class="tab-service px-3 py-1 text-sm" data-tab="packages">💰 Packages</button>
-          <button class="tab-service px-3 py-1 text-sm" data-tab="features">✨ Features</button>
-          <button class="tab-service px-3 py-1 text-sm" data-tab="faqs">❓ FAQs</button>
+          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="packages">
+            💰 Packages${countBadge(pkgCount)}
+          </button>
+          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="features">
+            ✨ Features${countBadge(featCount)}
+          </button>
+          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="faqs">
+            ❓ FAQs${countBadge(faqCount)}
+          </button>
           ` : `
-          <span class="px-3 py-1 text-xs text-gray-600 self-center italic">Save service first to add packages, features &amp; FAQs</span>
+          <span class="px-3 py-2 text-xs text-gray-600 self-center italic">Save service first to add packages, features &amp; FAQs</span>
           `}
         </div>
 
-        <div id="tabBasic" class="tab-service-content active space-y-3">
-          <div><label class="block text-sm mb-1">Service Name *</label><input type="text" id="serviceName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(service?.name || '')}" required></div>
-          <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm mb-1">Category</label><select id="serviceCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${service?.category === 'Audio' ? 'selected' : ''}>Audio</option><option ${service?.category === 'Visual' ? 'selected' : ''}>Visual</option><option ${service?.category === 'Lighting' ? 'selected' : ''}>Lighting</option><option ${service?.category === 'Effects' ? 'selected' : ''}>Effects</option><option ${service?.category === 'Media' ? 'selected' : ''}>Media</option><option ${service?.category === 'Drone' ? 'selected' : ''}>Drone</option><option ${service?.category === 'Photography' ? 'selected' : ''}>Photography</option><option ${service?.category === 'Streaming' ? 'selected' : ''}>Streaming</option><option ${service?.category === 'General' ? 'selected' : ''}>General</option></select></div>
-          <div><label class="block text-sm mb-1">Icon Class</label><input type="text" id="serviceIcon" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${service?.icon || 'fa-star'}" placeholder="fa-headphones"></div></div>
-          <div><label class="block text-sm mb-1">Base Price (KES) <span class="text-gray-500 font-normal">(optional)</span></label><input type="number" id="servicePrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${service?.price || ''}" placeholder="Leave blank → 'Contact for pricing'"><p class="text-xs text-gray-500 mt-1">If left empty the website will show "Contact us for a quote" instead.</p></div>
-          <div><label class="block text-sm mb-1">Short Description</label><textarea id="serviceShortDesc" rows="2" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(service?.shortDesc || '')}</textarea></div>
-          <div><label class="block text-sm mb-1">Full Description</label><textarea id="serviceLongDesc" rows="3" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(service?.longDesc || '')}</textarea></div>
+        <!-- ── INFO TAB ── -->
+        <div id="tabBasic" class="tab-service-content space-y-4">
+
+          ${id ? `
+          <a href="../service-detail.html?service=${escapeHtml(service?.slug || id)}" target="_blank"
+            class="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 bg-purple-900/20 border border-purple-800/30 rounded-lg px-3 py-2 transition w-fit">
+            <i class="fas fa-external-link-alt"></i> View live page for this service
+          </a>` : ''}
+
+          <!-- Name + slug preview -->
           <div>
-            <label class="block text-sm mb-1">Service Image</label>
-            <!-- Image preview shown when image exists -->
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Service Name <span class="text-red-400">*</span></label>
+            <input type="text" id="serviceName" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition" value="${escapeHtml(service?.name || '')}" placeholder="e.g. DJ & MC Services" required>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span class="text-xs text-gray-600">URL slug:</span>
+              <code class="text-xs text-purple-400 font-mono" id="svcSlugPreview">${escapeHtml(service?.slug || '')}</code>
+            </div>
+          </div>
+
+          <!-- Category + Icon row -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Category</label>
+              <select id="serviceCategory" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition">
+                ${['Audio','Visual','Lighting','Effects','Media','Drone','Photography','Streaming','General'].map(c =>
+                  `<option ${service?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Icon <span class="text-gray-600 font-normal normal-case">(Font Awesome)</span></label>
+              <div class="flex items-center gap-2">
+                <i id="iconPreview" class="fas ${escapeHtml(service?.icon || 'fa-star')} text-purple-400 w-5 text-center"></i>
+                <input type="text" id="serviceIcon" class="flex-1 px-3 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition" value="${escapeHtml(service?.icon || 'fa-star')}" placeholder="fa-headphones" oninput="document.getElementById('iconPreview').className='fas '+this.value+' text-purple-400 w-5 text-center'">
+              </div>
+            </div>
+          </div>
+
+          <!-- Short description -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Short Description <span class="text-gray-600 font-normal normal-case">(shown on services page)</span></label>
+            <textarea id="serviceShortDesc" rows="2" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition resize-none" placeholder="One compelling sentence that makes clients click through…">${escapeHtml(service?.shortDesc || '')}</textarea>
+          </div>
+
+          <!-- Long description -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Full Description <span class="text-gray-600 font-normal normal-case">(shown on service detail page)</span></label>
+            <textarea id="serviceLongDesc" rows="4" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition resize-none" placeholder="Sell the experience — include equipment specs, what's included, your expertise…">${escapeHtml(service?.longDesc || '')}</textarea>
+          </div>
+
+          <!-- Cover Image -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Cover Image</label>
             <div id="svcImgPreview" class="${service?.mainImage ? '' : 'hidden'} relative rounded-xl overflow-hidden" style="height:160px">
               <img id="svcImgThumb" src="${service?.mainImage || ''}" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
@@ -1261,53 +1423,94 @@
                 </button>
               </div>
             </div>
-            <!-- Drop zone shown when no image -->
             <label for="serviceImageFile" id="svcDropLabel" class="flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-600 rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition group ${service?.mainImage ? 'hidden' : ''}" style="height:120px">
               <i class="fas fa-images text-2xl text-gray-500 group-hover:text-purple-400 mb-1 transition"></i>
-              <p class="text-xs font-medium text-gray-300 group-hover:text-white">Tap to choose from gallery or storage</p>
-              <p class="text-xs text-gray-600 mt-0.5">or drag &amp; drop · auto-compressed</p>
+              <p class="text-xs font-medium text-gray-300 group-hover:text-white">Tap to choose or drag &amp; drop</p>
+              <p class="text-xs text-gray-600 mt-0.5">JPEG · PNG · WEBP · auto-compressed</p>
             </label>
             <input type="file" id="serviceImageFile" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/heic,image/heif,image/*" class="hidden">
-            <!-- Collapsible URL paste -->
             <div class="mt-2">
               <button type="button" onclick="document.getElementById('svcUrlZone').classList.toggle('hidden')" class="text-xs text-gray-500 hover:text-purple-400 transition flex items-center gap-1">
                 <i class="fas fa-link text-xs"></i> Or paste an image URL
               </button>
               <div id="svcUrlZone" class="hidden mt-2">
-                <input type="url" id="serviceImageUrl" oninput="_svcUrlInput(this.value)" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 text-sm" placeholder="https://..." value="${service?.mainImage || ''}">
+                <input type="url" id="serviceImageUrl" oninput="_svcUrlInput(this.value)" class="w-full px-4 py-2 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:border-purple-500 outline-none" placeholder="https://..." value="${service?.mainImage || ''}">
               </div>
             </div>
             <input type="hidden" id="serviceFinalUrl" value="${service?.mainImage || ''}">
           </div>
-          <div><label class="flex items-center gap-2"><input type="checkbox" id="serviceActive" ${service?.isActive !== false ? 'checked' : ''}> <span class="text-sm">Active (visible on website)</span></label></div>
+
+          <!-- Visibility toggle -->
+          <div class="flex items-center justify-between bg-gray-800/60 rounded-xl px-4 py-3 border border-gray-700/50">
+            <div>
+              <p class="text-sm font-semibold text-white">Publish to website</p>
+              <p class="text-xs text-gray-500 mt-0.5">Uncheck to save as draft — clients won't see it</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <input type="checkbox" id="serviceActive" class="sr-only peer" ${service?.isActive !== false ? 'checked' : ''}>
+              <div class="w-10 h-6 bg-gray-700 peer-checked:bg-purple-600 rounded-full transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
+            </label>
+          </div>
         </div>
 
+        <!-- ── PACKAGES TAB ── -->
         <div id="tabPackages" class="tab-service-content hidden space-y-3">
-          <div id="packagesList" class="space-y-3">${(service?.packages || []).map((pkg, idx) => `<div class="bg-gray-800 rounded-lg p-3"><div class="flex justify-between"><div><h4 class="font-semibold">${pkg.name}</h4><p class="text-yellow-400">KES ${pkg.price}</p><p class="text-xs text-gray-400">${pkg.duration}</p><ul class="text-xs mt-1">${(pkg.features || []).map(f => `<li>✓ ${f}</li>`).join('')}</ul></div><div><button onclick="editPackage(${idx})" class="text-purple-400 text-sm mr-2">Edit</button><button onclick="deletePackage(${idx})" class="text-red-400 text-sm">Delete</button></div></div></div>`).join('') || '<p class="text-gray-500 text-center py-4">No packages added yet</p>'}</div>
-          <button onclick="addPackage()" class="w-full bg-gray-800 py-2 rounded-lg text-sm hover:bg-gray-700 transition"><i class="fas fa-plus mr-1"></i> Add Package</button>
+          <div id="packagesList" class="space-y-2">${pkgListHtml}</div>
+          <button onclick="addPackage()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+            <i class="fas fa-plus text-xs"></i> Add Package
+          </button>
+          <p class="text-xs text-gray-600 text-center">Add Basic, Standard &amp; Premium tiers — clients convert better with choice.</p>
         </div>
 
+        <!-- ── FEATURES TAB ── -->
         <div id="tabFeatures" class="tab-service-content hidden space-y-3">
-          <div id="featuresList" class="space-y-2">${(service?.features || []).map((feat, idx) => `<div class="flex justify-between items-center bg-gray-800 rounded-lg p-3"><div><i class="fas ${feat.icon} text-purple-400 mr-2"></i><span class="font-medium">${feat.title}</span><p class="text-xs text-gray-400 mt-1">${feat.desc}</p></div><div><button onclick="editFeature(${idx})" class="text-purple-400 text-sm mr-2">Edit</button><button onclick="deleteFeature(${idx})" class="text-red-400 text-sm">Delete</button></div></div>`).join('') || '<p class="text-gray-500 text-center py-4">No features added yet</p>'}</div>
-          <button onclick="addFeature()" class="w-full bg-gray-800 py-2 rounded-lg text-sm hover:bg-gray-700 transition"><i class="fas fa-plus mr-1"></i> Add Feature</button>
+          <div id="featuresList" class="space-y-2">${featListHtml}</div>
+          <button onclick="addFeature()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+            <i class="fas fa-plus text-xs"></i> Add Feature
+          </button>
+          <p class="text-xs text-gray-600 text-center">Showcase equipment, expertise, and USPs that set you apart.</p>
         </div>
 
+        <!-- ── FAQS TAB ── -->
         <div id="tabFaqs" class="tab-service-content hidden space-y-3">
-          <div id="faqsList" class="space-y-2">${(service?.faqs || []).map((faq, idx) => `<div class="flex justify-between items-center bg-gray-800 rounded-lg p-3"><div><p class="font-medium">❓ ${faq.q}</p><p class="text-xs text-gray-400 mt-1">${faq.a}</p></div><div><button onclick="editFaq(${idx})" class="text-purple-400 text-sm mr-2">Edit</button><button onclick="deleteFaq(${idx})" class="text-red-400 text-sm">Delete</button></div></div>`).join('') || '<p class="text-gray-500 text-center py-4">No FAQs added yet</p>'}</div>
-          <button onclick="addFaq()" class="w-full bg-gray-800 py-2 rounded-lg text-sm hover:bg-gray-700 transition"><i class="fas fa-plus mr-1"></i> Add FAQ</button>
+          <div id="faqsList" class="space-y-2">${faqListHtml}</div>
+          <button onclick="addFaq()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+            <i class="fas fa-plus text-xs"></i> Add FAQ
+          </button>
+          <p class="text-xs text-gray-600 text-center">Answer the questions clients ask before booking — it removes hesitation.</p>
         </div>
       `;
 
       // Tab switching
-      document.querySelectorAll('.tab-service').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.tab-service').forEach(t => t.classList.remove('active', 'border-b-2', 'border-purple-500', 'text-purple-400'));
-          tab.classList.add('active', 'border-b-2', 'border-purple-500', 'text-purple-400');
-          const tabId = tab.dataset.tab;
-          document.querySelectorAll('.tab-service-content').forEach(content => content.classList.add('hidden'));
-          document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.remove('hidden');
+      function _activateServiceTab(tabBtn) {
+        document.querySelectorAll('.tab-service').forEach(t => {
+          t.classList.remove('border-purple-500', 'text-purple-400', 'bg-purple-900/20');
+          t.classList.add('border-transparent', 'text-gray-400');
         });
+        tabBtn.classList.remove('border-transparent', 'text-gray-400');
+        tabBtn.classList.add('border-purple-500', 'text-purple-400', 'bg-purple-900/20');
+        const tabId = tabBtn.dataset.tab;
+        document.querySelectorAll('.tab-service-content').forEach(c => c.classList.add('hidden'));
+        const target = document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+        if (target) target.classList.remove('hidden');
+      }
+
+      document.querySelectorAll('.tab-service').forEach(tab => {
+        tab.addEventListener('click', () => _activateServiceTab(tab));
       });
+
+      // Apply active styling to first tab immediately
+      const firstTab = document.querySelector('.tab-service[data-tab="basic"]');
+      if (firstTab) _activateServiceTab(firstTab);
+
+      // Slug live preview for new services
+      const nameInput = document.getElementById('serviceName');
+      if (nameInput && !id) {
+        nameInput.addEventListener('input', () => {
+          const preview = document.getElementById('svcSlugPreview');
+          if (preview) preview.textContent = nameInput.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        });
+      }
 
       document.getElementById('formModal').classList.remove('hidden');
 
@@ -1516,37 +1719,36 @@
     }
 
     async function saveService() {
-      const name = document.getElementById('serviceName').value;
-      const category = document.getElementById('serviceCategory').value;
-      const icon = document.getElementById('serviceIcon').value;
-      const price = parseInt(document.getElementById('servicePrice').value);
-      const shortDesc = document.getElementById('serviceShortDesc').value;
-      const longDesc = document.getElementById('serviceLongDesc').value;
-      const isActive = document.getElementById('serviceActive').checked;
+      const name      = document.getElementById('serviceName').value.trim();
+      const category  = document.getElementById('serviceCategory').value;
+      const icon      = document.getElementById('serviceIcon').value.trim() || 'fa-star';
+      const shortDesc = document.getElementById('serviceShortDesc').value.trim();
+      const longDesc  = document.getElementById('serviceLongDesc').value.trim();
+      const isActive  = document.getElementById('serviceActive').checked;
+
       if (!name) {
-        Swal.fire({ icon: 'error', title: 'Missing Name', text: 'No service name provided', background: '#1e1e2a', color: '#fff' });
+        Swal.fire({ icon: 'error', title: 'Missing Name', text: 'Please enter a service name.', background: '#1e1e2a', color: '#fff' });
         return;
       }
 
       // Use compressed upload or URL — both end up in serviceFinalUrl
       const finalImageUrl = document.getElementById('serviceFinalUrl')?.value ||
-                            document.getElementById('serviceImageUrl')?.value ||
-                            'https://placehold.co/400x300?text=' + encodeURIComponent(name);
+                            document.getElementById('serviceImageUrl')?.value || '';
 
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const service = store.services.find(s => s.id === currentEditId);
+      // Preserve existing slug on edit — only generate new slug for brand-new services
+      const slug = service?.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
       const newService = {
         id: currentEditId || Date.now().toString(),
-        name: name,
-        slug: slug,
-        category: category,
-        icon: icon,
-        price: price,
-        shortDesc: shortDesc,
-        longDesc: longDesc,
+        name,
+        slug,
+        category,
+        icon,
+        shortDesc,
+        longDesc,
         mainImage: finalImageUrl,
-        isActive: isActive,
+        isActive,
         displayOrder: currentEditId ? service?.displayOrder : store.services.length + 1,
         packages: service?.packages || [],
         features: service?.features || [],

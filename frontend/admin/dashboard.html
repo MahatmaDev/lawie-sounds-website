@@ -1592,9 +1592,10 @@
         service.packages.push(pkg);
       }
 
-      apiRequest('PUT', `/api/admin/services/${currentEditId}`, service);
+      const _pkgSvcId = currentEditId;
+      apiRequest('PUT', `/api/admin/services/${_pkgSvcId}`, service);
       closeModal();
-      openServiceForm(currentEditId);
+      openServiceForm(_pkgSvcId);
       Swal.fire({ icon: 'success', title: editingPackageIndex !== null ? 'Package updated!' : 'Package added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
       editingPackageIndex = null;
     }
@@ -1621,9 +1622,10 @@
         service.features.push(feat);
       }
 
-      apiRequest('PUT', `/api/admin/services/${currentEditId}`, service);
+      const _featSvcId = currentEditId;
+      apiRequest('PUT', `/api/admin/services/${_featSvcId}`, service);
       closeModal();
-      openServiceForm(currentEditId);
+      openServiceForm(_featSvcId);
       Swal.fire({ icon: 'success', title: editingFeatureIndex !== null ? 'Feature updated!' : 'Feature added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
       editingFeatureIndex = null;
     }
@@ -1649,9 +1651,10 @@
         service.faqs.push(faq);
       }
 
-      apiRequest('PUT', `/api/admin/services/${currentEditId}`, service);
+      const _faqSvcId = currentEditId;
+      apiRequest('PUT', `/api/admin/services/${_faqSvcId}`, service);
       closeModal();
-      openServiceForm(currentEditId);
+      openServiceForm(_faqSvcId);
       Swal.fire({ icon: 'success', title: editingFaqIndex !== null ? 'FAQ updated!' : 'FAQ added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
       editingFaqIndex = null;
     }

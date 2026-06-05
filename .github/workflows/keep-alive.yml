@@ -1,0 +1,37 @@
+name: Supabase keep-alive
+
+# Free Supabase projects auto-pause after ~7 days without DB activity.
+# When paused, the site's login still works (env-var check) but every DB
+# read/write returns `500 TypeError: fetch failed` -> dashboard shows
+# "Save Failed - TypeError: Fetch failed".
+#
+# This workflow pings a PUBLIC endpoint that runs a real Supabase SELECT
+# (`/api/gallery`), generating the database activity Supabase needs to keep
+# the project awake. No secrets required.
+
+on:
+  schedule:
+    # 06:17 UTC daily (off the top-of-hour to avoid GitHub's busy cron slots).
+    # GitHub may delay scheduled runs under load; daily gives huge margin
+    # against the ~7-day pause window.
+    - cron: "17 6 * * *"
+  workflow_dispatch: {} # allow manual run from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping DB-backed endpoint
+        run: |
+          set -euo pipefail
+          URL="https://lawie-sounds-website.vercel.app/api/gallery?keepalive=$(date +%s)"
+          echo "Pinging $URL"
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" --max-time 30 "$URL")
+          echo "HTTP $code"
+          head -c 300 /tmp/resp.json || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Keep-alive ping failed (HTTP $code) - Supabase may be paused or the API is down."
+            exit 1
+          fi
+          echo "Keep-alive OK"

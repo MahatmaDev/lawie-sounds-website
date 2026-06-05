@@ -65,6 +65,16 @@ function adminAuth(req, res, next) {
   }
 }
 
+// Admin-only guard — blocks the manager role from financial/staff data.
+// The dashboard hides these tabs for managers, but that's cosmetic only;
+// this enforces it server-side so a manager token can't reach the data via the API.
+function adminOnly(req, res, next) {
+  if (req.admin?.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden — administrator access required' });
+  }
+  next();
+}
+
 // ==================== MAPPING (DB snake_case → API camelCase) ====================
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
@@ -472,22 +482,22 @@ app.delete('/api/admin/bookings/:id', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — EMPLOYEES ====================
-app.get('/api/admin/employees', adminAuth, async (req, res) => {
+app.get('/api/admin/employees', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('employees').select('*').order('name');
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.employee) });
 });
-app.post('/api/admin/employees', adminAuth, async (req, res) => {
+app.post('/api/admin/employees', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('employees').insert(toEmployeeDB(req.body)).select().single();
   if (error) return handleError(res, error);
   res.status(201).json({ success: true, data: map.employee(data) });
 });
-app.put('/api/admin/employees/:id', adminAuth, async (req, res) => {
+app.put('/api/admin/employees/:id', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('employees').update(toEmployeeDB(req.body)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.employee(data) });
 });
-app.delete('/api/admin/employees/:id', adminAuth, async (req, res) => {
+app.delete('/api/admin/employees/:id', adminAuth, adminOnly, async (req, res) => {
   await supabase.from('payroll').delete().eq('employee_id', req.params.id);
   const { error } = await supabase.from('employees').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
@@ -495,24 +505,24 @@ app.delete('/api/admin/employees/:id', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — PAYROLL ====================
-app.get('/api/admin/payroll', adminAuth, async (req, res) => {
+app.get('/api/admin/payroll', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('payroll').select('*').order('created_at', { ascending: false });
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.payroll) });
 });
-app.post('/api/admin/payroll', adminAuth, async (req, res) => {
+app.post('/api/admin/payroll', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('payroll').insert(toPayrollDB(req.body)).select().single();
   if (error) return handleError(res, error);
   await syncEmployeeStats(req.body.employeeId);
   res.status(201).json({ success: true, data: map.payroll(data) });
 });
-app.put('/api/admin/payroll/:id', adminAuth, async (req, res) => {
+app.put('/api/admin/payroll/:id', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('payroll').update(toPayrollDB(req.body)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   await syncEmployeeStats(req.body.employeeId);
   res.json({ success: true, data: map.payroll(data) });
 });
-app.delete('/api/admin/payroll/:id', adminAuth, async (req, res) => {
+app.delete('/api/admin/payroll/:id', adminAuth, adminOnly, async (req, res) => {
   const { data: rec } = await supabase.from('payroll').select('employee_id').eq('id', req.params.id).single();
   const { error } = await supabase.from('payroll').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);

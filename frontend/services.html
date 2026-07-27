@@ -140,6 +140,26 @@
       flex: 1;
     }
     .btn-wa:hover { background: #15803d; }
+    /* Primary quote CTA. Routes to the booking form (which records the enquiry
+       in the dashboard) rather than to WhatsApp, which left no trace. Yellow =
+       the site's primary action colour, so it reads as the main path. */
+    .btn-quote {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: var(--yellow);
+      color: #000;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: background 0.2s, transform 0.1s;
+      text-decoration: none;
+      flex: 1;
+    }
+    .btn-quote:hover { background: #fde047; }
+    .btn-quote:active { transform: scale(0.97); }
     .btn-details {
       display: flex;
       align-items: center;
@@ -626,7 +646,6 @@
         const slug         = s.slug || s.id;
         const startPrice   = getStartingPrice(s);
         const pkgCount     = (s.packages || []).length;
-        const waMsg        = encodeURIComponent(`Hi Lawie Sounds, I'm interested in the "${s.name}" service. Can you send me a quote?`);
         const delay        = (idx % 3) * 0.07;
 
         return `
@@ -653,8 +672,8 @@
 
             <div class="card-footer">
               <div class="flex gap-2">
-                <a href="https://wa.me/254703925826?text=${waMsg}" target="_blank" rel="noopener" class="btn-wa">
-                  <i class="fab fa-whatsapp text-base"></i> Quick Quote
+                <a href="booking.html?service=${slug}" class="btn-quote" aria-label="Get a quote for ${s.name}">
+                  <i class="fas fa-file-invoice text-sm"></i> Get Quote
                 </a>
                 <a href="service-detail.html?service=${slug}" class="btn-details">
                   <i class="fas fa-arrow-right text-xs"></i> Details

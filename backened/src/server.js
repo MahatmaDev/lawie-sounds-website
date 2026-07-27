@@ -40,8 +40,12 @@ app.options(/.*/, cors()); // handle preflight for all routes (Express 5 regex s
 app.use(express.json({ limit: '20mb' })); // support base64 image uploads
 
 // Rate limiting — 100 req/15min general, 10 req/15min on login
-const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Too many login attempts. Try again in 15 minutes.' }, standardHeaders: true, legacyHeaders: false });
+// Public enquiry submission — the form is now the only delivery channel, so it
+// needs its own spam ceiling that is generous for humans (a client may resubmit
+// after a correction) but stops scripted floods.
+const bookingLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 8, message: { error: 'Too many booking requests from this device. Please call us on +254 703 925 826.' }, standardHeaders: true, legacyHeaders: false });
 app.use('/api/', generalLimiter);
 app.use('/api/admin/auth/login', loginLimiter);
 
@@ -82,7 +86,7 @@ const map = {
   gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, createdAt: r.created_at }),
   review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, clientImage: r.client_image, isApproved: r.is_approved, isFeatured: r.is_featured, adminReply: r.admin_reply, createdAt: r.created_at }),
   banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
-  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, createdAt: r.created_at }),
+  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
   poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, createdAt: r.created_at }),
@@ -91,8 +95,13 @@ const map = {
 };
 
 // ==================== DB CONVERTERS (API camelCase → DB snake_case) ====================
-function toEventDB(b) {
-  return { title: b.title, date: b.date, venue: b.venue, price: b.price || 0, total_seats: b.totalSeats, seats_left: b.seatsLeft !== undefined ? b.seatsLeft : b.totalSeats, description: b.description, image: b.image, status: b.status || 'published', is_active: b.isActive !== false, booking_count: b.bookingCount || 0 };
+// `isUpdate` keeps accumulated counters out of UPDATE payloads. The dashboard
+// edit form does not round-trip booking_count, so including it on update reset
+// every event's booking count to 0 on each save.
+function toEventDB(b, isUpdate = false) {
+  const row = { title: b.title, date: b.date, venue: b.venue, price: b.price || 0, total_seats: b.totalSeats, seats_left: b.seatsLeft !== undefined ? b.seatsLeft : b.totalSeats, description: b.description, image: b.image, status: b.status || 'published', is_active: b.isActive !== false };
+  if (!isUpdate) row.booking_count = b.bookingCount || 0;
+  return row;
 }
 function toServiceDB(b) {
   return { name: b.name, slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), category: b.category, icon: b.icon, short_desc: b.shortDesc, long_desc: b.longDesc, image: b.mainImage || b.image, is_active: b.isActive !== false, display_order: b.displayOrder || 0, packages: b.packages || [], features: b.features || [], faqs: b.faqs || [] };
@@ -100,8 +109,13 @@ function toServiceDB(b) {
 function toGalleryDB(b) {
   return { title: b.title, category: b.category, type: b.type || 'image', image_url: b.imageUrl, service_slug: b.serviceSlug || null, is_featured: b.isFeatured || false, display_order: b.displayOrder || 0 };
 }
-function toBannerDB(b) {
-  return { type: b.type || 'banner', name: b.name, message: b.message, cta_text: b.ctaText, cta_link: b.ctaLink, is_active: b.isActive !== false, start_date: b.startDate || null, end_date: b.endDate || null, priority: b.priority || 0, views: 0, clicks: 0, ctr: 0 };
+// Same pattern as toEventDB: views/clicks/ctr are accumulated by the site, not
+// supplied by the edit form. Sending them on UPDATE wiped a banner's entire
+// performance history every time someone fixed a typo.
+function toBannerDB(b, isUpdate = false) {
+  const row = { type: b.type || 'banner', name: b.name, message: b.message, cta_text: b.ctaText, cta_link: b.ctaLink, is_active: b.isActive !== false, start_date: b.startDate || null, end_date: b.endDate || null, priority: b.priority || 0 };
+  if (!isUpdate) { row.views = 0; row.clicks = 0; row.ctr = 0; }
+  return row;
 }
 function toEmployeeDB(b) {
   return { name: b.name, role: b.role, phone: b.phone, email: b.email, hire_date: b.hireDate, status: b.status || 'active', total_events: b.totalEvents || 0, avg_rating: b.avgRating || 0 };
@@ -124,6 +138,58 @@ function handleError(res, error, status = 500) {
   return res.status(status).json({ error: error.message || 'An error occurred' });
 }
 
+// Postgres `services` is text[]. Accept an array, a comma-joined string, or
+// null, and always hand Postgres a real array — a bare string is rejected as a
+// malformed array literal.
+function toTextArray(value) {
+  if (value == null || value === '') return null;
+  const arr = Array.isArray(value) ? value : String(value).split(',');
+  const cleaned = arr.map(v => String(v).trim()).filter(Boolean);
+  return cleaned.length ? cleaned : null;
+}
+
+// Metadata columns that are nice to have but must never cost us a write.
+// If the database has not been migrated yet, dropping these is far better than
+// failing — an enquiry is revenue, a missing `source` is not.
+//
+// `notes` is deliberately NOT in this list. It carries text a human typed, so
+// dropping it would report success while discarding their work. That must fail
+// loudly instead — see the notes route below.
+const DROPPABLE_BOOKING_COLUMNS = ['channel', 'event_details', 'source', 'responded_at', 'handled_by'];
+
+// Run a bookings write, retrying without any droppable column the live schema
+// is missing. This is the exact failure that silently swallowed every booking
+// before 2026-07-27: server.js wrote a column that did not exist, PostgREST
+// returned PGRST204, and the enquiry was lost. Now we degrade and log loudly.
+async function resilientBookingWrite(run, payload) {
+  let body = { ...payload };
+
+  for (let attempt = 0; attempt <= DROPPABLE_BOOKING_COLUMNS.length; attempt++) {
+    const { data, error } = await run(body);
+    if (!error) return { data, error: null };
+
+    // PGRST204 = column not found in PostgREST's schema cache.
+    const missing = error.code === 'PGRST204' &&
+      DROPPABLE_BOOKING_COLUMNS.find(c => (error.message || '').includes(`'${c}'`));
+
+    if (!missing || !(missing in body)) return { data: null, error };
+
+    console.error(
+      `[SCHEMA DRIFT] bookings.${missing} is missing from the database. ` +
+      `Retrying without it. Run database/migrations/2026-07-27_final_audit_cleanup.sql to fix.`
+    );
+    delete body[missing];
+  }
+
+  return { data: null, error: new Error('Booking write failed after dropping optional columns') };
+}
+
+const insertBooking = (row) =>
+  resilientBookingWrite(b => supabase.from('bookings').insert(b).select().single(), row);
+
+const updateBooking = (id, patch) =>
+  resilientBookingWrite(b => supabase.from('bookings').update(b).eq('id', id).select().single(), patch);
+
 // WhatsApp push notification via CallMeBot (free — admin must activate once)
 // Setup: WhatsApp +34 644 38 11 72, send: "I allow callmebot to send me messages"
 // Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars
@@ -132,8 +198,16 @@ async function notifyAdmin(message) {
   const apiKey = process.env.CALLMEBOT_APIKEY;
   if (!phone || !apiKey) return;
   try {
-    fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`);
-  } catch (e) {}
+    // Must be awaited: Vercel freezes the serverless function once the response
+    // is sent, so an un-awaited fetch here was routinely cancelled mid-flight.
+    // Timeout so a slow third party can never hold up the client's confirmation.
+    await fetch(
+      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+  } catch (e) {
+    console.error('notifyAdmin failed (non-fatal):', e.message);
+  }
 }
 
 // Create an in-app notification record (fire-and-forget)
@@ -221,35 +295,97 @@ app.get('/api/posters', async (req, res) => {
   res.json({ success: true, data: active });
 });
 
-// Submit booking (public)
-app.post('/api/bookings', async (req, res) => {
-  const { name, phone } = req.body;
-  if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+// Submit booking / enquiry (public)
+//
+// This is the ONLY channel that records an enquiry — the public form no longer
+// falls back to WhatsApp for delivery, so this handler must never fail silently.
+// It validates strictly, returns field-level errors the form can render inline,
+// and survives schema drift rather than dropping the enquiry (see insertBooking).
+app.post('/api/bookings', bookingLimiter, async (req, res) => {
+  // Honeypot — real users never fill a hidden field. Bots do. Answer 201 with a
+  // plausible-looking reference so the bot sees success and does not retry.
+  if (req.body.company) {
+    return res.status(201).json({ success: true, data: { bookingReference: 'LS-0000-000000', status: 'pending' } });
+  }
+
+  const errors = {};
+  const name  = String(req.body.name  || '').trim();
+  const phone = String(req.body.phone || '').trim();
+  const email = String(req.body.email || '').trim();
+
+  if (name.length < 2)   errors.name  = 'Please enter your full name.';
+  if (name.length > 120) errors.name  = 'Name is too long.';
+
+  // Kenyan mobile: 07XXXXXXXX / 01XXXXXXXX / +2547XXXXXXXX / 2541XXXXXXXX
+  const phoneDigits = phone.replace(/[\s()-]/g, '');
+  if (!/^(?:\+?254|0)[17]\d{8}$/.test(phoneDigits)) {
+    errors.phone = 'Enter a valid Kenyan number, e.g. 0712 345 678.';
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    errors.email = 'That email address does not look right.';
+  }
+
+  // An event date in the past is almost always a typo — catch it at the door.
+  const eventDate = req.body.eventDate || null;
+  if (eventDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      errors.eventDate = 'Invalid date.';
+    } else {
+      const today = new Date().toISOString().split('T')[0];
+      if (eventDate < today) errors.eventDate = 'Event date cannot be in the past.';
+    }
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  // Normalise phone to canonical 2547XXXXXXXX so the same client is not stored
+  // three different ways depending on how they typed it.
+  const normalisedPhone = phoneDigits.replace(/^\+/, '').replace(/^0/, '254');
+
   const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
   const ua = req.headers['user-agent'] || '';
-  const dbRow = {
-    name, phone,
-    email:            req.body.email           || null,
-    event_date:       req.body.eventDate        || null,
-    event_type:       req.body.eventType        || null,
-    event_id:         req.body.eventId          || null,
-    guest_count:      req.body.guestCount       || null,
-    budget:           req.body.budget           || null,
-    venue:            req.body.venue            || null,
-    services:         req.body.services         || null,
-    selected_package: req.body.selectedPackage  || null,
-    ticket_quantity:  req.body.ticketQuantity   || 1,
-    total_amount:     req.body.totalAmount      || null,
-    notes:            req.body.notes            || null,
+
+  const row = {
+    name,
+    phone:            normalisedPhone,
+    email:            email || null,
+    event_date:       eventDate,
+    event_type:       req.body.eventType       || null,
+    event_id:         req.body.eventId         || null,
+    guest_count:      req.body.guestCount      || null,
+    budget:           req.body.budget          || null,
+    venue:            req.body.venue           || null,
+    // services is text[] in Postgres. The form used to send a comma-joined
+    // string, which Postgres rejected as a malformed array literal.
+    services:         toTextArray(req.body.services),
+    selected_package: req.body.selectedPackage || null,
+    ticket_quantity:  req.body.ticketQuantity  || 1,
+    total_amount:     req.body.totalAmount     || null,
+    // The client's own special requests. Distinct from `notes`, which is the
+    // internal staff-only field edited from the dashboard.
+    event_details:    req.body.specialRequests || req.body.eventDetails || null,
+    source:           req.body.source          || null,   // "How did you hear about us?"
+    channel:          req.body.channel         || 'booking-form',
     status:           'pending',
     user_ip:          ip,
     user_agent:       ua,
   };
-  const { data, error } = await supabase.from('bookings').insert(dbRow).select().single();
+
+  const { data, error } = await insertBooking(row);
   if (error) return handleError(res, error);
+
   const ref = data.booking_reference || data.id;
-  notifyAdmin(`🎉 NEW BOOKING REQUEST!\n\nRef: ${ref}\nClient: ${name}\nPhone: ${phone}\nEvent: ${req.body.eventType || 'N/A'} on ${req.body.eventDate || 'TBD'}\nVenue: ${req.body.venue || 'N/A'}\nBudget: KES ${req.body.budget || 'N/A'}\nServices: ${req.body.services || 'N/A'}\n\n👉 Dashboard: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
-  createNotification('booking', 'New Booking Request', `${name} (${phone}) — ${req.body.eventType || 'Event'} on ${req.body.eventDate || 'TBD'}`, data.id, 'bookings');
+  const serviceList = (row.services || []).join(', ') || 'N/A';
+
+  // await both: on Vercel serverless the function can freeze the moment the
+  // response is sent, cancelling any in-flight promise that was not awaited.
+  await Promise.allSettled([
+    notifyAdmin(`🎉 NEW ENQUIRY!\n\nRef: ${ref}\nClient: ${name}\nPhone: ${normalisedPhone}\nEvent: ${row.event_type || 'N/A'} on ${row.event_date || 'TBD'}\nVenue: ${row.venue || 'N/A'}\nBudget: KES ${row.budget || 'N/A'}\nServices: ${serviceList}\n\n👉 Dashboard: ${process.env.FRONTEND_URL || ''}/admin/dashboard.html?tab=bookings`),
+    createNotification('booking', 'New Enquiry', `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}`, data.id, 'bookings'),
+  ]);
+
   res.status(201).json({ success: true, data: map.booking(data) });
 });
 
@@ -308,7 +444,7 @@ app.post('/api/admin/events', adminAuth, async (req, res) => {
   res.status(201).json({ success: true, data: map.event(data) });
 });
 app.put('/api/admin/events/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('events').update(toEventDB(req.body)).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('events').update(toEventDB(req.body, true)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.event(data) });
 });
@@ -411,7 +547,7 @@ app.post('/api/admin/banners', adminAuth, async (req, res) => {
   res.status(201).json({ success: true, data: map.banner(data) });
 });
 app.put('/api/admin/banners/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('marketing_banners').update(toBannerDB(req.body)).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('marketing_banners').update(toBannerDB(req.body, true)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.banner(data) });
 });
@@ -463,16 +599,53 @@ app.get('/api/admin/bookings', adminAuth, async (req, res) => {
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.booking) });
 });
+const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
+
 app.patch('/api/admin/bookings/:id/status', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('bookings').update({ status: req.body.status }).eq('id', req.params.id).select().single();
+  const { status } = req.body;
+  // Guard the enum: the dashboard pipeline only renders these four keys, so an
+  // unexpected value would make the enquiry disappear from the board entirely.
+  if (!BOOKING_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${BOOKING_STATUSES.join(', ')}` });
+  }
+  const patch = { status };
+  // Stamp the first move off 'pending' as the first response, so the 2-hour
+  // promise on the public site becomes a measurable number.
+  if (status !== 'pending') {
+    const { data: cur } = await supabase.from('bookings').select('responded_at').eq('id', req.params.id).single();
+    if (!cur?.responded_at) {
+      patch.responded_at = new Date().toISOString();
+      patch.handled_by   = req.admin?.username || req.admin?.role || null;
+    }
+  }
+  const { data, error } = await updateBooking(req.params.id, patch);
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Enquiry not found' });
   res.json({ success: true, data: map.booking(data) });
 });
+
 app.patch('/api/admin/bookings/:id/notes', adminAuth, async (req, res) => {
   const { notes } = req.body;
   if (notes === undefined) return res.status(400).json({ error: 'notes field is required' });
-  const { data, error } = await supabase.from('bookings').update({ notes }).eq('id', req.params.id).select().single();
-  if (error) return handleError(res, error);
+  if (String(notes).length > 5000) return res.status(400).json({ error: 'Notes are limited to 5000 characters.' });
+
+  const { data, error } = await updateBooking(req.params.id, {
+    notes,
+    handled_by: req.admin?.username || req.admin?.role || null,
+  });
+
+  if (error) {
+    // Unlike metadata, a note is text a person typed. If the column is missing
+    // we must say so plainly rather than report a success that saved nothing.
+    if (error.code === 'PGRST204' && (error.message || '').includes("'notes'")) {
+      return res.status(503).json({
+        error: 'Notes are not available yet — the database is missing the "notes" column. ' +
+               'Run database/migrations/2026-07-27_final_audit_cleanup.sql in Supabase, then try again.',
+      });
+    }
+    return handleError(res, error);
+  }
+  if (!data) return res.status(404).json({ error: 'Enquiry not found' });
   res.json({ success: true, data: map.booking(data) });
 });
 app.delete('/api/admin/bookings/:id', adminAuth, async (req, res) => {

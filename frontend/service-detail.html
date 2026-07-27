@@ -510,9 +510,13 @@
             <a href="${bookUrl}" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-8 py-3.5 rounded-full font-bold hover:bg-yellow-300 transition shadow-xl">
               <i class="fas fa-calendar-check"></i> Request a Quote
             </a>
+            <!-- Secondary by design: "Request a Quote" above is the primary path
+                 because it records the enquiry in the dashboard. WhatsApp stays
+                 available for people who prefer it, but no longer competes for
+                 attention with equal visual weight. -->
             <a href="https://wa.me/254703925826?text=${waMsg}" target="_blank" rel="noopener"
-              class="btn-touch inline-flex items-center gap-2 bg-green-600 text-white px-8 py-3.5 rounded-full font-bold hover:bg-green-700 transition shadow-xl">
-              <i class="fab fa-whatsapp text-lg"></i> WhatsApp Us
+              class="btn-touch inline-flex items-center gap-2 bg-transparent border-2 border-green-600 text-green-400 px-8 py-3.5 rounded-full font-bold hover:bg-green-600 hover:text-white transition">
+              <i class="fab fa-whatsapp text-lg"></i> Or WhatsApp Us
             </a>
           </div>
         </div>

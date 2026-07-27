@@ -5,342 +5,439 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Book Your Event | LAWIE SOUNDS - Professional Entertainment</title>
   <meta name="description" content="Book Lawie Sounds for your wedding, corporate event, or party. Professional DJ, MC, lighting, sound, and photography services in Kenya.">
-  
-  <!-- Tailwind CSS (latest v3) -->
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-  <!-- SweetAlert2 -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  
+
   <style>
     * { font-family: 'Inter', sans-serif; }
-    
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
-    
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-up { animation: fadeInUp 0.45s ease forwards; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .animate-spin { animation: spin 0.8s linear infinite; }
-    
+    .spin { animation: spin 0.8s linear infinite; }
+
+    /* Visible focus ring on every interactive element — keyboard users must be
+       able to see where they are. Never remove this without a replacement. */
+    :where(input, select, textarea, button, a):focus-visible {
+      outline: 3px solid #eab308;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
     .form-input:focus, .form-select:focus, .form-textarea:focus {
       border-color: #eab308;
-      outline: none;
       box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
     }
-    
-    /* Service card checkbox styling */
-    .service-checkbox:checked + .service-label {
+    /* Error state is signalled by colour AND an icon AND text — never colour
+       alone, which excludes colour-blind users (WCAG 1.4.1). */
+    .field-invalid { border-color: #dc2626 !important; background: #fef2f2; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); }
+    .field-error { display: none; color: #b91c1c; font-size: .8125rem; margin-top: .375rem; }
+    .field-error.show { display: flex; align-items: flex-start; gap: .375rem; }
+
+    /* Service cards: the whole card is the click target, not just the checkbox */
+    .service-card {
+      transition: border-color .15s, background-color .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .service-card:has(input:checked) {
       border-color: #eab308;
-      background-color: #fef3c7;
+      background-color: #fefce8;
+      box-shadow: inset 0 0 0 1px #eab308;
     }
-    
-    .service-checkbox:checked + .service-label .service-check-icon {
-      display: inline-flex;
+    .service-card:active { transform: scale(.985); }
+    .service-card:has(input:focus-visible) { outline: 3px solid #eab308; outline-offset: 2px; }
+
+    /* Progress rail */
+    .step-dot { transition: background-color .3s, color .3s, transform .3s; }
+    .step-active   { background-color: #eab308; color: #000; transform: scale(1.1); }
+    .step-complete { background-color: #16a34a; color: #fff; }
+    .step-pending  { background-color: #e5e7eb; color: #6b7280; }
+    .progress-fill { transition: width .4s cubic-bezier(.4,0,.2,1); }
+
+    /* Minimum 44px touch targets on mobile (WCAG 2.5.5 / Fitts's law) */
+    @media (max-width: 640px) {
+      .btn-touch, .form-input, .form-select { min-height: 48px; }
     }
-    
-    /* Step indicator */
-    .step-active {
-      background-color: #eab308;
-      color: #000;
+
+    /* Respect users who get motion sickness from animation (WCAG 2.3.3) */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
-    
-    .step-completed {
-      background-color: #10b981;
-      color: white;
+
+    /* Screen-reader-only text */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
     }
-    
-    .step-pending {
-      background-color: #e5e7eb;
-      color: #6b7280;
+    /* Honeypot — hidden from humans, visible to naive bots. Not display:none,
+       which better bots detect and skip. */
+    .hp-field {
+      position: absolute !important; left: -9999px !important;
+      opacity: 0; height: 0; width: 0; pointer-events: none;
     }
-    
-    .logo-img { transition: transform 0.3s ease; }
-    .logo-img:hover { transform: scale(1.05); }
   </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 text-gray-900">
+
+  <!-- Skip link — first tab stop, lets keyboard users jump past the nav -->
+  <a href="#booking-form" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:bg-yellow-400 focus:text-black focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold">
+    Skip to booking form
+  </a>
 
   <!-- ==================== HEADER ==================== -->
   <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
     <div class="container mx-auto px-4 py-4">
       <div class="flex flex-wrap items-center justify-between">
-        <div class="flex items-center gap-3">
-          <!-- FIXED: Corrected logo path with ../ -->
-          <img src="/IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
-          <h1 class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></h1>
-        </div>
-        
-        <nav class="hidden md:flex gap-6 text-sm font-semibold">
+        <a href="index.html" class="flex items-center gap-3" aria-label="Lawie Sounds home">
+          <img src="/IMAGES/LOGO/2.jpg" alt="" class="h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
+          <span class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
+        </a>
+
+        <nav class="hidden md:flex gap-6 text-sm font-semibold" aria-label="Main">
           <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
           <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
           <a href="gallery.html" class="hover:text-yellow-400 transition">Gallery</a>
-          <a href="booking.html" class="text-yellow-400 border-b-2 border-yellow-400 pb-1">Booking</a>
+          <a href="booking.html" class="text-yellow-400 border-b-2 border-yellow-400 pb-1" aria-current="page">Booking</a>
         </nav>
-        
+
         <div class="flex items-center gap-3">
-          <a href="tel:+254703925826" class="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition">
-            <i class="fas fa-phone-alt mr-1"></i>Call Us
+          <a href="tel:+254703925826" class="btn-touch bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition">
+            <i class="fas fa-phone-alt mr-1" aria-hidden="true"></i>Call Us
           </a>
-          <button id="mobile-menu-btn" class="md:hidden text-white focus:outline-none">
-            <i class="fas fa-bars text-xl"></i>
+          <button id="mobile-menu-btn" class="md:hidden text-white p-2" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+            <i class="fas fa-bars text-xl" aria-hidden="true"></i>
           </button>
         </div>
       </div>
-      
+
       <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
         <a href="index.html" class="block py-2 hover:text-yellow-400">Home</a>
         <a href="services.html" class="block py-2 hover:text-yellow-400">Services</a>
         <a href="gallery.html" class="block py-2 hover:text-yellow-400">Gallery</a>
-        <a href="booking.html" class="block py-2 text-yellow-400">Booking</a>
+        <a href="booking.html" class="block py-2 text-yellow-400" aria-current="page">Booking</a>
       </div>
     </div>
   </header>
 
-  <!-- ==================== BOOKING HERO ==================== -->
-  <section class="relative bg-gradient-to-r from-gray-900 to-black text-white py-12">
+  <!-- ==================== HERO ==================== -->
+  <section class="bg-gradient-to-r from-gray-900 to-black text-white py-10">
     <div class="container mx-auto px-4 text-center">
-      <h1 class="text-3xl md:text-4xl font-bold mb-3 animate-fade-up">Book Your <span class="text-yellow-400">Event</span></h1>
-      <p class="text-gray-300 max-w-xl mx-auto animate-fade-up" style="animation-delay: 0.1s">
-        Fill out the form below and we'll get back to you within <strong class="text-yellow-400">2 hours</strong> with a custom quote.
+      <h1 class="text-3xl md:text-4xl font-bold mb-3">Book Your <span class="text-yellow-400">Event</span></h1>
+      <p class="text-gray-300 max-w-xl mx-auto">
+        Tell us about your event and we'll come back within <strong class="text-yellow-400">2 hours</strong> with a custom quote.
       </p>
     </div>
   </section>
 
-  <!-- ==================== BOOKING FORM ==================== -->
-  <section class="py-12 px-4">
+  <!-- ==================== FORM ==================== -->
+  <main class="py-10 px-4">
     <div class="container mx-auto max-w-3xl">
-      
-      <!-- Progress Steps -->
-      <div class="flex justify-between mb-8">
-        <div class="flex-1 text-center">
-          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-active" data-step="1">1</div>
-          <span class="text-xs text-gray-500">Your Info</span>
-        </div>
-        <div class="flex-1 text-center">
-          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="2">2</div>
-          <span class="text-xs text-gray-500">Event Details</span>
-        </div>
-        <div class="flex-1 text-center">
-          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="3">3</div>
-          <span class="text-xs text-gray-500">Services</span>
-        </div>
-        <div class="flex-1 text-center">
-          <div class="step-indicator w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 step-pending" data-step="4">4</div>
-          <span class="text-xs text-gray-500">Confirm</span>
-        </div>
+
+      <!-- Prefill notice, shown when arriving from a service page -->
+      <div id="prefillNotice" class="hidden mb-5 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3 flex items-start gap-3">
+        <i class="fas fa-circle-check text-yellow-500 mt-0.5" aria-hidden="true"></i>
+        <p class="text-sm text-gray-800">We've pre-selected <strong id="prefillName"></strong> for you. Add anything else you need below.</p>
       </div>
 
-      <form id="bookingForm" class="bg-white rounded-2xl shadow-xl p-6 md:p-8 space-y-6">
-        <!-- ===== STEP 1: CONTACT INFO ===== -->
-        <div class="form-step" data-step="1">
-          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-user text-yellow-500"></i> Your Contact Information</h2>
-          
-          <div class="grid md:grid-cols-2 gap-4">
+      <!-- Draft restore notice -->
+      <div id="draftNotice" class="hidden mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-gray-800"><i class="fas fa-clock-rotate-left mr-2 text-blue-500" aria-hidden="true"></i>We restored your unfinished enquiry.</p>
+        <button type="button" id="discardDraftBtn" class="text-sm font-semibold text-blue-700 underline hover:text-blue-900">Start over</button>
+      </div>
+
+      <!-- ===== Progress ===== -->
+      <!-- Visibility of system status: users always know where they are and how
+           much is left. The bar is decorative; the live region announces it. -->
+      <div class="mb-8" id="progressRail">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-semibold text-gray-700">
+            Step <span id="stepNum">1</span> of 4 &middot; <span id="stepName" class="text-gray-500 font-normal">Your details</span>
+          </p>
+          <p class="text-sm text-gray-400" id="stepPercent">25%</p>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden" role="presentation">
+          <div id="progressFill" class="progress-fill h-full bg-yellow-400 rounded-full" style="width:25%"></div>
+        </div>
+
+        <ol class="flex justify-between mt-4" aria-label="Booking progress">
+          <li class="flex-1 text-center"><span class="step-dot step-active w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="1">1</span><span class="block text-xs text-gray-500 mt-1">Your details</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="2">2</span><span class="block text-xs text-gray-500 mt-1">Event</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="3">3</span><span class="block text-xs text-gray-500 mt-1">Services</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="4">4</span><span class="block text-xs text-gray-500 mt-1">Confirm</span></li>
+        </ol>
+      </div>
+
+      <!-- Polite live region: announces step changes to screen readers without
+           interrupting whatever the user is currently reading. -->
+      <p id="stepAnnouncer" class="sr-only" role="status" aria-live="polite"></p>
+
+      <form id="booking-form" class="bg-white rounded-2xl shadow-xl p-6 md:p-8" novalidate>
+
+        <!-- Honeypot: bots fill this, humans never see it -->
+        <div class="hp-field" aria-hidden="true">
+          <label for="company">Company (leave blank)</label>
+          <input type="text" id="company" name="company" tabindex="-1" autocomplete="off">
+        </div>
+
+        <!-- ===== STEP 1 ===== -->
+        <fieldset class="form-step" data-step="1">
+          <legend class="text-xl font-bold mb-1 flex items-center gap-2">
+            <i class="fas fa-user text-yellow-500" aria-hidden="true"></i> Your contact information
+          </legend>
+          <p class="text-sm text-gray-500 mb-5">So we know who to send the quote to.</p>
+
+          <div class="grid md:grid-cols-2 gap-5">
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
-              <input type="text" id="name" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="John Doe" required>
+              <label for="name" class="block text-sm font-semibold text-gray-700 mb-1.5">Full name <span class="text-red-600" aria-hidden="true">*</span></label>
+              <input type="text" id="name" name="name" autocomplete="name" required aria-required="true" aria-describedby="err-name"
+                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="e.g. Jane Wanjiru">
+              <p class="field-error" id="err-name"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
-              <input type="tel" id="phone" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="+254 7XX XXX XXX" required>
+              <label for="phone" class="block text-sm font-semibold text-gray-700 mb-1.5">Phone number <span class="text-red-600" aria-hidden="true">*</span></label>
+              <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" required aria-required="true" aria-describedby="hint-phone err-phone"
+                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="0712 345 678">
+              <p id="hint-phone" class="text-xs text-gray-500 mt-1.5">We'll call or WhatsApp you on this number.</p>
+              <p class="field-error" id="err-phone"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
           </div>
-          
-          <div class="grid md:grid-cols-2 gap-4 mt-4">
+
+          <div class="grid md:grid-cols-2 gap-5 mt-5">
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Email Address *</label>
-              <input type="email" id="email" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="you@example.com" required>
+              <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Email address <span class="text-red-600" aria-hidden="true">*</span></label>
+              <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required aria-required="true" aria-describedby="err-email"
+                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="you@example.com">
+              <p class="field-error" id="err-email"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">How did you hear about us?</label>
-              <select id="source" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition">
-                <option value="">Select...</option>
+              <label for="source" class="block text-sm font-semibold text-gray-700 mb-1.5">How did you hear about us? <span class="text-gray-400 font-normal">(optional)</span></label>
+              <select id="source" name="source" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                <option value="">Select…</option>
                 <option value="Instagram">Instagram</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Google">Google Search</option>
-                <option value="Friend/Family">Friend/Family</option>
-                <option value="Event">Previous Event</option>
+                <option value="Friend/Family">Friend or family</option>
+                <option value="Event">Saw you at an event</option>
                 <option value="Other">Other</option>
               </select>
             </div>
           </div>
-        </div>
+        </fieldset>
 
-        <!-- ===== STEP 2: EVENT DETAILS ===== -->
-        <div class="form-step hidden" data-step="2">
-          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-calendar-alt text-yellow-500"></i> Event Details</h2>
-          
-          <div class="grid md:grid-cols-2 gap-4">
+        <!-- ===== STEP 2 ===== -->
+        <fieldset class="form-step hidden" data-step="2">
+          <legend class="text-xl font-bold mb-1 flex items-center gap-2">
+            <i class="fas fa-calendar-alt text-yellow-500" aria-hidden="true"></i> Event details
+          </legend>
+          <p class="text-sm text-gray-500 mb-5">This helps us check availability and size the setup.</p>
+
+          <div class="grid md:grid-cols-2 gap-5">
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Event Date *</label>
-              <input type="date" id="event_date" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
+              <label for="event_date" class="block text-sm font-semibold text-gray-700 mb-1.5">Event date <span class="text-red-600" aria-hidden="true">*</span></label>
+              <input type="date" id="event_date" name="event_date" required aria-required="true" aria-describedby="err-event_date"
+                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3">
+              <p class="field-error" id="err-event_date"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Event Type *</label>
-              <select id="event_type" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
-                <option value="">Select event type...</option>
+              <label for="event_type" class="block text-sm font-semibold text-gray-700 mb-1.5">Event type <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="event_type" name="event_type" required aria-required="true" aria-describedby="err-event_type"
+                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                <option value="">Select event type…</option>
                 <option value="Wedding">💍 Wedding</option>
                 <option value="Birthday Party">🎂 Birthday Party</option>
                 <option value="Corporate Event">🏢 Corporate Event</option>
                 <option value="Concert">🎤 Concert</option>
                 <option value="Graduation">🎓 Graduation</option>
-                <option value="Ruracio">🎎 Ruracio/Dowry</option>
+                <option value="Ruracio">🎎 Ruracio / Dowry</option>
                 <option value="Other">🎉 Other</option>
               </select>
+              <p class="field-error" id="err-event_type"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
           </div>
-          
-          <div class="grid md:grid-cols-2 gap-4 mt-4">
+
+          <div class="grid md:grid-cols-2 gap-5 mt-5">
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Expected Guest Count *</label>
-              <select id="guest_count" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
-                <option value="">Select range...</option>
-                <option value="0-50">0 - 50 guests</option>
-                <option value="51-100">51 - 100 guests</option>
-                <option value="101-250">101 - 250 guests</option>
-                <option value="251-500">251 - 500 guests</option>
+              <label for="guest_count" class="block text-sm font-semibold text-gray-700 mb-1.5">Expected guests <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="guest_count" name="guest_count" required aria-required="true" aria-describedby="err-guest_count"
+                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                <option value="">Select range…</option>
+                <option value="0-50">0 – 50 guests</option>
+                <option value="51-100">51 – 100 guests</option>
+                <option value="101-250">101 – 250 guests</option>
+                <option value="251-500">251 – 500 guests</option>
                 <option value="500+">500+ guests</option>
               </select>
+              <p class="field-error" id="err-guest_count"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Budget Range (KES) *</label>
-              <select id="budget" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" required>
-                <option value="">Select budget...</option>
-                <option value="10k-30k">KES 10,000 - 30,000</option>
-                <option value="30k-50k">KES 30,000 - 50,000</option>
-                <option value="50k-100k">KES 50,000 - 100,000</option>
-                <option value="100k-200k">KES 100,000 - 200,000</option>
+              <label for="budget" class="block text-sm font-semibold text-gray-700 mb-1.5">Budget range <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="budget" name="budget" required aria-required="true" aria-describedby="hint-budget err-budget"
+                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                <option value="">Select budget…</option>
+                <option value="10k-30k">KES 10,000 – 30,000</option>
+                <option value="30k-50k">KES 30,000 – 50,000</option>
+                <option value="50k-100k">KES 50,000 – 100,000</option>
+                <option value="100k-200k">KES 100,000 – 200,000</option>
                 <option value="200k+">KES 200,000+</option>
               </select>
+              <p id="hint-budget" class="text-xs text-gray-500 mt-1.5">A range is fine — it helps us recommend the right package.</p>
+              <p class="field-error" id="err-budget"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
           </div>
-          
-          <div class="mt-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Venue / Location *</label>
-            <input type="text" id="venue" class="form-input w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="e.g., Nairobi, KICC, Sarit Centre..." required>
+
+          <div class="mt-5">
+            <label for="venue" class="block text-sm font-semibold text-gray-700 mb-1.5">Venue or location <span class="text-red-600" aria-hidden="true">*</span></label>
+            <input type="text" id="venue" name="venue" required aria-required="true" aria-describedby="err-venue"
+                   class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="e.g. KICC Nairobi, Sarit Centre, Nakuru">
+            <p class="field-error" id="err-venue"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
+          </div>
+        </fieldset>
+
+        <!-- ===== STEP 3 ===== -->
+        <fieldset class="form-step hidden" data-step="3">
+          <legend class="text-xl font-bold mb-1 flex items-center gap-2">
+            <i class="fas fa-microphone-alt text-yellow-500" aria-hidden="true"></i> What do you need?
+          </legend>
+          <p class="text-sm text-gray-500 mb-5">Select everything that applies — you can change this later.</p>
+
+          <div id="servicesGroup" class="grid md:grid-cols-2 gap-3" role="group" aria-describedby="err-services">
+            <!-- Rendered by JS from SERVICES so the list stays in one place -->
+          </div>
+          <p class="field-error mt-3" id="err-services"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
+
+          <div class="mt-6">
+            <label for="special_requests" class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Anything else we should know? <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <textarea id="special_requests" name="special_requests" rows="3" maxlength="1000" aria-describedby="count-requests"
+                      class="form-textarea w-full border border-gray-300 rounded-lg px-4 py-3"
+                      placeholder="Setup times, song requests, access restrictions, specific equipment…"></textarea>
+            <p id="count-requests" class="text-xs text-gray-400 mt-1.5 text-right"><span id="reqCount">0</span> / 1000</p>
+          </div>
+        </fieldset>
+
+        <!-- ===== STEP 4 ===== -->
+        <fieldset class="form-step hidden" data-step="4">
+          <legend class="text-xl font-bold mb-1 flex items-center gap-2">
+            <i class="fas fa-clipboard-check text-green-600" aria-hidden="true"></i> Review your enquiry
+          </legend>
+          <p class="text-sm text-gray-500 mb-5">Check everything is right, then send. Use <strong>Edit</strong> to jump back.</p>
+
+          <div id="reviewPanel" class="space-y-3">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="mt-5 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+            <p class="text-sm text-gray-800">
+              <i class="fas fa-clock mr-2 text-yellow-600" aria-hidden="true"></i>
+              We reply within <strong>2 hours</strong> during business hours. You'll get a reference number as soon as you send this.
+            </p>
+          </div>
+        </fieldset>
+
+        <!-- Submission error banner (assertive: user must know it failed) -->
+        <div id="submitError" class="hidden mt-6 bg-red-50 border border-red-300 rounded-xl p-4" role="alert" aria-live="assertive">
+          <p class="font-semibold text-red-800 flex items-center gap-2">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <span id="submitErrorTitle">We couldn't send your enquiry</span>
+          </p>
+          <p class="text-sm text-red-700 mt-1" id="submitErrorMsg"></p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button type="button" id="retryBtn" class="btn-touch bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+              <i class="fas fa-rotate-right mr-1.5" aria-hidden="true"></i>Try again
+            </button>
+            <a href="tel:+254703925826" class="btn-touch bg-white border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 transition">
+              <i class="fas fa-phone mr-1.5" aria-hidden="true"></i>Call us instead
+            </a>
+            <a id="fallbackWa" href="#" target="_blank" rel="noopener" class="btn-touch bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition">
+              <i class="fab fa-whatsapp mr-1.5" aria-hidden="true"></i>Send on WhatsApp
+            </a>
           </div>
         </div>
 
-        <!-- ===== STEP 3: SERVICES SELECTION ===== -->
-        <div class="form-step hidden" data-step="3">
-          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-microphone-alt text-yellow-500"></i> Select Services Needed</h2>
-          <p class="text-sm text-gray-500 mb-4">Check all that apply (you can select multiple)</p>
-          
-          <div class="grid md:grid-cols-2 gap-3">
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="DJ & MC Services" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-headphones text-gray-500 mr-2"></i> DJ & MC Services</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="LED Screens" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-tv text-gray-500 mr-2"></i> LED Screens</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Power & Lighting" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-lightbulb text-gray-500 mr-2"></i> Power & Lighting</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Pyrotechnics" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-fire text-gray-500 mr-2"></i> Pyrotechnics</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Photography" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-camera text-gray-500 mr-2"></i> Photography</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Live Streaming" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-video text-gray-500 mr-2"></i> Live Streaming</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="360 Booth" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-cube text-gray-500 mr-2"></i> 360 Booth</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Drone Services" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-drone text-gray-500 mr-2"></i> Drone Services</span>
-            </label>
-            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition">
-              <input type="checkbox" name="services" value="Public Address System" class="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-400">
-              <span class="ml-3"><i class="fas fa-volume-up text-gray-500 mr-2"></i> Public Address System</span>
-            </label>
-          </div>
-          
-          <div class="mt-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Additional Notes / Special Requests</label>
-            <textarea id="special_requests" rows="3" class="form-textarea w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-yellow-400 transition" placeholder="Any specific requirements, timing, or questions..."></textarea>
-          </div>
-        </div>
-
-        <!-- ===== STEP 4: CONFIRMATION ===== -->
-        <div class="form-step hidden" data-step="4">
-          <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Review & Submit</h2>
-          
-          <div class="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-            <p><strong class="text-gray-700">Name:</strong> <span id="review_name"></span></p>
-            <p><strong class="text-gray-700">Phone:</strong> <span id="review_phone"></span></p>
-            <p><strong class="text-gray-700">Email:</strong> <span id="review_email"></span></p>
-            <p><strong class="text-gray-700">Event Date:</strong> <span id="review_date"></span></p>
-            <p><strong class="text-gray-700">Event Type:</strong> <span id="review_type"></span></p>
-            <p><strong class="text-gray-700">Guests:</strong> <span id="review_guests"></span></p>
-            <p><strong class="text-gray-700">Budget:</strong> <span id="review_budget"></span></p>
-            <p><strong class="text-gray-700">Venue:</strong> <span id="review_venue"></span></p>
-            <p><strong class="text-gray-700">Services:</strong> <span id="review_services"></span></p>
-          </div>
-          
-          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-            <p class="text-sm text-gray-700"><i class="fas fa-clock mr-2"></i> We'll respond within <strong>2 hours</strong> via WhatsApp or call with your custom quote.</p>
-          </div>
-        </div>
-
-        <!-- Navigation Buttons -->
-        <div class="flex justify-between pt-4 border-t">
-          <button type="button" id="prevBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition hidden">
-            <i class="fas fa-arrow-left mr-2"></i> Back
+        <!-- Navigation -->
+        <div class="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-gray-200">
+          <button type="button" id="prevBtn" class="btn-touch invisible px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition">
+            <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>Back
           </button>
-          <button type="button" id="nextBtn" class="px-6 py-2 bg-yellow-400 text-black rounded-full font-semibold hover:bg-yellow-500 transition ml-auto">
-            Next <i class="fas fa-arrow-right ml-2"></i>
+          <button type="button" id="nextBtn" class="btn-touch px-6 py-2.5 bg-yellow-400 text-black rounded-full font-bold hover:bg-yellow-300 transition shadow">
+            Next<i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
           </button>
-          <button type="submit" id="submitBtn" class="px-6 py-2 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition hidden">
-            <i class="fas fa-paper-plane mr-2"></i> Submit Booking
+          <button type="submit" id="submitBtn" class="btn-touch hidden px-6 py-2.5 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 transition shadow disabled:opacity-60 disabled:cursor-not-allowed">
+            <i class="fas fa-paper-plane mr-2" aria-hidden="true"></i><span id="submitLabel">Send enquiry</span>
           </button>
-        </div>
-        
-        <!-- Loading Overlay -->
-        <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
-          <div class="bg-white rounded-xl p-6 text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-            <p class="text-gray-700">Submitting your booking...</p>
-          </div>
         </div>
       </form>
-      
-      <!-- Trust Badges -->
-      <div class="text-center mt-6">
-        <div class="flex justify-center gap-4 text-xs text-gray-400">
-          <span><i class="fas fa-lock mr-1"></i> Secure form</span>
-          <span><i class="fas fa-clock mr-1"></i> 2hr response</span>
-          <span><i class="fas fa-shield-alt mr-1"></i> No spam</span>
+
+      <!-- ===== SUCCESS PANEL (replaces the form on success) ===== -->
+      <section id="successPanel" class="hidden bg-white rounded-2xl shadow-xl p-8 text-center animate-fade-up" role="status" aria-live="polite" tabindex="-1">
+        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+          <i class="fas fa-check text-4xl text-green-600" aria-hidden="true"></i>
         </div>
+        <h2 class="text-2xl font-bold mb-2">Enquiry received!</h2>
+        <p class="text-gray-600 max-w-md mx-auto">
+          Thanks <strong id="successName">there</strong> — your enquiry is with our team. We'll be in touch within <strong>2 hours</strong> during business hours.
+        </p>
+
+        <!-- The reference is the client's proof of submission. Prominent and
+             copyable so they can quote it when they call. -->
+        <div class="mt-6 inline-flex flex-col items-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl px-8 py-5">
+          <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Your reference</span>
+          <span id="successRef" class="text-2xl font-black text-gray-900 tracking-wide mt-1">—</span>
+          <button type="button" id="copyRefBtn" class="mt-2 text-sm text-yellow-700 font-semibold hover:text-yellow-800 underline">
+            <i class="fas fa-copy mr-1" aria-hidden="true"></i>Copy reference
+          </button>
+        </div>
+
+        <p class="text-sm text-gray-500 mt-6 max-w-md mx-auto">
+          Keep this number — quote it if you call or message us about this event.
+        </p>
+
+        <!-- WhatsApp is now OPTIONAL and secondary. The enquiry is already
+             safely recorded; this is a convenience, not the delivery mechanism. -->
+        <div class="flex flex-wrap justify-center gap-3 mt-7">
+          <a id="successWa" href="#" target="_blank" rel="noopener"
+             class="btn-touch inline-flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-full font-semibold hover:bg-green-700 transition shadow">
+            <i class="fab fa-whatsapp text-lg" aria-hidden="true"></i>Also send on WhatsApp
+          </a>
+          <a href="index.html" class="btn-touch inline-flex items-center gap-2 bg-gray-100 text-gray-800 px-5 py-3 rounded-full font-semibold hover:bg-gray-200 transition">
+            <i class="fas fa-house" aria-hidden="true"></i>Back to home
+          </a>
+        </div>
+        <p class="text-xs text-gray-400 mt-4">Sending on WhatsApp is optional — we already have your enquiry.</p>
+      </section>
+
+      <!-- Trust badges -->
+      <div class="text-center mt-6">
+        <p class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-gray-400">
+          <span><i class="fas fa-lock mr-1" aria-hidden="true"></i>Secure form</span>
+          <span><i class="fas fa-clock mr-1" aria-hidden="true"></i>2-hour response</span>
+          <span><i class="fas fa-shield-alt mr-1" aria-hidden="true"></i>No spam, ever</span>
+        </p>
       </div>
     </div>
-  </section>
+  </main>
 
   <!-- ==================== FOOTER ==================== -->
   <footer class="bg-gray-900 text-white mt-16">
     <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
       <div>
-        <!-- FIXED: Corrected footer logo path -->
-        <img src="/IMAGES/LOGO/2.jpg" alt="Lawie Logo" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
+        <img src="/IMAGES/LOGO/2.jpg" alt="" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
         <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
-        Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:text-yellow-500">@mahatma_the_deejay</a></p>
+        Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" rel="noopener" class="text-yellow-400 hover:text-yellow-300 underline">@mahatma_the_deejay</a></p>
       </div>
       <div>
-        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h3>
+        <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h2>
         <ul class="space-y-2 text-sm">
           <li><a href="index.html" class="hover:text-yellow-400">Home</a></li>
           <li><a href="services.html" class="hover:text-yellow-400">Services</a></li>
@@ -348,228 +445,518 @@
         </ul>
       </div>
       <div>
-        <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h3>
+        <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h2>
         <div class="flex space-x-6 text-2xl">
-          <a href="https://instagram.com/lawie_sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-instagram"></i></a>
-          <a href="https://facebook.com/lawie.sounds" target="_blank" class="hover:text-yellow-400"><i class="fab fa-facebook"></i></a>
-          <a href="https://wa.me/254703925826" target="_blank" class="hover:text-yellow-400"><i class="fab fa-whatsapp"></i></a>
+          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a>
+          <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- Floating Action Buttons -->
-  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-    <a href="tel:+254703925826" class="bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition hover:scale-110">
-      <i class="fas fa-phone-alt"></i>
+  <!-- Floating actions -->
+  <div class="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+    <a href="tel:+254703925826" class="btn-touch bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition" aria-label="Call Lawie Sounds">
+      <i class="fas fa-phone-alt" aria-hidden="true"></i>
     </a>
-    <a href="https://wa.me/254703925826" target="_blank" class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition hover:scale-110">
-      <i class="fab fa-whatsapp"></i>
+    <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="btn-touch bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition" aria-label="WhatsApp Lawie Sounds">
+      <i class="fab fa-whatsapp" aria-hidden="true"></i>
     </a>
-    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-300 transition hover:scale-110">
-      <i class="fas fa-arrow-up"></i>
-    </button>
   </div>
 
-  <script>
-    // Multi-step form navigation
-    let currentStep = 1;
-    const totalSteps = 4;
-    
-    const formSteps = document.querySelectorAll('.form-step');
-    const stepIndicators = document.querySelectorAll('.step-indicator');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    
-    function updateStepDisplay() {
-      formSteps.forEach(step => {
-        const stepNum = parseInt(step.getAttribute('data-step'));
-        step.classList.toggle('hidden', stepNum !== currentStep);
-      });
-      
-      // Update step indicators
-      stepIndicators.forEach(indicator => {
-        const stepNum = parseInt(indicator.getAttribute('data-step'));
-        indicator.classList.remove('step-active', 'step-completed', 'step-pending');
-        if (stepNum === currentStep) {
-          indicator.classList.add('step-active');
-        } else if (stepNum < currentStep) {
-          indicator.classList.add('step-completed');
-        } else {
-          indicator.classList.add('step-pending');
-        }
-      });
-      
-      // Update buttons
-      prevBtn.classList.toggle('hidden', currentStep === 1);
-      
-      if (currentStep === totalSteps) {
-        nextBtn.classList.add('hidden');
-        submitBtn.classList.remove('hidden');
-      } else {
-        nextBtn.classList.remove('hidden');
-        submitBtn.classList.add('hidden');
-      }
-    }
-    
-    function validateStep(step) {
-      const stepElement = document.querySelector(`.form-step[data-step="${step}"]`);
-      const requiredInputs = stepElement.querySelectorAll('[required]');
-      
-      for (let input of requiredInputs) {
-        if (!input.value.trim()) {
-          input.classList.add('border-red-500');
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Use SweetAlert instead of alert for better UX
-          Swal.fire({
-            icon: 'warning',
-            title: 'Missing Field',
-            text: `Please fill in ${input.previousElementSibling?.innerText || 'all required fields'}`,
-            background: '#fff',
-            confirmButtonColor: '#eab308'
-          });
-          return false;
-        }
-        input.classList.remove('border-red-500');
-      }
-      
-      // Step 3 validation: at least one service selected
-      if (step === 3) {
-        const selectedServices = document.querySelectorAll('input[name="services"]:checked');
-        if (selectedServices.length === 0) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No Service Selected',
-            text: 'Please select at least one service',
-            background: '#fff',
-            confirmButtonColor: '#eab308'
-          });
-          return false;
-        }
-      }
-      
-      return true;
-    }
-    
-    function updateReview() {
-      document.getElementById('review_name').innerText = document.getElementById('name').value || '-';
-      document.getElementById('review_phone').innerText = document.getElementById('phone').value || '-';
-      document.getElementById('review_email').innerText = document.getElementById('email').value || '-';
-      document.getElementById('review_date').innerText = document.getElementById('event_date').value || '-';
-      document.getElementById('review_type').innerText = document.getElementById('event_type').value || '-';
-      document.getElementById('review_guests').innerText = document.getElementById('guest_count').value || '-';
-      document.getElementById('review_budget').innerText = document.getElementById('budget').value || '-';
-      document.getElementById('review_venue').innerText = document.getElementById('venue').value || '-';
-      
-      const selectedServices = Array.from(document.querySelectorAll('input[name="services"]:checked'))
-        .map(cb => cb.value);
-      document.getElementById('review_services').innerText = selectedServices.length ? selectedServices.join(', ') : 'None selected';
-    }
-    
-    nextBtn.addEventListener('click', () => {
-      if (validateStep(currentStep)) {
-        if (currentStep === 3) {
-          updateReview();
-        }
-        currentStep++;
-        updateStepDisplay();
-      }
-    });
-    
-    prevBtn.addEventListener('click', () => {
-      currentStep--;
-      updateStepDisplay();
-    });
-    
-    // Submit handler with WhatsApp integration
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      if (!validateStep(currentStep)) return;
-      
-      loadingOverlay.classList.remove('hidden');
-      
-      // Collect form data (camelCase to match API)
-      const formData = {
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        email: document.getElementById('email').value,
-        source: document.getElementById('source').value,
-        eventDate: document.getElementById('event_date').value,
-        eventType: document.getElementById('event_type').value,
-        guestCount: document.getElementById('guest_count').value,
-        budget: document.getElementById('budget').value,
-        venue: document.getElementById('venue').value,
-        services: Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value).join(', '),
-        notes: document.getElementById('special_requests').value,
-      };
+<script>
+(function () {
+  'use strict';
 
-      // Save to API (fire-and-save — WhatsApp is primary contact channel)
-      fetch('/api/bookings', {
+  // ===================== CONFIG =====================
+  const WA_NUMBER  = '254703925826';
+  const DRAFT_KEY  = 'lawie_booking_draft_v2';
+  const TOTAL_STEPS = 4;
+
+  // Single source of truth for the service list. `slug` matches services-data.js
+  // so a service page can deep-link here with ?service=<slug> and pre-select it.
+  const SERVICES = [
+    { slug: 'dj-mc-services',  name: 'DJ & MC Services',      icon: 'fa-headphones' },
+    { slug: 'led-screens',     name: 'LED Screens',           icon: 'fa-tv' },
+    { slug: 'power-lighting',  name: 'Power & Lighting',      icon: 'fa-lightbulb' },
+    { slug: 'pyrotechnics',    name: 'Pyrotechnics',          icon: 'fa-fire' },
+    { slug: 'photography',     name: 'Photography',           icon: 'fa-camera' },
+    { slug: 'live-streaming',  name: 'Live Streaming',        icon: 'fa-video' },
+    { slug: '360-booth',       name: '360 Booth',             icon: 'fa-cube' },
+    { slug: 'drone-services',  name: 'Drone Services',        icon: 'fa-helicopter' },
+    { slug: 'public-address',  name: 'Public Address System', icon: 'fa-volume-high' },
+  ];
+
+  const STEP_NAMES = ['Your details', 'Event', 'Services', 'Confirm'];
+
+  // ===================== ELEMENTS =====================
+  const $ = (id) => document.getElementById(id);
+  const form        = $('booking-form');
+  const steps       = Array.from(document.querySelectorAll('.form-step'));
+  const prevBtn     = $('prevBtn');
+  const nextBtn     = $('nextBtn');
+  const submitBtn   = $('submitBtn');
+  const successPanel= $('successPanel');
+
+  let currentStep = 1;
+  let submitting  = false;
+
+  // ===================== SERVICE CHECKBOXES =====================
+  // Rendered from SERVICES so the list never drifts between the markup and the
+  // prefill logic.
+  $('servicesGroup').innerHTML = SERVICES.map(s => `
+    <label class="service-card flex items-center p-3.5 border border-gray-300 rounded-xl cursor-pointer hover:bg-yellow-50">
+      <input type="checkbox" name="services" value="${s.name}" data-slug="${s.slug}"
+             class="w-5 h-5 accent-yellow-500 rounded flex-shrink-0">
+      <span class="ml-3 flex items-center gap-2 text-sm font-medium text-gray-800">
+        <i class="fas ${s.icon} text-gray-400 w-4 text-center" aria-hidden="true"></i>${s.name}
+      </span>
+    </label>`).join('');
+
+  // ===================== VALIDATION =====================
+  // Mirrors the server rules in backened/src/server.js. The server is still the
+  // authority — this is only to give fast, local feedback.
+  const RULES = {
+    name:       v => v.trim().length >= 2 || 'Please enter your full name.',
+    phone:      v => /^(?:\+?254|0)[17]\d{8}$/.test(v.replace(/[\s()-]/g, '')) || 'Enter a valid Kenyan number, e.g. 0712 345 678.',
+    email:      v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Enter a valid email, e.g. you@example.com.',
+    event_date: v => {
+      if (!v) return 'Please choose your event date.';
+      return v >= new Date().toISOString().split('T')[0] || 'The event date cannot be in the past.';
+    },
+    event_type:  v => !!v || 'Please choose an event type.',
+    guest_count: v => !!v || 'Please choose an approximate guest count.',
+    budget:      v => !!v || 'Please choose a budget range.',
+    venue:       v => v.trim().length >= 2 || 'Please tell us where the event is.',
+  };
+
+  const STEP_FIELDS = {
+    1: ['name', 'phone', 'email'],
+    2: ['event_date', 'event_type', 'guest_count', 'venue', 'budget'],
+    3: [],
+    4: [],
+  };
+
+  function showFieldError(id, message) {
+    const input = $(id);
+    const box   = $('err-' + id);
+    if (input) { input.classList.add('field-invalid'); input.setAttribute('aria-invalid', 'true'); }
+    if (box)   { box.querySelector('span').textContent = message; box.classList.add('show'); }
+  }
+
+  function clearFieldError(id) {
+    const input = $(id);
+    const box   = $('err-' + id);
+    if (input) { input.classList.remove('field-invalid'); input.removeAttribute('aria-invalid'); }
+    if (box)   { box.classList.remove('show'); }
+  }
+
+  function validateField(id) {
+    const input = $(id);
+    if (!input || !RULES[id]) return true;
+    const result = RULES[id](input.value);
+    if (result === true) { clearFieldError(id); return true; }
+    showFieldError(id, result);
+    return false;
+  }
+
+  function validateStep(step) {
+    let firstBad = null;
+
+    for (const id of (STEP_FIELDS[step] || [])) {
+      if (!validateField(id) && !firstBad) firstBad = $(id);
+    }
+
+    if (step === 3) {
+      const chosen = form.querySelectorAll('input[name="services"]:checked').length;
+      const box    = $('err-services');
+      if (chosen === 0) {
+        box.querySelector('span').textContent = 'Please select at least one service.';
+        box.classList.add('show');
+        if (!firstBad) firstBad = form.querySelector('input[name="services"]');
+      } else {
+        box.classList.remove('show');
+      }
+    }
+
+    // Error recovery: move focus to the first problem so the user is taken
+    // straight to what needs fixing rather than hunting for it.
+    if (firstBad) {
+      firstBad.focus({ preventScroll: true });
+      firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  }
+
+  // Validate on blur, but only clear errors on input — never introduce a new
+  // error while someone is mid-typing. That is hostile and a classic HCI error.
+  Object.keys(RULES).forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('blur',  () => { if (el.value.trim()) validateField(id); });
+    el.addEventListener('input', () => clearFieldError(id));
+    el.addEventListener('change', () => { if (el.value) validateField(id); });
+  });
+
+  form.querySelectorAll('input[name="services"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (form.querySelectorAll('input[name="services"]:checked').length) {
+        $('err-services').classList.remove('show');
+      }
+      saveDraft();
+    });
+  });
+
+  // ===================== STEP NAVIGATION =====================
+  function renderStep({ moveFocus = true } = {}) {
+    steps.forEach(s => s.classList.toggle('hidden', Number(s.dataset.step) !== currentStep));
+
+    document.querySelectorAll('[data-dot]').forEach(dot => {
+      const n = Number(dot.dataset.dot);
+      dot.classList.remove('step-active', 'step-complete', 'step-pending');
+      if (n === currentStep)      dot.classList.add('step-active');
+      else if (n < currentStep)   { dot.classList.add('step-complete'); dot.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i>'; }
+      else                        { dot.classList.add('step-pending'); dot.textContent = n; }
+      if (n >= currentStep) dot.textContent = n;
+    });
+
+    const pct = Math.round((currentStep / TOTAL_STEPS) * 100);
+    $('progressFill').style.width = pct + '%';
+    $('stepPercent').textContent  = pct + '%';
+    $('stepNum').textContent      = currentStep;
+    $('stepName').textContent     = STEP_NAMES[currentStep - 1];
+
+    prevBtn.classList.toggle('invisible', currentStep === 1);
+    nextBtn.classList.toggle('hidden', currentStep === TOTAL_STEPS);
+    submitBtn.classList.toggle('hidden', currentStep !== TOTAL_STEPS);
+
+    if (currentStep === TOTAL_STEPS) renderReview();
+
+    $('stepAnnouncer').textContent = `Step ${currentStep} of ${TOTAL_STEPS}: ${STEP_NAMES[currentStep - 1]}`;
+
+    // Move focus to the first control of the new step so keyboard and screen
+    // reader users are not stranded at the bottom of the page. Skipped on first
+    // paint, which would otherwise yank the page down before the user has read
+    // the heading.
+    if (moveFocus) {
+      const firstInput = steps[currentStep - 1].querySelector('input, select, textarea');
+      if (firstInput) firstInput.focus({ preventScroll: true });
+      document.getElementById('progressRail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function goTo(step) {
+    currentStep = Math.min(Math.max(step, 1), TOTAL_STEPS);
+    renderStep();
+  }
+
+  nextBtn.addEventListener('click', () => {
+    if (!validateStep(currentStep)) return;
+    saveDraft();
+    goTo(currentStep + 1);
+  });
+
+  prevBtn.addEventListener('click', () => goTo(currentStep - 1));
+
+  // Enter should advance the form, not submit it early from step 1.
+  form.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (e.target.tagName === 'TEXTAREA') return;
+    if (currentStep < TOTAL_STEPS) { e.preventDefault(); nextBtn.click(); }
+  });
+
+  // ===================== REVIEW =====================
+  function collect() {
+    return {
+      name:            $('name').value.trim(),
+      phone:           $('phone').value.trim(),
+      email:           $('email').value.trim(),
+      source:          $('source').value,
+      eventDate:       $('event_date').value,
+      eventType:       $('event_type').value,
+      guestCount:      $('guest_count').value,
+      budget:          $('budget').value,
+      venue:           $('venue').value.trim(),
+      services:        Array.from(form.querySelectorAll('input[name="services"]:checked')).map(c => c.value),
+      specialRequests: $('special_requests').value.trim(),
+    };
+  }
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+
+  const BUDGET_LABEL = {
+    '10k-30k':'KES 10,000 – 30,000', '30k-50k':'KES 30,000 – 50,000',
+    '50k-100k':'KES 50,000 – 100,000', '100k-200k':'KES 100,000 – 200,000',
+    '200k+':'KES 200,000+',
+  };
+
+  function prettyDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('en-KE', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
+  }
+
+  function renderReview() {
+    const d = collect();
+    // Grouped by the step it came from, each with an Edit shortcut — recognition
+    // over recall, and a direct route back to fix a mistake.
+    const groups = [
+      { step: 1, title: 'Your details', rows: [
+        ['Name', d.name], ['Phone', d.phone], ['Email', d.email],
+        ['Heard about us via', d.source || 'Not specified'],
+      ]},
+      { step: 2, title: 'Event', rows: [
+        ['Date', prettyDate(d.eventDate)], ['Type', d.eventType],
+        ['Guests', d.guestCount], ['Budget', BUDGET_LABEL[d.budget] || d.budget], ['Venue', d.venue],
+      ]},
+      { step: 3, title: 'Services', rows: [
+        ['Selected', d.services.length ? d.services.join(', ') : 'None selected'],
+        ['Notes', d.specialRequests || 'None'],
+      ]},
+    ];
+
+    $('reviewPanel').innerHTML = groups.map(g => `
+      <div class="border border-gray-200 rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+          <h3 class="font-semibold text-sm text-gray-800">${g.title}</h3>
+          <button type="button" data-edit="${g.step}" class="text-sm font-semibold text-yellow-700 hover:text-yellow-800 underline">
+            Edit<span class="sr-only"> ${g.title}</span>
+          </button>
+        </div>
+        <dl class="divide-y divide-gray-100">
+          ${g.rows.map(([k, v]) => `
+            <div class="flex gap-4 px-4 py-2.5 text-sm">
+              <dt class="text-gray-500 w-40 flex-shrink-0">${esc(k)}</dt>
+              <dd class="text-gray-900 font-medium break-words">${esc(v || '—')}</dd>
+            </div>`).join('')}
+        </dl>
+      </div>`).join('');
+
+    $('reviewPanel').querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => goTo(Number(btn.dataset.edit)));
+    });
+  }
+
+  // ===================== DRAFT PERSISTENCE =====================
+  // A four-step form on a phone is easy to lose to an accidental back-swipe or a
+  // dropped connection. Persisting locally means the user never retypes.
+  function saveDraft() {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...collect(), _step: currentStep, _at: Date.now() }));
+    } catch (e) { /* private mode / quota — non-fatal */ }
+  }
+
+  function loadDraft() {
+    let draft;
+    try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { return; }
+    if (!draft) return;
+    // Expire after 7 days — a stale event date is worse than an empty form.
+    if (Date.now() - (draft._at || 0) > 7 * 864e5) { clearDraft(); return; }
+
+    const map = { name:'name', phone:'phone', email:'email', source:'source', eventDate:'event_date',
+                  eventType:'event_type', guestCount:'guest_count', budget:'budget', venue:'venue',
+                  specialRequests:'special_requests' };
+    let restored = false;
+    for (const [key, id] of Object.entries(map)) {
+      if (draft[key]) { $(id).value = draft[key]; restored = true; }
+    }
+    (draft.services || []).forEach(name => {
+      const cb = form.querySelector(`input[name="services"][value="${CSS.escape(name)}"]`);
+      if (cb) { cb.checked = true; restored = true; }
+    });
+    if (restored) $('draftNotice').classList.remove('hidden');
+    updateReqCount();
+  }
+
+  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+
+  $('discardDraftBtn').addEventListener('click', () => {
+    clearDraft();
+    form.reset();
+    $('draftNotice').classList.add('hidden');
+    Object.keys(RULES).forEach(clearFieldError);
+    goTo(1);
+  });
+
+  ['name','phone','email','source','event_date','event_type','guest_count','budget','venue','special_requests']
+    .forEach(id => $(id).addEventListener('change', saveDraft));
+
+  // ===================== CHARACTER COUNTER =====================
+  function updateReqCount() { $('reqCount').textContent = $('special_requests').value.length; }
+  $('special_requests').addEventListener('input', updateReqCount);
+
+  // ===================== PREFILL FROM ?service= =====================
+  // Service pages link here as booking.html?service=<slug>, so the enquiry lands
+  // with the right service already ticked and we learn which page drove it.
+  const params      = new URLSearchParams(location.search);
+  const wantedSlug  = params.get('service');
+  let   channel     = 'booking-form';
+
+  if (wantedSlug) {
+    const match = SERVICES.find(s => s.slug === wantedSlug);
+    if (match) {
+      const cb = form.querySelector(`input[data-slug="${CSS.escape(match.slug)}"]`);
+      if (cb) cb.checked = true;
+      $('prefillName').textContent = match.name;
+      $('prefillNotice').classList.remove('hidden');
+      channel = 'service:' + match.slug;
+    }
+  }
+  if (params.get('event')) $('event_type').value = params.get('event');
+
+  // service-detail.html links package CTAs as ...&package=<name>. Carry it
+  // through so the team sees exactly which package the client clicked.
+  const selectedPackage = params.get('package') || null;
+  if (selectedPackage) {
+    $('prefillName').textContent = (wantedSlug ? $('prefillName').textContent + ' — ' : '') + selectedPackage + ' package';
+    $('prefillNotice').classList.remove('hidden');
+  }
+
+  // ===================== WHATSAPP MESSAGE (optional, post-save) =====================
+  function waLink(d, ref) {
+    const lines = [
+      `*NEW ENQUIRY* — Ref ${ref}`, '',
+      `*Name:* ${d.name}`, `*Phone:* ${d.phone}`, `*Email:* ${d.email}`, '',
+      `*Event:* ${d.eventType}`, `*Date:* ${prettyDate(d.eventDate)}`,
+      `*Guests:* ${d.guestCount}`, `*Budget:* ${BUDGET_LABEL[d.budget] || d.budget}`,
+      `*Venue:* ${d.venue}`, '',
+      `*Services:* ${d.services.join(', ')}`,
+      d.specialRequests ? `*Notes:* ${d.specialRequests}` : '',
+    ].filter(Boolean);
+    return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(lines.join('\n'))}`;
+  }
+
+  // ===================== SUBMIT =====================
+  function setSubmitting(on) {
+    submitting = on;
+    submitBtn.disabled = on;
+    submitBtn.setAttribute('aria-busy', String(on));
+    $('submitLabel').textContent = on ? 'Sending…' : 'Send enquiry';
+    submitBtn.querySelector('i').className = on
+      ? 'fas fa-circle-notch spin mr-2'
+      : 'fas fa-paper-plane mr-2';
+  }
+
+  function showSubmitError(title, message, data) {
+    $('submitErrorTitle').textContent = title;
+    $('submitErrorMsg').textContent   = message;
+    $('fallbackWa').href = waLink(data, 'not-saved');
+    $('submitError').classList.remove('hidden');
+    $('submitError').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function submitEnquiry() {
+    if (submitting) return;                 // guard against double-submit
+
+    // Re-check every step, and take the user to the earliest one with a problem
+    // rather than reporting a failure they cannot see.
+    for (const s of [1, 2, 3]) {
+      if (!validateStep(s)) { goTo(s); validateStep(s); return; }
+    }
+
+    const data = collect();
+    $('submitError').classList.add('hidden');
+    setSubmitting(true);
+
+    try {
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      }).catch(() => {});
+        body: JSON.stringify({ ...data, channel, selectedPackage, company: $('company').value }),
+        signal: AbortSignal.timeout(20000),
+      });
 
-      try {
-        // WhatsApp message
-        const message = `📅 *NEW BOOKING REQUEST* 📅%0A%0A*Name:* ${formData.name}%0A*Phone:* ${formData.phone}%0A*Email:* ${formData.email}%0A*Source:* ${formData.source || 'Not specified'}%0A%0A*Event Details*%0A📆 Date: ${formData.eventDate}%0A🎉 Type: ${formData.eventType}%0A👥 Guests: ${formData.guestCount}%0A💰 Budget: ${formData.budget}%0A📍 Venue: ${formData.venue}%0A%0A*Services:* ${formData.services}%0A%0A*Notes:* ${formData.notes || 'None'}%0A%0A_Submitted: ${new Date().toLocaleString('en-KE')}_`;
+      const json = await res.json().catch(() => null);
 
-        const whatsappURL = `https://wa.me/254703925826?text=${message}`;
-
-        // Open WhatsApp
-        window.open(whatsappURL, '_blank');
-        
-        // Hide loading overlay
-        loadingOverlay.classList.add('hidden');
-        
-        // Show success message
-        Swal.fire({
-          icon: 'success',
-          title: 'Booking Request Sent!',
-          text: 'We\'ll contact you via WhatsApp within 2 hours.',
-          confirmButtonColor: '#eab308',
-          confirmButtonText: 'Great!',
-          background: '#fff'
-        }).then(() => {
-          // Reset form
-          document.getElementById('bookingForm').reset();
-          currentStep = 1;
-          updateStepDisplay();
-        });
-        
-      } catch (error) {
-        loadingOverlay.classList.add('hidden');
-        Swal.fire({
-          icon: 'error',
-          title: 'Something went wrong',
-          text: 'Please try again or call us directly at +254 703 925 826',
-          confirmButtonColor: '#eab308',
-          background: '#fff'
-        });
+      if (!res.ok) {
+        // Field-level errors from the server render inline on the right step.
+        if (json && json.fields) {
+          const idMap = { name:'name', phone:'phone', email:'email', eventDate:'event_date' };
+          let jumped = false;
+          for (const [key, msg] of Object.entries(json.fields)) {
+            const id = idMap[key];
+            if (!id) continue;
+            showFieldError(id, msg);
+            if (!jumped) {
+              goTo(STEP_FIELDS[1].includes(id) ? 1 : 2);
+              $(id).focus({ preventScroll: true });
+              jumped = true;
+            }
+          }
+          setSubmitting(false);
+          return;
+        }
+        throw new Error(json?.error || `Server responded ${res.status}`);
       }
-    });
-    
-    // Mobile menu toggle
-    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-      document.getElementById('mobile-menu').classList.toggle('hidden');
-    });
-    
-    // Remove red border on input
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-      el.addEventListener('input', () => el.classList.remove('border-red-500'));
-    });
-    
-    // Set minimum date to today
-    const today = new Date().toISOString().split('T')[0];
-    const dateInput = document.getElementById('event_date');
-    if (dateInput) dateInput.min = today;
-    
-    // Initialize
-    updateStepDisplay();
-  </script>
-  
+
+      // Success — and only now is the client told so.
+      const ref = json?.data?.bookingReference || '—';
+      clearDraft();
+
+      $('successName').textContent = data.name.split(' ')[0] || 'there';
+      $('successRef').textContent  = ref;
+      $('successWa').href          = waLink(data, ref);
+
+      form.classList.add('hidden');
+      $('progressRail').classList.add('hidden');
+      $('prefillNotice').classList.add('hidden');
+      $('draftNotice').classList.add('hidden');
+      successPanel.classList.remove('hidden');
+      successPanel.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (err) {
+      const offline = !navigator.onLine;
+      const timedOut = err.name === 'TimeoutError' || err.name === 'AbortError';
+      showSubmitError(
+        offline ? 'You appear to be offline' : "We couldn't send your enquiry",
+        offline
+          ? 'Check your connection and try again — your answers are saved on this device.'
+          : timedOut
+            ? 'The request took too long. Please try again, or reach us directly below.'
+            : (err.message || 'Something went wrong.') + ' Your answers are saved — try again or contact us directly.',
+        data
+      );
+      setSubmitting(false);
+    }
+  }
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); submitEnquiry(); });
+  $('retryBtn').addEventListener('click', () => { $('submitError').classList.add('hidden'); submitEnquiry(); });
+
+  // ===================== COPY REFERENCE =====================
+  $('copyRefBtn').addEventListener('click', async () => {
+    const ref = $('successRef').textContent;
+    try {
+      await navigator.clipboard.writeText(ref);
+      const btn = $('copyRefBtn');
+      btn.innerHTML = '<i class="fas fa-check mr-1" aria-hidden="true"></i>Copied!';
+      setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy mr-1" aria-hidden="true"></i>Copy reference'; }, 2000);
+    } catch (e) { /* clipboard blocked — the reference is visible on screen anyway */ }
+  });
+
+  // ===================== MOBILE MENU =====================
+  $('mobile-menu-btn').addEventListener('click', function () {
+    const menu = $('mobile-menu');
+    const open = menu.classList.toggle('hidden') === false;
+    this.setAttribute('aria-expanded', String(open));
+    this.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+
+  // ===================== INIT =====================
+  $('event_date').min = new Date().toISOString().split('T')[0];
+  loadDraft();
+  renderStep({ moveFocus: false });
+
+  // Warn before losing a part-filled form on navigate-away.
+  window.addEventListener('beforeunload', (e) => {
+    if (submitting || successPanel.classList.contains('hidden') === false) return;
+    const d = collect();
+    if (d.name || d.phone || d.email) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
 </body>
 </html>

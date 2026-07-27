@@ -1,28 +1,38 @@
 -- ============================================================
--- LAWIE SOUNDS — SUPABASE SCHEMA v4.1
+-- LAWIE SOUNDS — SUPABASE SCHEMA v5.0 (2026-07-27)
 -- Safe to re-run: uses IF NOT EXISTS and ALTER COLUMN guards
 -- Run this in Supabase → SQL Editor → Run
+--
+-- For migration history and the exact SQL used to bring an existing
+-- database to this state, see database/migrations/*.sql
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==================== HELPER FUNCTIONS ====================
+-- search_path pinned to satisfy Supabase security lint 0011.
 
 -- Auto-update updated_at on any row change
 CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SET search_path = pg_catalog, public
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Auto-generate booking reference (e.g. LS-2605-A1B2C3) on insert
+-- Auto-generate booking reference (e.g. LS-2607-A1B2C3) on insert.
+-- REPLACE(id, '-', '') strips UUID dashes so we always get 6 hex chars.
 CREATE OR REPLACE FUNCTION generate_booking_reference()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SET search_path = pg_catalog, public
+AS $$
 BEGIN
   IF NEW.booking_reference IS NULL THEN
-    NEW.booking_reference := 'LS-' || TO_CHAR(NOW(), 'YYMM') || '-' || UPPER(SUBSTRING(NEW.id::TEXT, 1, 6));
+    NEW.booking_reference := 'LS-' || TO_CHAR(NOW(), 'YYMM') || '-' ||
+                             UPPER(SUBSTRING(REPLACE(NEW.id::TEXT, '-', ''), 1, 6));
   END IF;
   RETURN NEW;
 END;
@@ -51,9 +61,9 @@ CREATE TABLE IF NOT EXISTS services (
 CREATE TABLE IF NOT EXISTS events (
   id            UUID         DEFAULT uuid_generate_v4() PRIMARY KEY,
   title         TEXT         NOT NULL,
-  date          TIMESTAMPTZ  NOT NULL,
+  date          DATE         NOT NULL,
   venue         TEXT         NOT NULL,
-  price         INT          DEFAULT 0,
+  price         INT          NOT NULL DEFAULT 0,
   total_seats   INT          DEFAULT 100,
   seats_left    INT          DEFAULT 100,
   description   TEXT,
@@ -64,6 +74,9 @@ CREATE TABLE IF NOT EXISTS events (
   created_at    TIMESTAMPTZ  DEFAULT NOW(),
   updated_at    TIMESTAMPTZ  DEFAULT NOW()
 );
+ALTER TABLE events ADD COLUMN IF NOT EXISTS total_seats   INT  DEFAULT 100;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS status        TEXT DEFAULT 'published';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS booking_count INT  DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS gallery (
   id            UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -110,13 +123,26 @@ CREATE TABLE IF NOT EXISTS bookings (
   selected_package  TEXT,
   ticket_quantity   INT           DEFAULT 1,
   total_amount      NUMERIC(10,2),
-  status            TEXT          DEFAULT 'pending',
+  status            TEXT          DEFAULT 'pending'
+                                  CHECK (status IN ('pending','confirmed','completed','cancelled')),
   notes             TEXT,
+  event_details     TEXT,
+  source            TEXT,
+  channel           TEXT          DEFAULT 'booking-form',
+  responded_at      TIMESTAMPTZ,
+  handled_by        TEXT,
   user_ip           TEXT,
   user_agent        TEXT,
   created_at        TIMESTAMPTZ   DEFAULT NOW(),
   updated_at        TIMESTAMPTZ   DEFAULT NOW()
 );
+-- Existing installs may have these as NOT NULL from earlier schema versions.
+-- Public form treats them as optional.
+DO $$ BEGIN
+  BEGIN ALTER TABLE bookings ALTER COLUMN email      DROP NOT NULL; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER TABLE bookings ALTER COLUMN event_date DROP NOT NULL; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER TABLE bookings ALTER COLUMN event_type DROP NOT NULL; EXCEPTION WHEN OTHERS THEN NULL; END;
+END $$;
 
 CREATE TABLE IF NOT EXISTS marketing_banners (
   id         UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -135,6 +161,10 @@ CREATE TABLE IF NOT EXISTS marketing_banners (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE marketing_banners ADD COLUMN IF NOT EXISTS name   TEXT;
+ALTER TABLE marketing_banners ADD COLUMN IF NOT EXISTS views  INT   DEFAULT 0;
+ALTER TABLE marketing_banners ADD COLUMN IF NOT EXISTS clicks INT   DEFAULT 0;
+ALTER TABLE marketing_banners ADD COLUMN IF NOT EXISTS ctr    FLOAT DEFAULT 0;
 
 -- Promotional posters (seasonal, celebration announcements, offers)
 CREATE TABLE IF NOT EXISTS posters (
@@ -245,6 +275,10 @@ END $$;
 -- ==================== ADD NEW COLUMNS TO EXISTING TABLES ====================
 -- These are idempotent — safe to re-run against an existing database
 
+-- Idempotent add for older installs. Keep new columns HERE too, not only in
+-- CREATE TABLE — because CREATE TABLE IF NOT EXISTS is a no-op if the table
+-- already exists, so column additions must be replayed via ALTER TABLE.
+-- Migration history: database/migrations/2026-07-27_final_audit_cleanup.sql
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_reference TEXT UNIQUE;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_id          UUID REFERENCES events(id) ON DELETE SET NULL;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS selected_package  TEXT;
@@ -253,6 +287,19 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_amount      NUMERIC(10,2);
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS user_ip           TEXT;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS user_agent        TEXT;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at        TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS notes             TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_details     TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS source            TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS channel           TEXT DEFAULT 'booking-form';
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS responded_at      TIMESTAMPTZ;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS handled_by        TEXT;
+
+-- Constrain status to the four values the Kanban board renders.
+UPDATE bookings SET status = 'pending'
+ WHERE status IS NULL OR status NOT IN ('pending','confirmed','completed','cancelled');
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
+ALTER TABLE bookings ADD  CONSTRAINT bookings_status_check
+  CHECK (status IN ('pending','confirmed','completed','cancelled'));
 
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS admin_reply  TEXT;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS event_date   DATE;
@@ -350,9 +397,18 @@ CREATE INDEX IF NOT EXISTS idx_services_order       ON services(display_order);
 CREATE INDEX IF NOT EXISTS idx_gallery_service_slug ON gallery(service_slug);
 CREATE INDEX IF NOT EXISTS idx_gallery_is_featured  ON gallery(is_featured);
 CREATE INDEX IF NOT EXISTS idx_gallery_created_at   ON gallery(created_at DESC);
+-- Foreign-key covering indexes (Supabase perf lint 0001)
+CREATE INDEX IF NOT EXISTS idx_bookings_event_id    ON bookings(event_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_channel     ON bookings(channel);
+CREATE INDEX IF NOT EXISTS idx_reviews_service_id   ON reviews(service_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_employee_id  ON payroll(employee_id);
 
 -- ==================== DASHBOARD STATS VIEW ====================
-CREATE OR REPLACE VIEW dashboard_stats AS
+-- security_invoker so the view runs with the caller's permissions, not the
+-- creator's (fixes Supabase lint 0010 SECURITY DEFINER VIEW).
+DROP VIEW IF EXISTS dashboard_stats;
+CREATE VIEW dashboard_stats
+WITH (security_invoker = true) AS
 SELECT
   (SELECT COUNT(*)                                FROM bookings)                                                              AS total_bookings,
   (SELECT COUNT(*)                                FROM bookings WHERE status = 'pending')                                     AS pending_bookings,

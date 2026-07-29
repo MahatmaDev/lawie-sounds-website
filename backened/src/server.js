@@ -83,8 +83,18 @@ function adminOnly(req, res, next) {
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
   service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
-  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, createdAt: r.created_at }),
-  review: (r) => r && ({ id: r.id, clientName: r.client_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, clientImage: r.client_image, isApproved: r.is_approved, isFeatured: r.is_featured, adminReply: r.admin_reply, createdAt: r.created_at }),
+  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, altText: r.alt_text, caption: r.caption, width: r.width, height: r.height, isPublished: r.is_published, storagePath: r.storage_path, mimeType: r.mime_type, fileSize: r.file_size, thumbUrl: r.thumb_url, eventDate: r.event_date, createdAt: r.created_at }),
+  galleryCategory: (r) => r && ({ slug: r.slug, label: r.label, emoji: r.emoji, displayOrder: r.display_order }),
+  // ADMIN view. Includes the real name so the manager can recognise a client.
+  // withdrawal_token is deliberately absent — it is a bearer secret belonging to
+  // the reviewer, and nothing in the dashboard needs it.
+  review: (r) => r && ({ id: r.id, clientName: r.client_name, displayName: r.display_name, showFullName: r.show_full_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, clientImage: r.client_image, status: r.status, isApproved: r.is_approved, isFeatured: r.is_featured, isVerified: r.is_verified, bookingId: r.booking_id, adminReply: r.admin_reply, consentPublish: r.consent_publish, consentVersion: r.consent_version, consentedAt: r.consented_at, moderatedAt: r.moderated_at, moderatedBy: r.moderated_by, rejectionReason: r.rejection_reason, withdrawnAt: r.withdrawn_at, createdAt: r.created_at }),
+
+  // PUBLIC view. A deliberately narrow allow-list rather than a deny-list: a
+  // column added later is invisible to the public API until someone chooses to
+  // expose it, instead of leaking by default. Note what is NOT here —
+  // client_name, booking_id, submitter_hash, user_agent, withdrawal_token.
+  publicReview: (r) => r && ({ id: r.id, name: r.display_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, isFeatured: r.is_featured, isVerified: r.is_verified, adminReply: r.admin_reply, createdAt: r.created_at }),
   banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
   booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
@@ -106,8 +116,38 @@ function toEventDB(b, isUpdate = false) {
 function toServiceDB(b) {
   return { name: b.name, slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), category: b.category, icon: b.icon, short_desc: b.shortDesc, long_desc: b.longDesc, image: b.mainImage || b.image, is_active: b.isActive !== false, display_order: b.displayOrder || 0, packages: b.packages || [], features: b.features || [], faqs: b.faqs || [] };
 }
-function toGalleryDB(b) {
-  return { title: b.title, category: b.category, type: b.type || 'image', image_url: b.imageUrl, service_slug: b.serviceSlug || null, is_featured: b.isFeatured || false, display_order: b.displayOrder || 0 };
+// Gallery rows are written from two places (create-after-upload, and the edit
+// form), so the shape lives in one function. `isUpdate` omits keys the edit
+// form does not round-trip, so saving a caption cannot blank the storage
+// bookkeeping — the same class of bug that used to zero events.booking_count.
+function toGalleryDB(b, isUpdate = false) {
+  const row = {
+    title:         String(b.title || '').trim(),
+    category:      b.category || 'General',
+    type:          b.type === 'video' ? 'video' : 'image',
+    service_slug:  b.serviceSlug || null,
+    is_featured:   b.isFeatured === true,
+    display_order: Number.isFinite(+b.displayOrder) ? +b.displayOrder : 0,
+    // alt_text falls back to the title: an imperfect description still beats an
+    // empty alt attribute for anyone using a screen reader.
+    alt_text:      (b.altText || b.title || '').trim() || null,
+    caption:       b.caption?.trim() || null,
+    event_date:    b.eventDate || null,
+    thumb_url:     b.thumbUrl || null,
+  };
+  if (b.isPublished !== undefined) row.is_published = b.isPublished !== false;
+
+  // Storage bookkeeping only moves when a file is actually attached — either on
+  // create, or on an edit that replaces the image.
+  if (b.imageUrl)    row.image_url    = b.imageUrl;
+  if (b.storagePath) row.storage_path = b.storagePath;
+  if (b.mimeType)    row.mime_type    = b.mimeType;
+  if (Number.isFinite(+b.fileSize)) row.file_size = +b.fileSize;
+  if (Number.isFinite(+b.width))    row.width     = +b.width;
+  if (Number.isFinite(+b.height))   row.height    = +b.height;
+
+  if (!isUpdate && !row.is_published) row.is_published = false;
+  return row;
 }
 // Same pattern as toEventDB: views/clicks/ctr are accumulated by the site, not
 // supplied by the edit form. Sending them on UPDATE wiped a banner's entire
@@ -190,6 +230,172 @@ const insertBooking = (row) =>
 const updateBooking = (id, patch) =>
   resilientBookingWrite(b => supabase.from('bookings').update(b).eq('id', id).select().single(), patch);
 
+// ==================== REVIEWS ====================
+const crypto = require('crypto');
+
+// The exact wording a reviewer agrees to, versioned. Stored per review so we
+// can always answer "what was this person actually told?" — a consent record
+// that does not capture the terms consented to is not much of a record.
+// Bump the version whenever the wording changes; never edit a version in place.
+const CONSENT_VERSION = '2026-07-29.v1';
+const CONSENT_NOTICE = [
+  'Your review, your star rating and your chosen display name will be shown publicly on the Lawie Sounds website.',
+  'By default we show your first name and last initial (for example, "Sarah K."). You can choose to show your full name instead.',
+  'We do not publish your phone number, email address or booking reference. They are never shown to anyone but Lawie Sounds staff.',
+  'Your review is checked by a person before it appears. We may reply to it publicly.',
+  'You can withdraw your review at any time using the private link we give you after you submit. Withdrawing removes it from the website immediately.',
+].join(' ');
+
+const REVIEW_PAGE_SIZE = 12;
+const REVIEW_MAX_PAGE  = 50;
+const REVIEW_MIN_COMMENT = 10;
+const REVIEW_MAX_COMMENT = 1500;
+
+// One device, three reviews an hour. Generous for a couple submitting separately
+// from the same wifi; useless for a script.
+//
+// skipFailedRequests matters more than it looks: without it, a rejected
+// validation attempt burns one of the three, so a client who mistypes their
+// rating twice and forgets the consent box once is locked out for an hour
+// having never successfully said anything. Only submissions that actually
+// created a review should count. Bots hammering invalid payloads are still
+// cheap to reject and still capped by the global 300/15min limiter.
+const reviewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: parseInt(process.env.REVIEW_RATE_LIMIT, 10) || 3,
+  skipFailedRequests: true,
+  message: { error: 'You have submitted several reviews recently. Please try again later, or call us on +254 703 925 826.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+// Abuse signal without an identifier. We keep a salted hash of the IP so we can
+// see "this submitter again" — we cannot turn it back into an address, and it is
+// useless to anyone who obtains the database without the salt.
+function hashSubmitter(ip) {
+  if (!ip) return null;
+  const salt = process.env.REVIEW_HASH_SALT || process.env.JWT_SECRET || 'lawie-fallback-salt';
+  return crypto.createHmac('sha256', salt).update(String(ip)).digest('hex').slice(0, 32);
+}
+
+// Data minimisation applied at the point of storage, not at the point of
+// display: the reduced form is what gets written to display_name, so the public
+// API cannot accidentally leak the full name later.
+function toDisplayName(fullName, showFull) {
+  const name  = String(fullName || '').trim().replace(/\s+/g, ' ');
+  if (!name) return 'A client';
+  if (showFull) return name.slice(0, 80);
+
+  const parts = name.split(' ');
+  if (parts.length === 1) return parts[0].slice(0, 40);
+  const initial = parts[parts.length - 1][0];
+  return `${parts[0].slice(0, 40)} ${initial.toUpperCase()}.`;
+}
+
+function newWithdrawalToken() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+// A review referencing a real booking earns a "Verified client" badge. The
+// reference is matched then discarded from the response — we store the booking
+// id, never echo it back, and never publish it.
+async function matchBooking(reference) {
+  if (!reference) return null;
+  const ref = String(reference).trim().toUpperCase();
+  if (!/^LS-\d{4}-[A-Z0-9]{6}$/.test(ref)) return null;
+  const { data } = await supabase.from('bookings')
+    .select('id').eq('booking_reference', ref).maybeSingle();
+  return data?.id || null;
+}
+
+function reviewPageParams(query) {
+  const limit  = Math.min(Math.max(parseInt(query.limit, 10) || REVIEW_PAGE_SIZE, 1), REVIEW_MAX_PAGE);
+  const offset = Math.max(parseInt(query.offset, 10) || 0, 0);
+  return { limit, offset };
+}
+
+// ==================== GALLERY ====================
+const GALLERY_BUCKET = 'gallery';
+
+// Mirrors the bucket's allowed_mime_types. Checked here too so a bad upload is
+// rejected before we mint a token, with a message the manager can act on,
+// rather than failing opaquely at the Storage API.
+const GALLERY_MIME = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
+  'image/gif':  'gif', 'image/avif': 'avif',
+  'video/mp4':  'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+};
+const GALLERY_MAX_BYTES = 50 * 1024 * 1024;   // matches bucket file_size_limit
+const GALLERY_PAGE_SIZE = 24;
+const GALLERY_MAX_PAGE  = 100;
+
+// Clamp pagination. An uncapped ?limit is a free denial-of-service: the old
+// endpoint had no limit at all and shipped every row to every visitor.
+function pageParams(query, fallback = GALLERY_PAGE_SIZE) {
+  const limit  = Math.min(Math.max(parseInt(query.limit, 10) || fallback, 1), GALLERY_MAX_PAGE);
+  const offset = Math.max(parseInt(query.offset, 10) || 0, 0);
+  return { limit, offset };
+}
+
+// Storage keys must be ASCII-safe. Titles are free text from a human, and the
+// live data already contains spaces and ampersands ("Power & Lighting"), which
+// would otherwise produce keys that need escaping at every use site.
+function storageKey(title, mime) {
+  const ext  = GALLERY_MIME[mime] || 'bin';
+  const stem = String(title || 'item').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'item';
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${new Date().getFullYear()}/${stem}-${Date.now().toString(36)}${rand}.${ext}`;
+}
+
+// Validate a gallery write. Returns a field->message map the dashboard renders
+// inline, so the manager sees which input is wrong instead of "Save Failed".
+async function validateGallery(body, { requireImage }) {
+  const errors = {};
+  const title = String(body.title || '').trim();
+
+  if (title.length < 2)   errors.title = 'Give this photo a title (at least 2 characters).';
+  if (title.length > 160) errors.title = 'Title is too long (max 160 characters).';
+
+  if (requireImage && !body.imageUrl) errors.imageUrl = 'Upload a file before saving.';
+
+  if (body.type && !['image', 'video'].includes(body.type)) {
+    errors.type = 'Type must be image or video.';
+  }
+  // A video with no poster makes the grid download video bytes just to paint a
+  // thumbnail — the single biggest cost on a gallery page.
+  if (body.type === 'video' && requireImage && !body.thumbUrl) {
+    errors.thumbUrl = 'A video needs a poster image so the gallery grid stays fast.';
+  }
+  if (body.eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(body.eventDate)) {
+    errors.eventDate = 'Invalid date.';
+  }
+  if (body.caption && String(body.caption).length > 500) {
+    errors.caption = 'Caption is limited to 500 characters.';
+  }
+
+  // Category is a foreign key now. Catch it here so the manager gets a readable
+  // message instead of a raw Postgres FK violation.
+  if (body.category) {
+    const { data: cat } = await supabase
+      .from('gallery_categories').select('slug').eq('slug', body.category).maybeSingle();
+    if (!cat) errors.category = `Unknown category "${body.category}".`;
+  }
+  if (body.serviceSlug) {
+    const { data: svc } = await supabase
+      .from('services').select('slug').eq('slug', body.serviceSlug).maybeSingle();
+    if (!svc) errors.serviceSlug = `Unknown service "${body.serviceSlug}".`;
+  }
+  return errors;
+}
+
+// Remove a Storage object, tolerating failure. Legacy rows point at repo-static
+// files under /IMAGES/ and have no storage_path — those must never be touched.
+async function removeGalleryObject(storagePath) {
+  if (!storagePath) return;
+  const { error } = await supabase.storage.from(GALLERY_BUCKET).remove([storagePath]);
+  if (error) console.error(`[GALLERY] orphaned object ${storagePath}: ${error.message}`);
+}
+
 // WhatsApp push notification via CallMeBot (free — admin must activate once)
 // Setup: WhatsApp +34 644 38 11 72, send: "I allow callmebot to send me messages"
 // Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars
@@ -242,10 +448,25 @@ app.get('/api/services/:slug', async (req, res) => {
     .eq(isUuid ? 'id' : 'slug', slug).eq('is_active', true).single();
   if (error || !data) return res.status(404).json({ error: 'Service not found' });
   // Also fetch approved reviews for this service
-  const { data: reviews } = await supabase.from('reviews').select('client_name,rating,comment,event_type,event_date').eq('is_approved', true).eq('service_id', data.id).order('created_at', { ascending: false }).limit(6);
+  // display_name, not client_name: the service page is public, so it gets the
+  // minimised identity like every other public surface.
+  const { data: reviews } = await supabase.from('reviews')
+    .select('id,display_name,rating,comment,event_type,event_date,is_verified,is_featured,admin_reply,created_at')
+    .eq('status', 'published').eq('service_id', data.id)
+    .order('is_featured', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false }).limit(6);
   // Fetch gallery images linked to this service (by service_slug field if set, else by slug match)
-  const { data: gallery } = await supabase.from('gallery').select('id,title,category,type,image_url').eq('service_slug', data.slug).order('created_at', { ascending: false }).limit(12);
-  res.json({ success: true, data: { ...map.service(data), reviews: (reviews || []).map(map.review), gallery: (gallery || []).map(map.gallery) } });
+  // service_slug was NULL on every gallery row until the 2026-07-28 migration
+  // backfilled it, so this block silently returned nothing on every request.
+  const { data: gallery } = await supabase
+    .from('gallery')
+    .select('id,title,category,type,image_url,alt_text,width,height,thumb_url')
+    .eq('service_slug', data.slug)
+    .eq('is_published', true)
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(12);
+  res.json({ success: true, data: { ...map.service(data), reviews: (reviews || []).map(map.publicReview), gallery: (gallery || []).map(map.gallery) } });
 });
 
 // Events (upcoming active)
@@ -255,27 +476,123 @@ app.get('/api/events', async (req, res) => {
   res.json({ success: true, data: data.map(map.event) });
 });
 
-// Gallery — supports ?featured=true, ?category=X, ?service=slug
+// Category taxonomy with live counts. Single source of truth: the public page
+// and the dashboard both read this, so their category lists can no longer drift
+// apart the way they had (live data used Audio/Media/Visual, the dashboard
+// offered Weddings/Ruracio/Parties — only one value overlapped).
+app.get('/api/gallery/categories', async (req, res) => {
+  const { data: cats, error } = await supabase
+    .from('gallery_categories').select('*').eq('is_active', true).order('display_order');
+  if (error) return handleError(res, error);
+
+  const { data: rows } = await supabase
+    .from('gallery').select('category').eq('is_published', true);
+
+  const counts = (rows || []).reduce((acc, r) => (acc[r.category] = (acc[r.category] || 0) + 1, acc), {});
+  res.json({
+    success: true,
+    // Empty categories are noise on a filter bar — a pill that always yields
+    // "nothing here" is a dead end the visitor has to discover by tapping it.
+    data: cats.filter(c => counts[c.slug]).map(c => ({ ...map.galleryCategory(c), count: counts[c.slug] })),
+    meta: { total: Object.values(counts).reduce((a, b) => a + b, 0) },
+  });
+});
+
+// Gallery — ?featured=true, ?category=X, ?service=slug, ?limit=&offset=
+//
+// Paginated. The previous version was select('*') with no limit, so every
+// visitor downloaded every row — including a 372 KB base64 blob stored in the
+// image_url column. Media now lives in Supabase Storage and rows are small,
+// but the cap stays: an uncapped list endpoint is a standing liability.
 app.get('/api/gallery', async (req, res) => {
-  let q = supabase.from('gallery').select('*');
+  const { limit, offset } = pageParams(req.query);
+
+  let q = supabase.from('gallery')
+    .select('*', { count: 'exact' })
+    .eq('is_published', true);          // drafts must never reach the public page
+
   if (req.query.featured === 'true')   q = q.eq('is_featured', true);
   if (req.query.category)              q = q.eq('category', req.query.category);
   if (req.query.service)               q = q.eq('service_slug', req.query.service);
-  // Featured items first (nulls last), then by display_order, then newest
-  q = q.order('is_featured', { ascending: false, nullsFirst: false })
+
+  // Search must run server-side: filtering only the rows the browser happens to
+  // have paged in would silently miss matches further down the list.
+  //
+  // Inside an or() group PostgREST expects `*` as the ilike wildcard, not `%` —
+  // a `%` there is eaten as percent-encoding and the pattern degrades to
+  // "match anything", which silently returned the entire table.
+  // Commas and parens are stripped because they delimit the or() group itself.
+  if (req.query.q) {
+    const term = String(req.query.q).trim().slice(0, 80).replace(/[%*,().\\]/g, '');
+    if (term) q = q.or(`title.ilike.*${term}*,caption.ilike.*${term}*,category.ilike.*${term}*`);
+  }
+
+  // Featured first, then the manager's manual order, then newest.
+  q = q.order('is_featured',   { ascending: false, nullsFirst: false })
        .order('display_order', { ascending: true })
-       .order('created_at', { ascending: false });
-  const { data, error } = await q;
+       .order('created_at',    { ascending: false })
+       .range(offset, offset + limit - 1);
+
+  const { data, error, count } = await q;
   if (error) return handleError(res, error);
-  res.json({ success: true, data: data.map(map.gallery) });
+
+  res.json({
+    success: true,
+    data: data.map(map.gallery),
+    meta: { total: count ?? data.length, limit, offset, hasMore: offset + data.length < (count ?? 0) },
+  });
 });
 
-// Reviews (approved only)
-app.get('/api/reviews', async (req, res) => {
-  const { data, error } = await supabase.from('reviews').select('*').eq('is_approved', true).order('created_at', { ascending: false });
-  if (error) return handleError(res, error);
-  res.json({ success: true, data: data.map(map.review) });
+// The consent notice, served rather than hardcoded in the page, so the wording
+// the form shows and the version recorded against a review can never drift.
+app.get('/api/reviews/consent', (req, res) => {
+  res.json({ success: true, data: { version: CONSENT_VERSION, notice: CONSENT_NOTICE } });
 });
+
+// Aggregate rating summary. Computed here rather than in the browser so the
+// page does not have to download every review just to average them.
+app.get('/api/reviews/summary', async (req, res) => {
+  let q = supabase.from('reviews').select('rating', { count: 'exact' }).eq('status', 'published');
+  if (req.query.service) q = q.eq('service_id', req.query.service);
+
+  const { data, error, count } = await q;
+  if (error) return handleError(res, error);
+
+  const dist = [1, 2, 3, 4, 5].reduce((a, n) => (a[n] = 0, a), {});
+  data.forEach(r => { dist[r.rating] = (dist[r.rating] || 0) + 1; });
+  const total = count ?? data.length;
+  const avg   = total ? data.reduce((s, r) => s + r.rating, 0) / total : null;
+
+  res.json({
+    success: true,
+    data: { total, average: avg === null ? null : Math.round(avg * 10) / 10, distribution: dist },
+  });
+});
+
+// Public review list — published only, paginated, minimal fields.
+app.get('/api/reviews', async (req, res) => {
+  const { limit, offset } = reviewPageParams(req.query);
+
+  let q = supabase.from('reviews').select('*', { count: 'exact' }).eq('status', 'published');
+  if (req.query.service)             q = q.eq('service_id', req.query.service);
+  if (req.query.rating)              q = q.eq('rating', parseInt(req.query.rating, 10) || 0);
+  if (req.query.verified === 'true') q = q.eq('is_verified', true);
+
+  q = q.order('is_featured', { ascending: false, nullsFirst: false })
+       .order('created_at',  { ascending: false })
+       .range(offset, offset + limit - 1);
+
+  const { data, error, count } = await q;
+  if (error) return handleError(res, error);
+
+  res.json({
+    success: true,
+    // publicReview, not review: the full legal name never leaves this process.
+    data: data.map(map.publicReview),
+    meta: { total: count ?? data.length, limit, offset, hasMore: offset + data.length < (count ?? 0) },
+  });
+});
+
 
 // Marketing banners (active, within date range)
 app.get('/api/banners', async (req, res) => {
@@ -389,25 +706,141 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
   res.status(201).json({ success: true, data: map.booking(data) });
 });
 
-// Submit review (public — requires approval before showing)
-app.post('/api/reviews', async (req, res) => {
-  const { clientName, rating, comment, eventType, eventDate, serviceId, clientImage } = req.body;
-  if (!clientName || !rating) return res.status(400).json({ error: 'Name and rating are required' });
-  const { data, error } = await supabase.from('reviews').insert({
-    client_name:  clientName,
-    rating:       parseInt(rating),
-    comment,
-    event_type:   eventType   || null,
-    event_date:   eventDate   || null,
-    service_id:   serviceId   || null,
-    client_image: clientImage || null,
-    is_approved:  false,
-    is_featured:  false,
-  }).select().single();
+// Submit a review (public). Always lands as 'pending' — a person reads it
+// before anything appears on the site.
+app.post('/api/reviews', reviewLimiter, async (req, res) => {
+  // Honeypot. Real users never fill a hidden field; bots fill everything.
+  // Answer 201 so the bot believes it succeeded and does not retry.
+  if (req.body.website) {
+    return res.status(201).json({ success: true, data: { status: 'pending' } });
+  }
+
+  const errors = {};
+  const clientName = String(req.body.clientName || '').trim().replace(/\s+/g, ' ');
+  const comment    = String(req.body.comment    || '').trim();
+  const rating     = Number.parseInt(req.body.rating, 10);
+
+  if (clientName.length < 2)   errors.clientName = 'Please tell us your name.';
+  if (clientName.length > 120) errors.clientName = 'That name is too long.';
+
+  // The old handler did parseInt(rating) with no check, so 'abc' became NaN and
+  // went straight into the insert.
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    errors.rating = 'Choose a rating from 1 to 5 stars.';
+  }
+  if (comment.length && comment.length < REVIEW_MIN_COMMENT) {
+    errors.comment = `Please write at least ${REVIEW_MIN_COMMENT} characters, or leave the comment empty.`;
+  }
+  if (comment.length > REVIEW_MAX_COMMENT) {
+    errors.comment = `Please keep your review under ${REVIEW_MAX_COMMENT} characters.`;
+  }
+  if (req.body.eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.eventDate)) {
+    errors.eventDate = 'Invalid date.';
+  }
+  if (req.body.eventDate && req.body.eventDate > new Date().toISOString().split('T')[0]) {
+    errors.eventDate = 'That date is in the future.';
+  }
+
+  // Consent is not a checkbox we log — it is the precondition for storing
+  // someone's words under their name at all. Without it there is nothing to do.
+  if (req.body.consentPublish !== true) {
+    errors.consentPublish = 'We need your permission before we can publish your review.';
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  const showFullName = req.body.showFullName === true;
+  const bookingId    = await matchBooking(req.body.bookingReference);
+  const ip           = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+  const token        = newWithdrawalToken();
+
+  const row = {
+    client_name:      clientName,                                  // admin-only
+    display_name:     toDisplayName(clientName, showFullName),     // public
+    show_full_name:   showFullName,
+    rating,
+    comment:          comment || null,
+    event_type:       req.body.eventType || null,
+    event_date:       req.body.eventDate || null,
+    service_id:       req.body.serviceId || null,
+    booking_id:       bookingId,
+    is_verified:      !!bookingId,
+    status:           'pending',
+    is_featured:      false,
+    consent_publish:  true,
+    consent_version:  CONSENT_VERSION,
+    consented_at:     new Date().toISOString(),
+    withdrawal_token: token,
+    submitter_hash:   hashSubmitter(ip),
+    user_agent:       (req.headers['user-agent'] || '').slice(0, 300),
+  };
+
+  const { data, error } = await supabase.from('reviews').insert(row).select().single();
   if (error) return handleError(res, error);
-  notifyAdmin(`⭐ NEW REVIEW — Needs Approval!\n\nFrom: ${clientName}\nRating: ${'⭐'.repeat(parseInt(rating))} (${rating}/5)\nEvent: ${eventType || 'N/A'}\nComment: "${(comment || '').slice(0, 120)}"\n\n👉 Approve at: https://lawie-sounds-website.vercel.app/admin/dashboard.html`);
-  createNotification('review', 'New Review Submitted', `${clientName} left a ${rating}-star review — pending approval`, data.id, 'reviews');
-  res.status(201).json({ success: true, data: map.review(data) });
+
+  const verifiedTag = bookingId ? ' ✅ VERIFIED CLIENT' : '';
+  await Promise.allSettled([
+    notifyAdmin(`⭐ NEW REVIEW — needs approval${verifiedTag}\n\nFrom: ${row.display_name}\nRating: ${'⭐'.repeat(rating)} (${rating}/5)\nEvent: ${row.event_type || 'N/A'}\n"${(comment || '(no comment)').slice(0, 140)}"\n\n👉 ${process.env.FRONTEND_URL || ''}/admin/dashboard.html?tab=reviews`),
+    createNotification('review', 'New Review Submitted', `${row.display_name} left a ${rating}-star review — pending approval`, data.id, 'reviews'),
+  ]);
+
+  // The withdrawal link is returned exactly once, here. It is never stored in a
+  // retrievable form for the manager and never sent by email, because we do not
+  // collect an email address. If the reviewer loses it they can ask staff, who
+  // can unpublish from the dashboard.
+  res.status(201).json({
+    success: true,
+    data: {
+      id: data.id,
+      status: data.status,
+      displayName: data.display_name,
+      isVerified: data.is_verified,
+      withdrawalPath: `/review-withdraw.html?token=${token}`,
+    },
+  });
+});
+
+// What is about to be withdrawn. Lets the confirmation page show the reviewer
+// their own review before they act, rather than asking them to trust a link.
+app.get('/api/reviews/withdraw/:token', async (req, res) => {
+  const { data } = await supabase.from('reviews')
+    .select('id, display_name, rating, comment, status, created_at, withdrawn_at')
+    .eq('withdrawal_token', req.params.token).maybeSingle();
+
+  if (!data) return res.status(404).json({ error: 'That withdrawal link is not valid. It may already have been used.' });
+
+  res.json({
+    success: true,
+    data: {
+      displayName: data.display_name, rating: data.rating, comment: data.comment,
+      status: data.status, createdAt: data.created_at,
+      alreadyWithdrawn: data.status === 'withdrawn',
+    },
+  });
+});
+
+// Withdraw. Takes effect immediately — no staff step, no waiting period.
+app.post('/api/reviews/withdraw/:token', async (req, res) => {
+  const { data: cur } = await supabase.from('reviews')
+    .select('id, status').eq('withdrawal_token', req.params.token).maybeSingle();
+
+  if (!cur) return res.status(404).json({ error: 'That withdrawal link is not valid.' });
+  if (cur.status === 'withdrawn') return res.json({ success: true, data: { alreadyWithdrawn: true } });
+
+  // consent_publish is cleared alongside the status change: the record should
+  // reflect that permission was retracted, not merely that the row was hidden.
+  const { error } = await supabase.from('reviews').update({
+    status: 'withdrawn', consent_publish: false, withdrawn_at: new Date().toISOString(),
+  }).eq('id', cur.id);
+
+  if (error) return handleError(res, error);
+
+  await createNotification('review', 'Review withdrawn',
+    'A client used their private link to withdraw their review. It is no longer on the website.', cur.id, 'reviews');
+
+  res.json({ success: true, data: { withdrawn: true } });
 });
 
 // ==================== ADMIN AUTH ====================
@@ -477,57 +910,349 @@ app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — GALLERY ====================
+
+// Full list including unpublished drafts. Paginated with a generous default —
+// the dashboard grid wants everything, but not without a ceiling.
 app.get('/api/admin/gallery', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+  const { limit, offset } = pageParams(req.query, GALLERY_MAX_PAGE);
+
+  let q = supabase.from('gallery').select('*', { count: 'exact' });
+  if (req.query.category)             q = q.eq('category', req.query.category);
+  if (req.query.type)                 q = q.eq('type', req.query.type);
+  if (req.query.published === 'true')  q = q.eq('is_published', true);
+  if (req.query.published === 'false') q = q.eq('is_published', false);
+  if (req.query.q) q = q.ilike('title', `%${req.query.q}%`);
+
+  q = q.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+  const { data, error, count } = await q;
   if (error) return handleError(res, error);
-  res.json({ success: true, data: data.map(map.gallery) });
+  res.json({
+    success: true,
+    data: data.map(map.gallery),
+    meta: { total: count ?? data.length, limit, offset, hasMore: offset + data.length < (count ?? 0) },
+  });
 });
-app.post('/api/admin/gallery', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('gallery').insert(toGalleryDB(req.body)).select().single();
+
+// Taxonomy for the dashboard's dropdowns — same table the public page reads,
+// but unfiltered by count so the manager can file a photo under an empty category.
+app.get('/api/admin/gallery/categories', adminAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('gallery_categories').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.galleryCategory) });
+});
+
+// Mint a short-lived signed upload URL so the browser PUTs the file straight to
+// Supabase Storage.
+//
+// This is the whole point of the rewrite. Vercel caps serverless request bodies
+// at 4.5 MB, so the old flow — base64-encode the file and POST it as JSON —
+// could not work for anything but small images, and stored the result in a
+// Postgres text column regardless. Going direct to Storage removes both the
+// size ceiling and the database bloat.
+app.post('/api/admin/gallery/upload-url', adminAuth, async (req, res) => {
+  const { fileName, mimeType, fileSize } = req.body;
+
+  if (!GALLERY_MIME[mimeType]) {
+    return res.status(400).json({
+      error: `Unsupported file type${mimeType ? ` (${mimeType})` : ''}. Use JPG, PNG, WebP, GIF, MP4 or WebM.`,
+    });
+  }
+  if (Number.isFinite(+fileSize) && +fileSize > GALLERY_MAX_BYTES) {
+    return res.status(400).json({
+      error: `File is ${(+fileSize / 1048576).toFixed(1)} MB — the limit is ${GALLERY_MAX_BYTES / 1048576} MB.`,
+    });
+  }
+
+  const path = storageKey(fileName, mimeType);
+  const { data, error } = await supabase.storage.from(GALLERY_BUCKET).createSignedUploadUrl(path);
+  if (error) return handleError(res, error);
+
+  const { data: pub } = supabase.storage.from(GALLERY_BUCKET).getPublicUrl(path);
+  res.json({
+    success: true,
+    data: {
+      path, token: data.token, signedUrl: data.signedUrl, publicUrl: pub.publicUrl,
+      // The client MUST send this as a Cache-Control header on the PUT. A direct
+      // upload does not inherit the bucket default, so without it every object
+      // is served no-cache and each visitor re-downloads every photo. Storage
+      // keys are content-addressed by timestamp, so a year is safe: replacing
+      // an image writes a new key rather than mutating this one.
+      cacheControl: 'max-age=31536000',
+    },
+  });
+});
+
+// Create a row for a file the browser has already pushed to Storage.
+app.post('/api/admin/gallery', adminAuth, async (req, res) => {
+  const errors = await validateGallery(req.body, { requireImage: true });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  // New items land at the end of their category unless told otherwise, so an
+  // upload never silently displaces the order the manager arranged.
+  if (req.body.displayOrder === undefined) {
+    const { data: last } = await supabase.from('gallery')
+      .select('display_order').eq('category', req.body.category || 'General')
+      .order('display_order', { ascending: false }).limit(1).maybeSingle();
+    req.body.displayOrder = (last?.display_order || 0) + 10;
+  }
+
+  const { data, error } = await supabase.from('gallery').insert(toGalleryDB(req.body)).select().single();
+  if (error) {
+    // The row failed but the object is already in the bucket — clean it up so
+    // the bucket does not accumulate files nothing references.
+    await removeGalleryObject(req.body.storagePath);
+    return handleError(res, error);
+  }
   res.status(201).json({ success: true, data: map.gallery(data) });
 });
+
+// Bulk reorder. Registered before /:id so "reorder" is not parsed as an id.
+app.patch('/api/admin/gallery/reorder', adminAuth, async (req, res) => {
+  const items = Array.isArray(req.body.items) ? req.body.items : null;
+  if (!items?.length) return res.status(400).json({ error: 'items array is required' });
+  if (items.length > GALLERY_MAX_PAGE) {
+    return res.status(400).json({ error: `Reorder at most ${GALLERY_MAX_PAGE} items at a time.` });
+  }
+
+  const results = await Promise.allSettled(items.map(it =>
+    supabase.from('gallery').update({ display_order: +it.displayOrder || 0 }).eq('id', it.id)
+  ));
+  const failed = results.filter(r => r.status === 'rejected' || r.value?.error).length;
+  if (failed) return res.status(500).json({ error: `${failed} of ${items.length} items could not be reordered.` });
+  res.json({ success: true, data: { reordered: items.length } });
+});
+
+// Bulk publish / unpublish / feature / delete from the dashboard's selection UI.
+app.post('/api/admin/gallery/bulk', adminAuth, async (req, res) => {
+  const { action, ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids array is required' });
+  if (ids.length > GALLERY_MAX_PAGE) {
+    return res.status(400).json({ error: `Act on at most ${GALLERY_MAX_PAGE} items at a time.` });
+  }
+
+  const patches = {
+    publish:   { is_published: true },
+    unpublish: { is_published: false },
+    feature:   { is_featured: true },
+    unfeature: { is_featured: false },
+  };
+
+  if (action === 'delete') {
+    // Read paths first: once the rows are gone we cannot find the objects.
+    const { data: rows } = await supabase.from('gallery').select('storage_path').in('id', ids);
+    const { error } = await supabase.from('gallery').delete().in('id', ids);
+    if (error) return handleError(res, error);
+    await Promise.allSettled((rows || []).map(r => removeGalleryObject(r.storage_path)));
+    return res.json({ success: true, data: { affected: ids.length } });
+  }
+
+  if (!patches[action]) {
+    return res.status(400).json({ error: `action must be one of: ${Object.keys(patches).join(', ')}, delete` });
+  }
+  const { data, error } = await supabase.from('gallery').update(patches[action]).in('id', ids).select();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: { affected: data.length, items: data.map(map.gallery) } });
+});
+
 app.put('/api/admin/gallery/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('gallery').update(toGalleryDB(req.body)).eq('id', req.params.id).select().single();
+  const { data: cur } = await supabase.from('gallery')
+    .select('storage_path, image_url').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+
+  // On edit the file is optional — the form may only be changing a caption.
+  const errors = await validateGallery(req.body, { requireImage: false });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  const { data, error } = await supabase.from('gallery')
+    .update(toGalleryDB(req.body, true)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
-  if (!data) return res.status(404).json({ error: 'Gallery item not found' });
+
+  // The image was replaced — drop the old object now that the row points elsewhere.
+  if (req.body.storagePath && cur.storage_path && req.body.storagePath !== cur.storage_path) {
+    await removeGalleryObject(cur.storage_path);
+  }
   res.json({ success: true, data: map.gallery(data) });
 });
+
 app.patch('/api/admin/gallery/:id/feature', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('gallery').select('is_featured').eq('id', req.params.id).single();
-  const { data, error } = await supabase.from('gallery').update({ is_featured: !cur?.is_featured }).eq('id', req.params.id).select().single();
+  const { data: cur } = await supabase.from('gallery').select('is_featured').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+  const { data, error } = await supabase.from('gallery')
+    .update({ is_featured: !cur.is_featured }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.gallery(data) });
 });
+
+app.patch('/api/admin/gallery/:id/publish', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('gallery').select('is_published').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+  const { data, error } = await supabase.from('gallery')
+    .update({ is_published: !cur.is_published }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.gallery(data) });
+});
+
 app.delete('/api/admin/gallery/:id', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('gallery')
+    .select('storage_path').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+
   const { error } = await supabase.from('gallery').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
+
+  // Legacy rows point at repo-static /IMAGES/ files and carry no storage_path;
+  // removeGalleryObject no-ops on those rather than trying to delete them.
+  await removeGalleryObject(cur.storage_path);
   res.json({ success: true });
 });
 
 // ==================== ADMIN — REVIEWS ====================
+const REVIEW_STATUSES = ['pending', 'published', 'rejected', 'withdrawn'];
+
 app.get('/api/admin/reviews', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+  const limit  = Math.min(Math.max(parseInt(req.query.limit, 10) || REVIEW_MAX_PAGE, 1), REVIEW_MAX_PAGE);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+  let q = supabase.from('reviews').select('*', { count: 'exact' });
+  if (req.query.status && REVIEW_STATUSES.includes(req.query.status)) q = q.eq('status', req.query.status);
+  if (req.query.verified === 'true') q = q.eq('is_verified', true);
+
+  // Pending first — the moderation queue is the reason this screen exists.
+  q = q.order('status', { ascending: true })
+       .order('created_at', { ascending: false })
+       .range(offset, offset + limit - 1);
+
+  const { data, error, count } = await q;
   if (error) return handleError(res, error);
-  res.json({ success: true, data: data.map(map.review) });
+  res.json({
+    success: true,
+    data: data.map(map.review),
+    meta: { total: count ?? data.length, limit, offset, hasMore: offset + data.length < (count ?? 0) },
+  });
 });
+
+// Single moderation entry point. One endpoint with an explicit target status
+// beats four verbs that can each drift — and it makes the audit trail uniform.
+app.patch('/api/admin/reviews/:id/status', adminAuth, async (req, res) => {
+  const { status, rejectionReason } = req.body;
+  if (!REVIEW_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${REVIEW_STATUSES.join(', ')}` });
+  }
+
+  const { data: cur } = await supabase.from('reviews')
+    .select('id, consent_publish, status').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Review not found' });
+
+  // Defence in depth. The DB constraint would reject this anyway, but a clear
+  // message here beats a raw check_violation reaching the dashboard.
+  if (status === 'published' && !cur.consent_publish) {
+    return res.status(409).json({
+      error: cur.status === 'withdrawn'
+        ? 'This client withdrew their review. It cannot be republished without their permission.'
+        : 'This review has no recorded consent, so it cannot be published.',
+    });
+  }
+
+  const patch = {
+    status,
+    moderated_at: new Date().toISOString(),
+    moderated_by: req.admin?.username || req.admin?.role || null,
+    rejection_reason: status === 'rejected' ? (rejectionReason || null) : null,
+  };
+
+  const { data, error } = await supabase.from('reviews')
+    .update(patch).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.review(data) });
+});
+
+// Kept for backwards compatibility with the existing dashboard button until the
+// UI is redeployed; delegates to the status route's rules.
 app.patch('/api/admin/reviews/:id/approve', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('reviews').update({ is_approved: true }).eq('id', req.params.id).select().single();
+  const { data: cur } = await supabase.from('reviews')
+    .select('consent_publish').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Review not found' });
+  if (!cur.consent_publish) return res.status(409).json({ error: 'This review has no recorded consent, so it cannot be published.' });
+
+  const { data, error } = await supabase.from('reviews').update({
+    status: 'published',
+    moderated_at: new Date().toISOString(),
+    moderated_by: req.admin?.username || req.admin?.role || null,
+  }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.review(data) });
 });
+
 app.patch('/api/admin/reviews/:id/reply', adminAuth, async (req, res) => {
-  const { reply } = req.body;
-  if (!reply) return res.status(400).json({ error: 'Reply text is required' });
-  const { data, error } = await supabase.from('reviews').update({ admin_reply: reply }).eq('id', req.params.id).select().single();
+  const reply = req.body.reply === null ? null : String(req.body.reply ?? '').trim();
+  if (reply !== null && !reply) return res.status(400).json({ error: 'Reply text is required' });
+  if (reply && reply.length > 1000) return res.status(400).json({ error: 'Replies are limited to 1000 characters.' });
+
+  const { data, error } = await supabase.from('reviews')
+    .update({ admin_reply: reply }).eq('id', req.params.id).select().maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Review not found' });
+  res.json({ success: true, data: map.review(data) });
+});
+
+app.patch('/api/admin/reviews/:id/feature', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('reviews')
+    .select('is_featured, status').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Review not found' });
+  // Featuring something the public cannot see is a silent no-op that looks like
+  // it worked — say so instead.
+  if (!cur.is_featured && cur.status !== 'published') {
+    return res.status(409).json({ error: 'Publish this review before featuring it.' });
+  }
+  const { data, error } = await supabase.from('reviews')
+    .update({ is_featured: !cur.is_featured }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.review(data) });
 });
-app.patch('/api/admin/reviews/:id/feature', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('reviews').select('is_featured').eq('id', req.params.id).single();
-  const { data, error } = await supabase.from('reviews').update({ is_featured: !cur?.is_featured }).eq('id', req.params.id).select().single();
+
+app.post('/api/admin/reviews/bulk', adminAuth, async (req, res) => {
+  const { action, ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids array is required' });
+  if (ids.length > REVIEW_MAX_PAGE) return res.status(400).json({ error: `Act on at most ${REVIEW_MAX_PAGE} at a time.` });
+
+  if (action === 'delete') {
+    const { error } = await supabase.from('reviews').delete().in('id', ids);
+    if (error) return handleError(res, error);
+    return res.json({ success: true, data: { affected: ids.length } });
+  }
+
+  const target = { publish: 'published', reject: 'rejected', unpublish: 'pending' }[action];
+  if (!target) return res.status(400).json({ error: 'action must be one of: publish, reject, unpublish, delete' });
+
+  // Publishing in bulk must not become a way around consent. Filter to rows
+  // that actually carry it and report the difference rather than failing whole.
+  let eligible = ids;
+  if (target === 'published') {
+    const { data: rows } = await supabase.from('reviews')
+      .select('id').in('id', ids).eq('consent_publish', true);
+    eligible = (rows || []).map(r => r.id);
+  }
+  if (!eligible.length) {
+    return res.status(409).json({ error: 'None of the selected reviews have recorded consent to publish.' });
+  }
+
+  const { data, error } = await supabase.from('reviews').update({
+    status: target,
+    moderated_at: new Date().toISOString(),
+    moderated_by: req.admin?.username || req.admin?.role || null,
+  }).in('id', eligible).select();
   if (error) return handleError(res, error);
-  res.json({ success: true, data: map.review(data) });
+
+  res.json({
+    success: true,
+    data: { affected: data.length, skipped: ids.length - eligible.length, items: data.map(map.review) },
+  });
 });
 app.delete('/api/admin/reviews/:id', adminAuth, async (req, res) => {
   const { error } = await supabase.from('reviews').delete().eq('id', req.params.id);

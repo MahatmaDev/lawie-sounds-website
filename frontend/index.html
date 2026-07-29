@@ -507,13 +507,38 @@
   <!-- ==================== TESTIMONIALS SECTION ==================== -->
   <section id="testimonials" class="py-24 bg-gray-100">
     <div class="container mx-auto px-4">
-      <div class="text-center mb-16">
+      <div class="text-center mb-10">
         <span class="text-yellow-600 font-bold uppercase tracking-wider text-sm">Client Love</span>
         <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mt-3">What Our <span class="text-yellow-500">Clients Say</span></h2>
         <div class="w-24 h-1 bg-yellow-500 mx-auto mt-5 rounded-full"></div>
+        <!-- Real aggregate, computed server-side. Hidden until there is
+             something true to show. -->
+        <div id="reviewsSummary" class="hidden mt-6 flex items-center justify-center gap-3 text-gray-600">
+          <span id="summaryStars" class="text-yellow-500 text-xl tracking-tight"></span>
+          <span class="text-sm"><strong id="summaryAvg" class="text-gray-900"></strong> from <span id="summaryCount"></span></span>
+        </div>
       </div>
+
       <div id="reviewsGrid" class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition animate-pulse h-48 flex items-center justify-center"><i class="fas fa-spinner fa-spin text-2xl text-yellow-500"></i></div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg animate-pulse h-48 flex items-center justify-center"><i class="fas fa-spinner fa-spin text-2xl text-yellow-500"></i></div>
+      </div>
+
+      <!-- Honest empty state. This section previously rendered three invented
+           testimonials whenever the API returned nothing, which it always did.
+           An empty gallery of praise is survivable; fabricated praise is not. -->
+      <div id="reviewsEmpty" class="hidden text-center max-w-lg mx-auto py-10">
+        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5">
+          <i class="fas fa-comment-dots text-2xl text-yellow-600"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">No reviews published yet</h3>
+        <p class="text-gray-500 text-sm mb-6">We have just opened reviews to our clients. If we have worked your event, we would genuinely value hearing how it went.</p>
+      </div>
+
+      <div class="text-center mt-12">
+        <a href="leave-review.html" class="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-3.5 rounded-full font-bold hover:bg-gray-800 transition shadow-lg">
+          <i class="fas fa-star text-yellow-400"></i> Leave a review
+        </a>
+        <p class="text-xs text-gray-400 mt-3">Reviews are read by a person before they appear. You can withdraw yours at any time.</p>
       </div>
     </div>
   </section>
@@ -591,11 +616,13 @@
       { imageUrl: '../Gallery/equipment/Dj%20decks%20setup.jpg', alt: 'DJ Equipment', type: 'image', label: 'Equipment' }
     ];
 
-    const fallbackReviews = [
-      { clientName: 'Sarah & James', rating: 5, comment: 'Lawie Sounds made our wedding unforgettable! The DJ kept everyone dancing all night.', eventType: 'Wedding' },
-      { clientName: 'Tech Corp Kenya', rating: 5, comment: 'Professional setup, great music selection, and the MC kept everything on schedule.', eventType: 'Corporate' },
-      { clientName: 'Michael O.', rating: 5, comment: 'Best birthday party ever! The DJ played all our requests and the energy was insane.', eventType: 'Birthday' }
-    ];
+    // fallbackReviews removed 2026-07-29. It held three invented testimonials
+    // ("Sarah & James", "Tech Corp Kenya", "Michael O.") that rendered whenever
+    // /api/reviews returned nothing — which was always, because the reviews
+    // table had never held a row and no page offered a way to submit one.
+    // Presenting fabricated client praise as genuine is misleading advertising
+    // and corrodes exactly the trust the section exists to build. The reviews
+    // grid now shows real rows or an honest empty state.
 
     // ==================== API HELPERS ====================
     async function apiFetch(path) {
@@ -628,20 +655,67 @@
       `).join('');
     }
 
+    // Reviews are real or they are absent. There is no fallback: inventing
+    // testimonials to fill the space is the one thing a reviews section must
+    // never do, and it is what this page used to do on every load.
+    const ESC_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+    function escHtml(v) { return String(v ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+    function starRow(rating) {
+      const n = Math.max(0, Math.min(5, Number(rating) || 0));
+      return '★'.repeat(n) + '☆'.repeat(5 - n);
+    }
+
     async function loadReviews() {
       const container = document.getElementById('reviewsGrid');
+      const empty     = document.getElementById('reviewsEmpty');
       if (!container) return;
 
-      const result = await apiFetch('/api/reviews');
-      const reviews = result?.data?.slice(0, 3) || fallbackReviews;
+      const [listRes, sumRes] = await Promise.all([
+        apiFetch('/api/reviews?limit=3'),
+        apiFetch('/api/reviews/summary'),
+      ]);
+      const reviews = listRes?.data || [];
+
+      // Aggregate first — a rating average is only meaningful if it is computed
+      // from the same rows the visitor can go and read.
+      const summary = sumRes?.data;
+      if (summary?.total > 0 && summary.average !== null) {
+        document.getElementById('summaryStars').textContent = starRow(Math.round(summary.average));
+        document.getElementById('summaryAvg').textContent   = summary.average.toFixed(1) + ' / 5';
+        document.getElementById('summaryCount').textContent =
+          `${summary.total} review${summary.total === 1 ? '' : 's'}`;
+        document.getElementById('reviewsSummary').classList.remove('hidden');
+      }
+
+      if (!reviews.length) {
+        container.classList.add('hidden');
+        empty?.classList.remove('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      empty?.classList.add('hidden');
 
       container.innerHTML = reviews.map(review => `
-        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-          <div class="flex text-yellow-400 mb-4">${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}</div>
-          <p class="text-gray-600 italic">"${review.comment}"</p>
-          <div class="mt-5 flex items-center gap-3">
-            <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-500 text-lg"></i></div>
-            <div><p class="font-semibold">${review.clientName}</p><p class="text-xs text-gray-400">${review.eventType || 'Event'}</p></div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-yellow-400" aria-label="${review.rating} out of 5 stars">${starRow(review.rating)}</div>
+            ${review.isVerified ? `<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold" title="This client has a booking with us"><i class="fas fa-circle-check mr-1"></i>Verified</span>` : ''}
+          </div>
+          ${review.comment ? `<p class="text-gray-600 italic">"${escHtml(review.comment)}"</p>` : ''}
+          ${review.adminReply ? `
+            <div class="mt-4 pl-3 border-l-2 border-yellow-400 bg-yellow-50/60 rounded-r-lg p-3">
+              <p class="text-xs font-bold text-yellow-700 mb-1">Lawie Sounds replied</p>
+              <p class="text-sm text-gray-600">${escHtml(review.adminReply)}</p>
+            </div>` : ''}
+          <div class="mt-5 pt-4 border-t border-gray-100 flex items-center gap-3">
+            <div class="w-11 h-11 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span class="font-bold text-yellow-700">${escHtml((review.name || '?').trim().charAt(0).toUpperCase())}</span>
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold truncate">${escHtml(review.name || 'A client')}</p>
+              <p class="text-xs text-gray-400">${escHtml(review.eventType || 'Event')}</p>
+            </div>
           </div>
         </div>
       `).join('');

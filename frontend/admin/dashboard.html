@@ -324,11 +324,26 @@
       } catch(e) { return { _error: true, status: 0, message: 'Network error — cannot reach API' }; }
     }
 
+    // The gallery list endpoint is capped at 100 rows per request. The dashboard
+    // grid wants the whole library, so page through rather than silently showing
+    // the first hundred once the gallery outgrows that.
+    async function loadAllGalleryPages() {
+      const PAGE = 100;
+      const all = [];
+      for (let offset = 0; ; offset += PAGE) {
+        const res = await apiRequest('GET', `/api/admin/gallery?limit=${PAGE}&offset=${offset}`);
+        if (res?._error) return offset === 0 ? res : { data: all };
+        all.push(...(res.data || []));
+        if (!res.meta?.hasMore) break;
+      }
+      return { data: all };
+    }
+
     async function loadAllDataFromAPI() {
       const [evts, svcs, gal, revs, bans, posts, bkgs, emps, pay] = await Promise.all([
         apiRequest('GET', '/api/admin/events'),
         apiRequest('GET', '/api/admin/services'),
-        apiRequest('GET', '/api/admin/gallery'),
+        loadAllGalleryPages(),
         apiRequest('GET', '/api/admin/reviews'),
         apiRequest('GET', '/api/admin/banners'),
         apiRequest('GET', '/api/admin/posters'),
@@ -1888,401 +1903,1181 @@
     }
 
 // ==================== GALLERY MANAGEMENT ====================
-function renderGallery() {
-    const container = document.getElementById('sectionContent');
-    if (!container) return;
+//
+// Media goes straight from the browser to Supabase Storage via a signed URL.
+// The old flow base64-encoded the file and POSTed it as JSON, which stored
+// whole images inside a Postgres text column and could not work at all on
+// Vercel (serverless request bodies are capped at 4.5 MB, and base64 inflates
+// by a third). Nothing large ever uploaded; the failure surfaced as a generic
+// "Save Failed".
 
-    const now = Date.now();
-    const D30 = 30 * 864e5, D90 = 90 * 864e5;
+const galleryUI = {
+  filter:    'all',     // 'all' | 'drafts' | 'featured' | a category slug
+  search:    '',
+  selected:  new Set(),
+  dragId:    null,
+  uploads:   [],        // live upload rows, rendered in the modal
+};
 
-    const bucket = item => {
-      const age = now - new Date(item.createdAt || item.created_at || 0).getTime();
-      if (age <= D30) return 'fresh';
-      if (age <= D90) return 'recent';
-      return 'archive';
-    };
+// Taxonomy comes from the API, not a hardcoded array. The previous hardcoded
+// list had drifted so far from the live data that only one of eight values
+// still existed — so opening any seeded photo in the edit form and saving
+// silently reassigned its category to whatever sat first in the dropdown.
+let galleryCategories = [];
+let galleryCategoriesLoaded = false;   // guards the lazy fetch below
 
-    const photos = store.gallery.filter(i => i.type !== 'video');
-    const videos = store.gallery.filter(i => i.type === 'video');
-    const thisMonth = store.gallery.filter(i => {
-      const d = new Date(i.createdAt || i.created_at || 0);
-      const n = new Date();
-      return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
-    }).length;
-
-    const sections = [
-      { key: 'fresh',   label: 'Fresh Uploads',  sub: 'Added in the last 30 days',   color: 'text-green-400',  bg: 'bg-green-900/20', border: 'border-green-700/30',  icon: 'fa-bolt' },
-      { key: 'recent',  label: 'Recent Work',     sub: '31 – 90 days ago',            color: 'text-blue-400',   bg: 'bg-blue-900/20',  border: 'border-blue-700/30',   icon: 'fa-camera' },
-      { key: 'archive', label: 'Archive',         sub: 'Older uploads',               color: 'text-gray-400',   bg: 'bg-gray-800/40',  border: 'border-gray-700/30',   icon: 'fa-box-archive' },
-    ];
-
-    function galleryCard(item) {
-      const isVideo = item.type === 'video';
-      const thumb = isVideo
-        ? `<video src="${item.imageUrl}" class="w-full h-full object-cover"></video><div class="absolute inset-0 flex items-center justify-center"><div class="w-10 h-10 bg-black/60 rounded-full flex items-center justify-center"><i class="fas fa-play text-white text-sm ml-0.5"></i></div></div>`
-        : `<img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" loading="lazy" class="w-full h-full object-cover transition duration-300 group-hover:scale-105" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center bg-gray-700 text-gray-500\'><i class=\'fas fa-image text-2xl mb-1\'></i><p class=\'text-xs\'>Unavailable</p></div>'">`;
-      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-KE', { day:'numeric', month:'short' }) : '';
-      const svcBadge = item.serviceSlug ? `<span class="absolute bottom-2 left-2 text-xs bg-purple-700/80 text-purple-200 px-1.5 py-0.5 rounded-full backdrop-blur-sm">${item.serviceSlug.replace(/-/g,' ')}</span>` : '';
-      const featBadge = item.isFeatured ? `<span class="absolute top-2 right-2 text-xs bg-yellow-500/90 text-black px-1.5 py-0.5 rounded-full font-bold">⭐</span>` : '';
-      return `
-        <div class="bg-gray-900 rounded-xl border ${item.isFeatured ? 'border-yellow-500/40' : 'border-gray-800'} overflow-hidden hover:border-purple-500/60 transition group flex flex-col">
-          <div class="relative h-36 bg-gray-800 overflow-hidden">
-            ${thumb}
-            <span class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${isVideo ? 'bg-blue-600/80 text-white' : 'bg-black/60 text-gray-200'}">${isVideo ? '🎬' : '📷'}</span>
-            ${featBadge}${svcBadge}
-          </div>
-          <div class="p-2.5 flex-1 flex flex-col">
-            <p class="text-xs font-semibold text-white truncate">${escapeHtml(item.title)}</p>
-            <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(item.category || '')}${dateStr ? ' · ' + dateStr : ''}</p>
-            <div class="flex gap-1 mt-auto pt-2">
-              <button onclick="toggleGalleryFeatured('${item.id}')" title="${item.isFeatured ? 'Unfeature' : 'Feature this'}"
-                class="flex-none px-2 py-1 rounded-lg text-xs transition ${item.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-500 hover:text-yellow-400 hover:bg-gray-700'}">
-                <i class="fas fa-star"></i>
-              </button>
-              <button onclick="openGalleryEditForm('${item.id}')"
-                class="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs transition flex items-center justify-center gap-1">
-                <i class="fas fa-pen text-xs"></i> Edit
-              </button>
-              <button onclick="deleteGalleryItem('${item.id}')"
-                class="flex-none px-2 py-1 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          </div>
-        </div>`;
-    }
-
-    const headerBar = `
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <h2 class="text-xl font-bold text-white">Gallery Management</h2>
-          <p class="text-sm text-gray-500 mt-0.5">${store.gallery.length} items · ${photos.length} photos · ${videos.length} videos · ${thisMonth} added this month</p>
-        </div>
-        <div class="flex gap-2 flex-wrap">
-          <button onclick="seedExistingImages()" class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200" title="Import existing service photos into gallery">
-            <i class="fas fa-seedling text-green-400"></i> Import Existing Photos
-          </button>
-          <button onclick="openGalleryForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
-            <i class="fas fa-upload"></i> Upload New
-          </button>
-        </div>
-      </div>`;
-
-    if (!store.gallery || store.gallery.length === 0) {
-      container.innerHTML = headerBar + `
-        <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-16 text-center">
-          <div class="w-20 h-20 bg-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-images text-purple-400 text-3xl"></i>
-          </div>
-          <h3 class="text-lg font-bold text-white mb-2">Your gallery is empty</h3>
-          <p class="text-gray-500 text-sm max-w-sm mx-auto mb-6">Start by importing your existing service photos, or upload new ones from an event you just covered.</p>
-          <div class="flex flex-wrap justify-center gap-3">
-            <button onclick="seedExistingImages()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-700 hover:bg-green-600 text-white text-sm font-medium transition">
-              <i class="fas fa-seedling"></i> Import Existing Photos (84 available)
-            </button>
-            <button onclick="openGalleryForm()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition">
-              <i class="fas fa-upload"></i> Upload a New Photo
-            </button>
-          </div>
-        </div>`;
-      return;
-    }
-
-    const sectionsHtml = sections.map(s => {
-      const items = store.gallery.filter(i => bucket(i) === s.key);
-      if (!items.length) return '';
-      return `
-        <div class="mb-8">
-          <div class="flex items-center gap-3 mb-4 px-1">
-            <div class="w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center border ${s.border}">
-              <i class="fas ${s.icon} ${s.color} text-sm"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-white">${s.label} <span class="text-gray-500 font-normal text-sm">(${items.length})</span></h3>
-              <p class="text-xs text-gray-500">${s.sub}</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            ${items.map(galleryCard).join('')}
-          </div>
-        </div>`;
-    }).join('');
-
-    // Items with no date fall into archive — already handled by bucket()
-    container.innerHTML = headerBar + sectionsHtml;
+async function loadGalleryCategories() {
+  const res = await apiRequest('GET', '/api/admin/gallery/categories');
+  galleryCategories = res?.data || [];
+  galleryCategoriesLoaded = true;
+  return galleryCategories;
 }
 
-// Seed existing local images into gallery
-async function seedExistingImages() {
-  const SEED = [
-    // ── EVENT PHOTOS (Gallery/ folder — shown on public website) ──────────────
-    // Weddings (8)
-    ...Array.from({length:8}, (_,i) => ({ title:`Wedding — Shot ${i+1}`, category:'Weddings', type:'image', imageUrl:`/Gallery/Weddings/${i+1}.jpg` })),
-    // Ruracio (9)
-    ...Array.from({length:8}, (_,i) => ({ title:`Ruracio — Itara ${i+1}`, category:'Ruracio', type:'image', imageUrl:`/Gallery/Ruracio/Itara${i+1}.jpg` })),
-    { title:'Ruracio — DSC 7967', category:'Ruracio', type:'image', imageUrl:'/Gallery/Ruracio/DSC_7967_14_11zon.jpg' },
-    // Corporate (6)
-    ...Array.from({length:6}, (_,i) => ({ title:`Corporate — Shot ${i+1}`, category:'Corporate', type:'image', imageUrl:`/Gallery/corporate/${i+1}.jpg` })),
-    // Equipment & Setup (16)
-    { title:'Line Array Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/linearray.jpg' },
-    { title:'Line Array Setup 2', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/linearray1.jpg' },
-    { title:'Line Array Setup 3', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/linearray2.jpg' },
-    { title:'DJ Decks Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/Dj decks setup.jpg' },
-    { title:'Connecting Cables', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/connecting cables.jpg' },
-    { title:'Mixer Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/mixer.jpg' },
-    { title:'PAR Can Lights', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/par can lights.jpg' },
-    { title:'Pyrotechnics Display', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/pyrotechnics.jpg' },
-    { title:'LED Screen Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/screen.jpg' },
-    { title:'LED Screen Setup 2', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/screen2.jpg' },
-    { title:'Stage Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/setup2.jpg' },
-    { title:'Stage Setup 2', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/setup3.jpg' },
-    { title:'Sound Setup', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/sound setup.jpg' },
-    { title:'Sound Technicians', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/sound technicians.jpg' },
-    { title:'Sound Technicians 2', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/sound technicians2.jpg' },
-    { title:'Equipment Shot 3', category:'Sound & Equipment', type:'image', imageUrl:'/Gallery/equipment/3.jpg' },
+function catLabelFor(slug) {
+  const c = galleryCategories.find(x => x.slug === slug);
+  return c ? `${c.emoji} ${c.label}` : (slug || 'Uncategorised');
+}
+function galleryCategoryOptions(selected = '') {
+  return galleryCategories
+    .map(c => `<option value="${escapeHtml(c.slug)}" ${c.slug === selected ? 'selected' : ''}>${escapeHtml(c.emoji + ' ' + c.label)}</option>`)
+    .join('');
+}
+function galleryServiceOptions(selected = '') {
+  // Built from the live services table rather than a second hardcoded list —
+  // the same drift that broke categories was waiting to happen here.
+  const opts = (store.services || []).filter(s => s.slug)
+    .map(s => `<option value="${escapeHtml(s.slug)}" ${s.slug === selected ? 'selected' : ''}>${escapeHtml(s.name)}</option>`)
+    .join('');
+  return `<option value="">— Not linked to a service —</option>${opts}`;
+}
 
-    // ── SERVICE PHOTOS (IMAGES/ folder — equipment & service demos) ───────────
-    // DJ & MC Services (7)
-    ...Array.from({length:7}, (_,i) => ({ title:`DJ & MC — Shot ${i+1}`, category:'Audio', type:'image', imageUrl:`/IMAGES/DJ and MC Services/${i+1}.jpg` })),
-    // LED Screens (8)
-    ...Array.from({length:8}, (_,i) => ({ title:`LED Screen — Shot ${i+1}`, category:'Visual', type:'image', imageUrl:`/IMAGES/LED Screens/${i+1}.jpg` })),
-    // Power & Lighting (4)
-    ...Array.from({length:4}, (_,i) => ({ title:`Power & Lighting — Shot ${i+1}`, category:'Equipment', type:'image', imageUrl:`/IMAGES/Power & Lighting/${i+1}.jpg` })),
-    // Pyrotechnics (2)
-    ...Array.from({length:2}, (_,i) => ({ title:`Pyrotechnics — Shot ${i+1}`, category:'Effects', type:'image', imageUrl:`/IMAGES/Pyrotechnics/${i+1}.jpg` })),
-    // Photography (8)
-    ...Array.from({length:8}, (_,i) => ({ title:`Photography — Shot ${i+1}`, category:'Media', type:'image', imageUrl:`/IMAGES/Photography/${i+1}.jpg` })),
-    // Live Streaming (5)
-    ...Array.from({length:5}, (_,i) => ({ title:`Live Streaming — Shot ${i+1}`, category:'Media', type:'image', imageUrl:`/IMAGES/Live Streaming & Media/${i+1}.jpg` })),
-    // 360 Booth (4)
-    ...Array.from({length:4}, (_,i) => ({ title:`360 Booth — Shot ${i+1}`, category:'Equipment', type:'image', imageUrl:`/IMAGES/360 Booth/${i+1}.jpg` })),
-    // Drone (2)
-    ...Array.from({length:2}, (_,i) => ({ title:`Drone Aerial — Shot ${i+1}`, category:'Media', type:'image', imageUrl:`/IMAGES/Drone/${i+1}.jpg` })),
-    // Public Address (5)
-    ...Array.from({length:5}, (_,i) => ({ title:`PA System — Shot ${i+1}`, category:'Audio', type:'image', imageUrl:`/IMAGES/Public Address Systems/${i+1}.jpg` })),
-  ];
+// ── Filtering ──────────────────────────────────────────────────
+function visibleGalleryItems() {
+  let items = store.gallery || [];
+  const q = galleryUI.search.toLowerCase();
 
-  // Only seed images not already in gallery (match by imageUrl)
-  const existing = new Set((store.gallery || []).map(g => g.imageUrl));
-  const toSeed = SEED.filter(s => !existing.has(s.imageUrl));
+  if (galleryUI.filter === 'drafts')        items = items.filter(i => i.isPublished === false);
+  else if (galleryUI.filter === 'featured') items = items.filter(i => i.isFeatured);
+  else if (galleryUI.filter !== 'all')      items = items.filter(i => i.category === galleryUI.filter);
 
-  if (!toSeed.length) {
-    Swal.fire({ icon: 'info', title: 'Already Imported', text: 'All existing photos are already in your gallery.', background: '#1e1e2a', color: '#fff' });
+  if (q) items = items.filter(i =>
+    (i.title || '').toLowerCase().includes(q) ||
+    (i.category || '').toLowerCase().includes(q) ||
+    (i.caption || '').toLowerCase().includes(q));
+
+  // Reordering only makes sense inside one category, so that is the only view
+  // sorted by display_order. Everywhere else, newest first.
+  const single = !['all', 'drafts', 'featured'].includes(galleryUI.filter);
+  return single
+    ? [...items].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    : [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function renderGallery() {
+  const container = document.getElementById('sectionContent');
+  if (!container) return;
+
+  // Fetch the taxonomy once, then re-render. Keyed on "have we tried" rather
+  // than "is the list empty" — an API error returns an empty list, and keying
+  // on emptiness would refetch and re-render forever.
+  if (!galleryCategoriesLoaded) {
+    loadGalleryCategories().then(renderGallery);
+  }
+
+  const all       = store.gallery || [];
+  const items     = visibleGalleryItems();
+  const drafts    = all.filter(i => i.isPublished === false).length;
+  const featured  = all.filter(i => i.isFeatured).length;
+  const videos    = all.filter(i => i.type === 'video').length;
+  const reorderable = !['all', 'drafts', 'featured'].includes(galleryUI.filter) && !galleryUI.search;
+
+  const chip = (key, label, count, tone = '') => `
+    <button onclick="setGalleryFilter('${key}')"
+      class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition border ${
+        galleryUI.filter === key
+          ? 'bg-purple-600 border-purple-500 text-white'
+          : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">
+      ${label}${count !== null ? ` <span class="opacity-60">${count}</span>` : ''}
+    </button>`;
+
+  const header = `
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-xl font-bold text-white">Gallery</h2>
+        <p class="text-sm text-gray-500 mt-0.5">
+          ${all.length} item${all.length !== 1 ? 's' : ''}
+          ${videos ? ` · ${videos} video${videos !== 1 ? 's' : ''}` : ''}
+          ${featured ? ` · ${featured} featured` : ''}
+          ${drafts ? ` · <span class="text-yellow-400">${drafts} not published</span>` : ''}
+        </p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <a href="/gallery.html" target="_blank" rel="noopener"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center gap-2">
+          <i class="fas fa-external-link-alt text-xs"></i> View live page
+        </a>
+        <button onclick="openGalleryForm()"
+          class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+          <i class="fas fa-cloud-arrow-up"></i> Upload photos
+        </button>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <div class="flex gap-1.5 flex-wrap flex-1">
+        ${chip('all', 'All', all.length)}
+        ${drafts ? chip('drafts', '📝 Drafts', drafts) : ''}
+        ${featured ? chip('featured', '⭐ Featured', featured) : ''}
+        ${galleryCategories.map(c => {
+          const n = all.filter(i => i.category === c.slug).length;
+          return n ? chip(c.slug, `${c.emoji} ${c.label}`, n) : '';
+        }).join('')}
+      </div>
+      <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500"></i>
+        <input type="text" id="gallerySearchInput" value="${escapeHtml(galleryUI.search)}"
+          oninput="onGallerySearch(this.value)" placeholder="Search…"
+          class="w-40 pl-8 pr-3 py-1.5 rounded-lg text-sm bg-gray-800 border border-gray-700 focus:border-purple-500 focus:outline-none">
+      </div>
+    </div>`;
+
+  // Bulk bar only exists when something is selected — an always-visible row of
+  // disabled buttons is just noise the manager has to read past every time.
+  const bulkBar = galleryUI.selected.size ? `
+    <div class="sticky top-2 z-20 mb-4 bg-purple-900/90 backdrop-blur border border-purple-600/50 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-2">
+      <span class="text-sm font-semibold text-white mr-1">${galleryUI.selected.size} selected</span>
+      <button onclick="bulkGallery('publish')"   class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
+      <button onclick="bulkGallery('unpublish')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unpublish</button>
+      <button onclick="bulkGallery('feature')"   class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/80 hover:bg-yellow-600 transition">⭐ Feature</button>
+      <button onclick="bulkGallery('unfeature')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unfeature</button>
+      <button onclick="bulkGallery('delete')"    class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Delete</button>
+      <button onclick="clearGallerySelection()"  class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
+    </div>` : '';
+
+  if (!all.length) {
+    container.innerHTML = header + `
+      <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-16 text-center">
+        <div class="w-20 h-20 bg-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-images text-purple-400 text-3xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2">Your gallery is empty</h3>
+        <p class="text-gray-500 text-sm max-w-sm mx-auto mb-6">Upload photos from an event you have just covered. You can select several at once.</p>
+        <button onclick="openGalleryForm()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition">
+          <i class="fas fa-cloud-arrow-up"></i> Upload photos
+        </button>
+      </div>`;
     return;
   }
 
-  const { isConfirmed } = await Swal.fire({
-    icon: 'question',
-    title: 'Import Existing Photos?',
-    html: `<p style="color:#9ca3af">This will add <strong style="color:#fff">${toSeed.length} photos</strong> from your event and service library into the gallery — including real event photos (Weddings, Ruracio, Corporate, Equipment setups).<br><br>They'll appear on your website immediately. You can remove any you don't want afterwards.</p>`,
-    showCancelButton: true,
-    confirmButtonText: 'Yes, Import All',
-    confirmButtonColor: '#7c4dff',
-    cancelButtonText: 'Cancel',
-    background: '#1e1e2a',
-    color: '#fff'
-  });
-  if (!isConfirmed) return;
-
-  const btn = document.querySelector('button[onclick="seedExistingImages()"]');
-  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
-
-  let done = 0, failed = 0;
-  for (const item of toSeed) {
-    const result = await apiRequest('POST', '/api/admin/gallery', item);
-    if (result?.data) { store.gallery.unshift(result.data); done++; }
-    else failed++;
+  if (!items.length) {
+    container.innerHTML = header + bulkBar + `
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+        <i class="fas fa-filter text-3xl text-gray-600 mb-3"></i>
+        <h3 class="text-base font-bold text-white mb-1">Nothing matches this view</h3>
+        <p class="text-gray-500 text-sm mb-5">Try a different category, or clear the search.</p>
+        <button onclick="setGalleryFilter('all')" class="px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition">Show all</button>
+      </div>`;
+    return;
   }
 
-  updateStats();
+  const hint = reorderable
+    ? `<p class="text-xs text-gray-500 mb-3"><i class="fas fa-up-down-left-right mr-1"></i> Drag photos to change the order they appear on the website.</p>`
+    : `<p class="text-xs text-gray-600 mb-3"><i class="fas fa-circle-info mr-1"></i> Pick a single category to drag photos into your preferred order.</p>`;
+
+  container.innerHTML = header + bulkBar + hint + `
+    <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      ${items.map(i => galleryCard(i, reorderable)).join('')}
+    </div>`;
+
+  if (reorderable) wireGalleryDrag();
+}
+
+function galleryCard(item, draggable) {
+  const isVideo   = item.type === 'video';
+  const selected  = galleryUI.selected.has(item.id);
+  const draft     = item.isPublished === false;
+  // A video tile shows its poster. Pointing a <video> at the source just to
+  // paint a thumbnail downloads the whole file.
+  const thumb     = isVideo ? (item.thumbUrl || '') : item.imageUrl;
+
+  const media = thumb
+    ? `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(item.altText || item.title)}" loading="lazy" decoding="async"
+         class="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+       <div style="display:none" class="w-full h-full flex-col items-center justify-center bg-gray-800 text-gray-500">
+         <i class="fas fa-image-slash text-xl mb-1"></i><p class="text-xs">Image missing</p></div>`
+    : `<div class="w-full h-full flex flex-col items-center justify-center bg-gray-800 text-gray-500">
+         <i class="fas fa-film text-xl mb-1"></i><p class="text-xs">No poster</p></div>`;
+
+  return `
+    <div class="bg-gray-900 rounded-xl border overflow-hidden transition group flex flex-col
+                ${selected ? 'border-purple-500 ring-2 ring-purple-500/40' : draft ? 'border-yellow-600/40' : item.isFeatured ? 'border-yellow-500/30' : 'border-gray-800'}
+                hover:border-purple-500/60"
+         data-id="${item.id}" ${draggable ? 'draggable="true"' : ''}>
+
+      <div class="relative h-32 bg-gray-800 overflow-hidden">
+        ${media}
+
+        <label class="absolute top-2 left-2 w-6 h-6 rounded-md bg-black/60 backdrop-blur flex items-center justify-center cursor-pointer hover:bg-black/80 transition">
+          <input type="checkbox" ${selected ? 'checked' : ''} onchange="toggleGallerySelect('${item.id}')"
+            class="accent-purple-500 w-3.5 h-3.5 cursor-pointer" aria-label="Select ${escapeHtml(item.title)}">
+        </label>
+
+        <div class="absolute top-2 right-2 flex gap-1">
+          ${isVideo   ? `<span class="text-xs bg-blue-600/85 text-white px-1.5 py-0.5 rounded-full">🎬</span>` : ''}
+          ${item.isFeatured ? `<span class="text-xs bg-yellow-500/90 text-black px-1.5 py-0.5 rounded-full font-bold">⭐</span>` : ''}
+          ${draft     ? `<span class="text-xs bg-yellow-600/90 text-black px-1.5 py-0.5 rounded-full font-bold">Draft</span>` : ''}
+        </div>
+
+        ${item.serviceSlug ? `<span class="absolute bottom-2 left-2 text-xs bg-purple-700/80 text-purple-100 px-1.5 py-0.5 rounded-full backdrop-blur-sm">${escapeHtml(item.serviceSlug.replace(/-/g, ' '))}</span>` : ''}
+      </div>
+
+      <div class="p-2.5 flex-1 flex flex-col">
+        <p class="text-xs font-semibold text-white truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
+        <p class="text-xs text-gray-500 mt-0.5 truncate">${escapeHtml(catLabelFor(item.category))}</p>
+        <div class="flex gap-1 mt-auto pt-2">
+          <button onclick="toggleGalleryFeatured('${item.id}')" title="${item.isFeatured ? 'Remove from featured' : 'Feature on the gallery page'}"
+            class="flex-none px-2 py-1 rounded-lg text-xs transition ${item.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-500 hover:text-yellow-400 hover:bg-gray-700'}">
+            <i class="fas fa-star"></i>
+          </button>
+          <button onclick="toggleGalleryPublish('${item.id}')" title="${draft ? 'Publish to the website' : 'Hide from the website'}"
+            class="flex-none px-2 py-1 rounded-lg text-xs transition ${draft ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-gray-800 text-gray-500 hover:text-green-400 hover:bg-gray-700'}">
+            <i class="fas ${draft ? 'fa-eye-slash' : 'fa-eye'}"></i>
+          </button>
+          <button onclick="openGalleryEditForm('${item.id}')"
+            class="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs transition flex items-center justify-center gap-1">
+            <i class="fas fa-pen text-xs"></i> Edit
+          </button>
+          <button onclick="deleteGalleryItem('${item.id}')" title="Delete"
+            class="flex-none px-2 py-1 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Filter / selection ─────────────────────────────────────────
+function setGalleryFilter(key) { galleryUI.filter = key; renderGallery(); }
+
+let _gallerySearchTimer;
+function onGallerySearch(value) {
+  clearTimeout(_gallerySearchTimer);
+  _gallerySearchTimer = setTimeout(() => {
+    galleryUI.search = value.trim();
+    renderGallery();
+    // Re-focus so the manager can keep typing — re-rendering the grid blows
+    // away the input that had focus.
+    const el = document.getElementById('gallerySearchInput');
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }, 250);
+}
+
+function toggleGallerySelect(id) {
+  galleryUI.selected.has(id) ? galleryUI.selected.delete(id) : galleryUI.selected.add(id);
   renderGallery();
-  Swal.fire({
-    icon: done > 0 ? 'success' : 'error',
-    title: done > 0 ? `${done} Photos Imported!` : 'Import Failed',
-    html: done > 0
-      ? `<p style="color:#9ca3af">Your gallery now has <strong style="color:#fff">${store.gallery.length}</strong> items.${failed > 0 ? ` (${failed} couldn't be added — check your API connection.)` : ''}</p><a href="/gallery.html" target="_blank" style="color:#a78bfa;font-size:.85rem">→ View gallery on your website</a>`
-      : `<p style="color:#9ca3af">Could not connect to the API. Check that you are logged in and the server is running.</p>`,
-    timer: 5000, showConfirmButton: false, background: '#1e1e2a', color: '#fff'
+}
+function clearGallerySelection() { galleryUI.selected.clear(); renderGallery(); }
+
+async function bulkGallery(action) {
+  const ids = [...galleryUI.selected];
+  if (!ids.length) return;
+
+  if (action === 'delete') {
+    const ok = await Swal.fire({
+      title: `Delete ${ids.length} item${ids.length !== 1 ? 's' : ''}?`,
+      text: 'The photos are removed from the website and from storage. This cannot be undone.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
+    });
+    if (!ok.isConfirmed) return;
+  }
+
+  const res = await apiRequest('POST', '/api/admin/gallery/bulk', { action, ids });
+  if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not apply', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+
+  if (action === 'delete') {
+    store.gallery = store.gallery.filter(i => !ids.includes(i.id));
+  } else {
+    const byId = Object.fromEntries((res.data?.items || []).map(i => [i.id, i]));
+    store.gallery = store.gallery.map(i => byId[i.id] || i);
+  }
+  galleryUI.selected.clear();
+  renderGallery();
+  updateStats();
+  showToast(`${ids.length} item${ids.length !== 1 ? 's' : ''} updated`, 'success');
+}
+
+// ── Drag to reorder ────────────────────────────────────────────
+function wireGalleryDrag() {
+  const grid = document.getElementById('galleryGrid');
+  if (!grid) return;
+
+  grid.querySelectorAll('[data-id]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      galleryUI.dragId = card.dataset.id;
+      card.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => { card.style.opacity = ''; });
+    card.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+    card.addEventListener('drop', async e => {
+      e.preventDefault();
+      const fromId = galleryUI.dragId, toId = card.dataset.id;
+      if (!fromId || fromId === toId) return;
+
+      const order = [...grid.querySelectorAll('[data-id]')].map(el => el.dataset.id);
+      order.splice(order.indexOf(toId), 0, ...order.splice(order.indexOf(fromId), 1));
+
+      // Optimistic: repaint immediately, then persist. Spacing by 10 leaves
+      // room to insert between two items without renumbering everything.
+      const payload = order.map((id, idx) => ({ id, displayOrder: (idx + 1) * 10 }));
+      const byId = Object.fromEntries(payload.map(p => [p.id, p.displayOrder]));
+      store.gallery = store.gallery.map(i => byId[i.id] !== undefined ? { ...i, displayOrder: byId[i.id] } : i);
+      renderGallery();
+
+      const res = await apiRequest('PATCH', '/api/admin/gallery/reorder', { items: payload });
+      if (res?._error) {
+        showToast('Order could not be saved — reloading', 'info');
+        const fresh = await apiRequest('GET', '/api/admin/gallery');
+        store.gallery = fresh?.data || store.gallery;
+        renderGallery();
+      }
+    });
   });
 }
 
-// Shared category + service-slug options for gallery forms
-const GALLERY_CATEGORIES = ['Weddings','Ruracio','Corporate','Parties','Sound & Equipment','Behind the Scenes','Drone','General'];
-const SERVICE_SLUG_OPTIONS = [
-  { slug: '', label: '— None (not linked to a service) —' },
-  { slug: 'dj-mc-services',  label: 'DJ & MC Services' },
-  { slug: 'led-screens',     label: 'LED Screens' },
-  { slug: 'power-lighting',  label: 'Power & Lighting' },
-  { slug: 'pyrotechnics',    label: 'Pyrotechnics' },
-  { slug: 'photography',     label: 'Photography' },
-  { slug: 'live-streaming',  label: 'Live Streaming' },
-  { slug: '360-booth',       label: '360 Booth' },
-  { slug: 'drone-services',  label: 'Drone Services' },
-  { slug: 'public-address',  label: 'Public Address Systems' },
-];
-function galleryCategoryOptions(selected = '') {
-  return GALLERY_CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
-}
-function galleryServiceOptions(selected = '') {
-  return SERVICE_SLUG_OPTIONS.map(o => `<option value="${o.slug}" ${o.slug === selected ? 'selected' : ''}>${o.label}</option>`).join('');
-}
-
-function openGalleryForm() {
-    currentEditId = null;
-    document.getElementById('modalTitle').textContent = 'Add Gallery Item';
-    document.getElementById('modalForm').innerHTML = `
-        <div class="pb-3 border-b border-gray-700 mb-3"><p class="text-sm text-gray-400">📸 Upload image or video — it appears on your website immediately after saving.</p></div>
-        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. Wedding — Mombasa Beach" required></div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-sm mb-1">Category</label><select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions()}</select></div>
-          <div><label class="block text-sm mb-1">Type</label><select id="galleryType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option value="image">📷 Image</option><option value="video">🎬 Video</option></select></div>
-        </div>
-        <div><label class="block text-sm mb-1">Link to Service <span class="text-gray-500 font-normal text-xs">(optional — shows this photo on that service's page)</span></label><select id="galleryServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions()}</select></div>
-        <div><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="galleryFeatured" class="accent-yellow-400"> <span class="text-sm">⭐ Feature this item <span class="text-gray-500 font-normal text-xs">(pinned to the top of the gallery)</span></span></label></div>
-        <div><label class="block text-sm mb-1">Select File *</label><input type="file" id="galleryFile" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/heic,image/heif,image/*,video/mp4,video/webm,video/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required><p class="text-xs text-gray-500 mt-1">JPG · PNG · WebP · HEIC · MP4 — images auto-compressed to under 1MB.</p></div>
-        <div id="previewArea" class="hidden bg-gray-800/50 rounded-lg p-4 text-center"><p class="text-sm text-gray-400 mb-2">Preview:</p><img id="imagePreview" class="mx-auto max-h-32 rounded-lg hidden"><video id="videoPreview" class="mx-auto max-h-32 rounded-lg hidden" controls></video></div>
-        <div id="uploadProgressArea" class="hidden"><div class="flex items-center gap-3"><div class="flex-1 bg-gray-700 rounded-full h-2"><div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width:0%"></div></div><span id="uploadPercent" class="text-xs text-gray-400">0%</span></div><p id="uploadStatusMsg" class="text-xs text-gray-400 mt-2 text-center">Processing file…</p></div>
-    `;
-    const typeSelect = document.getElementById('galleryType');
-    const fileInput  = document.getElementById('galleryFile');
-    const previewArea = document.getElementById('previewArea');
-    const imagePreview = document.getElementById('imagePreview');
-    const videoPreview = document.getElementById('videoPreview');
-    typeSelect?.addEventListener('change', () => { previewArea.classList.remove('hidden'); imagePreview.classList.add('hidden'); videoPreview.classList.add('hidden'); });
-    fileInput?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.size > 50 * 1024 * 1024) { Swal.fire({ icon: 'error', title: 'File Too Large', text: 'Maximum 50MB.', background: '#1e1e2a', color: '#fff' }); fileInput.value = ''; return; }
-        const url = URL.createObjectURL(file);
-        previewArea.classList.remove('hidden');
-        if (typeSelect.value === 'image') { imagePreview.src = url; imagePreview.classList.remove('hidden'); videoPreview.classList.add('hidden'); }
-        else { videoPreview.src = url; videoPreview.classList.remove('hidden'); imagePreview.classList.add('hidden'); }
-    });
-    document.getElementById('formModal').classList.remove('hidden');
-}
-
-// Edit an existing gallery item (title, category, service link, featured)
-function openGalleryEditForm(id) {
-    const item = store.gallery.find(i => i.id === id);
-    if (!item) return;
-    currentEditId = id;
-    document.getElementById('modalTitle').textContent = '✏️ Edit Gallery Item';
-    document.getElementById('modalForm').innerHTML = `
-        <div class="pb-3 border-b border-gray-700 mb-3"><p class="text-xs text-gray-500">Edit details — image cannot be replaced here. Delete and re-upload to change the image.</p></div>
-        <div class="mb-3 rounded-xl overflow-hidden" style="height:120px;background:#1a1a2e">
-          <img src="${escapeHtml(item.imageUrl)}" class="w-full h-full object-cover opacity-80">
-        </div>
-        <div><label class="block text-sm mb-1">Title *</label><input type="text" id="galleryEditTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(item.title)}" required></div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-sm mb-1">Category</label><select id="galleryEditCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions(item.category || '')}</select></div>
-          <div><label class="block text-sm mb-1">Type</label><select id="galleryEditType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option value="image" ${item.type !== 'video' ? 'selected' : ''}>📷 Image</option><option value="video" ${item.type === 'video' ? 'selected' : ''}>🎬 Video</option></select></div>
-        </div>
-        <div><label class="block text-sm mb-1">Link to Service</label><select id="galleryEditServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions(item.serviceSlug || '')}</select></div>
-        <div><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="galleryEditFeatured" class="accent-yellow-400" ${item.isFeatured ? 'checked' : ''}> <span class="text-sm">⭐ Featured item <span class="text-gray-500 font-normal text-xs">(pinned to top of gallery)</span></span></label></div>
-    `;
-    document.getElementById('formModal').classList.remove('hidden');
-}
-
-async function saveGalleryEdit() {
-    const title      = document.getElementById('galleryEditTitle')?.value?.trim();
-    const category   = document.getElementById('galleryEditCategory')?.value;
-    const type       = document.getElementById('galleryEditType')?.value;
-    const serviceSlug = document.getElementById('galleryEditServiceSlug')?.value || null;
-    const isFeatured = document.getElementById('galleryEditFeatured')?.checked || false;
-    if (!title) { Swal.fire({ icon: 'error', title: 'Missing Title', background: '#1e1e2a', color: '#fff' }); return; }
-    const item = store.gallery.find(i => i.id === currentEditId);
-    if (!item) return;
-    const result = await apiRequest('PUT', `/api/admin/gallery/${currentEditId}`, { title, category, type, imageUrl: item.imageUrl, serviceSlug, isFeatured });
-    if (!result?.data) { Swal.fire({ icon: 'error', title: 'Save Failed', background: '#1e1e2a', color: '#fff' }); return; }
-    store.gallery = store.gallery.map(i => i.id === currentEditId ? result.data : i);
-    closeModal();
-    renderGallery();
-    Swal.fire({ icon: 'success', title: 'Updated!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
-}
-
+// ── Single-item toggles ────────────────────────────────────────
 async function toggleGalleryFeatured(id) {
-    const result = await apiRequest('PATCH', `/api/admin/gallery/${id}/feature`);
-    if (!result?.data) return;
-    store.gallery = store.gallery.map(i => i.id === id ? result.data : i);
-    renderGallery();
+  const res = await apiRequest('PATCH', `/api/admin/gallery/${id}/feature`);
+  if (res?._error || !res?.data) { showToast('Could not update', 'info'); return; }
+  store.gallery = store.gallery.map(i => i.id === id ? res.data : i);
+  renderGallery();
 }
 
-async function saveGalleryItem() {
-    const titleInput = document.getElementById('galleryTitle');
-    const categorySelect = document.getElementById('galleryCategory');
-    const typeSelect = document.getElementById('galleryType');
-    const fileInput = document.getElementById('galleryFile');
-    
-    if (!titleInput.value.trim()) { Swal.fire({ icon: 'error', title: 'Missing Title', text: 'Please enter a title', background: '#1e1e2a', color: '#fff' }); return; }
-    if (!fileInput.files || !fileInput.files[0]) { Swal.fire({ icon: 'error', title: 'No File', text: 'Please select a file', background: '#1e1e2a', color: '#fff' }); return; }
-    
-    const file = fileInput.files[0];
-    const title = titleInput.value;
-    const category = categorySelect.value;
-    const type = typeSelect.value;
-    
-    const progressArea = document.getElementById('uploadProgressArea');
-    const progressBar = document.getElementById('uploadProgressBar');
-    const percentSpan = document.getElementById('uploadPercent');
-    const statusMsg = document.getElementById('uploadStatusMsg');
-    
-    if (progressArea) progressArea.classList.remove('hidden');
-    if (statusMsg) statusMsg.textContent = type === 'image' ? 'Compressing image…' : 'Reading file…';
-    if (progressBar) progressBar.style.width = '40%';
-    if (percentSpan) percentSpan.textContent = '40%';
-
-    let imageUrl;
-    if (type === 'image') {
-      imageUrl = await compressImageFile(file, 1400, 0.82);
-    } else {
-      imageUrl = await new Promise((resolve) => { const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(file); });
-    }
-
-    if (statusMsg) statusMsg.textContent = 'Saving to gallery…';
-    if (progressBar) progressBar.style.width = '100%';
-    if (percentSpan) percentSpan.textContent = '100%';
-
-    const serviceSlug = document.getElementById('galleryServiceSlug')?.value || null;
-    const isFeatured  = document.getElementById('galleryFeatured')?.checked || false;
-    const result = await apiRequest('POST', '/api/admin/gallery', { title, category, type, imageUrl, serviceSlug, isFeatured });
-
-    if (progressArea) progressArea.classList.add('hidden');
-    if (progressBar) progressBar.style.width = '0%';
-    if (percentSpan) percentSpan.textContent = '0%';
-
-    if (!result?.data) {
-      Swal.fire({ icon: 'error', title: 'Save Failed', text: result?.message || 'Could not save to gallery. Check your API connection.', background: '#1e1e2a', color: '#fff' });
-      return;
-    }
-
-    if (!store.gallery) store.gallery = [];
-    store.gallery.unshift(result.data);
-    closeModal();
-    renderGallery();
-
-    Swal.fire({
-      icon: 'success', title: 'Now Live on Your Website!',
-      html: `<p style="color:#9ca3af">"${title}" is now visible in your gallery.</p><a href="https://lawie-sounds-website.vercel.app/#gallery" target="_blank" style="color:#a78bfa;font-size:0.85rem">→ View it on your site</a>`,
-      timer: 4000, showConfirmButton: false, background: '#1e1e2a', color: '#fff'
-    });
-    titleInput.value = '';
-    fileInput.value = '';
+async function toggleGalleryPublish(id) {
+  const res = await apiRequest('PATCH', `/api/admin/gallery/${id}/publish`);
+  if (res?._error || !res?.data) { showToast('Could not update', 'info'); return; }
+  store.gallery = store.gallery.map(i => i.id === id ? res.data : i);
+  renderGallery();
+  showToast(res.data.isPublished ? 'Now live on the website' : 'Hidden from the website', 'success');
 }
 
 async function deleteGalleryItem(id) {
-    const result = await Swal.fire({ title: 'Delete item?', text: 'This action cannot be undone', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
-    if (result.isConfirmed) {
-        store.gallery = store.gallery.filter(i => i.id !== id);
-        await apiRequest('DELETE', `/api/admin/gallery/${id}`);
-        renderGallery();
-        Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
-    }
+  const item = store.gallery.find(i => i.id === id);
+  const result = await Swal.fire({
+    title: 'Delete this photo?',
+    html: `<p style="color:#9ca3af">“${escapeHtml(item?.title || '')}” will be removed from the website and from storage.</p>`,
+    icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
+  });
+  if (!result.isConfirmed) return;
+
+  const res = await apiRequest('DELETE', `/api/admin/gallery/${id}`);
+  if (res?._error) { Swal.fire({ icon: 'error', title: 'Delete failed', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+
+  // Only drop it locally once the server confirms — the old code removed it
+  // from the grid first, so a failed delete looked like a success until reload.
+  store.gallery = store.gallery.filter(i => i.id !== id);
+  galleryUI.selected.delete(id);
+  renderGallery();
+  updateStats();
+  showToast('Photo deleted', 'success');
 }
 
-    // ==================== REVIEWS MANAGEMENT ====================
-    function renderReviews() { const container = document.getElementById('sectionContent'); container.innerHTML = `<div class="space-y-3">${store.reviews.map(review => `<div class="bg-gray-900 rounded-xl p-4 border ${review.isApproved ? 'border-gray-800' : 'border-yellow-500/30'}"><div class="flex justify-between items-start"><div><div class="flex text-yellow-400 mb-1">${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}</div><h3 class="font-semibold">${escapeHtml(review.clientName)}</h3><p class="text-sm text-gray-400">${escapeHtml(review.eventType)} • ${new Date(review.createdAt).toLocaleDateString()}</p><p class="mt-2">${escapeHtml(review.comment)}</p></div><div class="flex gap-2">${!review.isApproved ? `<button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button>` : ''}<button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div></div>`).join('')}</div>`; }
-    async function approveReview(id) { store.reviews = store.reviews.map(r => r.id === id ? { ...r, isApproved: true } : r); await apiRequest('PATCH', `/api/admin/reviews/${id}/approve`); renderReviews(); updateStats(); Swal.fire({ icon: 'success', title: 'Review approved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); }
-    async function deleteReview(id) { const result = await Swal.fire({ title: 'Delete review?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' }); if (result.isConfirmed) { store.reviews = store.reviews.filter(r => r.id !== id); await apiRequest('DELETE', `/api/admin/reviews/${id}`); renderReviews(); updateStats(); } }
+// ── Client-side image prep ─────────────────────────────────────
+// Downscaling in the browser keeps the upload small and, just as importantly,
+// gives us the intrinsic dimensions to store — which is what lets the public
+// page reserve space and stop shifting as photos load.
+function prepareImage(file, maxWidth = 1800, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        blob => blob ? resolve({ blob, width: w, height: h, mimeType: 'image/jpeg' })
+                     : reject(new Error('Could not process this image')),
+        'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not a readable image')); };
+    img.src = url;
+  });
+}
+
+// Grab a poster frame so video tiles never load video bytes to draw a thumbnail.
+function grabVideoPoster(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+    v.onloadeddata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) / 4); } catch { } };
+    v.onseeked = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+      canvas.getContext('2d').drawImage(v, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => resolve(b ? { blob: b, width: v.videoWidth, height: v.videoHeight } : null), 'image/jpeg', 0.8);
+    };
+    v.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    v.src = url;
+  });
+}
+
+// PUT to the signed URL with real byte-level progress. XHR is used rather than
+// fetch because fetch still cannot report upload progress.
+function putToStorage(signedUrl, blob, contentType, cacheControl, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl, true);
+    xhr.setRequestHeader('Content-Type', contentType);
+    // Without this the object is served no-cache and every visitor re-downloads
+    // it — a direct upload does not inherit the bucket's default.
+    if (cacheControl) xhr.setRequestHeader('Cache-Control', cacheControl);
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.onload  = () => (xhr.status >= 200 && xhr.status < 300)
+      ? resolve()
+      : reject(new Error(`Upload failed (${xhr.status})`));
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(blob);
+  });
+}
+
+async function uploadOneFile(file, meta, onProgress) {
+  const isVideo = file.type.startsWith('video/');
+  onProgress(0.02, 'Preparing…');
+
+  let blob, width, height, mimeType, thumbUrl = null;
+
+  if (isVideo) {
+    blob = file; mimeType = file.type; width = null; height = null;
+
+    const poster = await grabVideoPoster(file);
+    if (poster) {
+      onProgress(0.05, 'Uploading poster…');
+      const pUrl = await apiRequest('POST', '/api/admin/gallery/upload-url',
+        { fileName: file.name.replace(/\.[^.]+$/, '') + '-poster', mimeType: 'image/jpeg', fileSize: poster.blob.size });
+      if (!pUrl?._error) {
+        await putToStorage(pUrl.data.signedUrl, poster.blob, 'image/jpeg', pUrl.data.cacheControl, () => {});
+        thumbUrl = pUrl.data.publicUrl;
+        width = poster.width; height = poster.height;
+      }
+    }
+    if (!thumbUrl) throw new Error('Could not read a poster frame from this video. Try an MP4.');
+  } else {
+    const prepped = await prepareImage(file);
+    blob = prepped.blob; width = prepped.width; height = prepped.height; mimeType = prepped.mimeType;
+  }
+
+  onProgress(0.1, 'Getting upload link…');
+  const signed = await apiRequest('POST', '/api/admin/gallery/upload-url',
+    { fileName: meta.title || file.name, mimeType, fileSize: blob.size });
+  if (signed?._error) throw new Error(signed.message);
+
+  await putToStorage(signed.data.signedUrl, blob, mimeType, signed.data.cacheControl,
+    frac => onProgress(0.1 + frac * 0.8, 'Uploading…'));
+
+  onProgress(0.95, 'Saving…');
+  const row = await apiRequest('POST', '/api/admin/gallery', {
+    title: meta.title, category: meta.category, type: isVideo ? 'video' : 'image',
+    imageUrl: signed.data.publicUrl, storagePath: signed.data.path,
+    mimeType, fileSize: blob.size, width, height, thumbUrl,
+    altText: meta.altText || meta.title, caption: meta.caption || null,
+    serviceSlug: meta.serviceSlug || null, eventDate: meta.eventDate || null,
+    isFeatured: meta.isFeatured, isPublished: meta.isPublished,
+  });
+
+  if (row?._error) {
+    const detail = row.fields ? Object.values(row.fields)[0] : row.message;
+    throw new Error(detail || 'Could not save');
+  }
+  onProgress(1, 'Done');
+  return row.data;
+}
+
+// ── Upload modal ───────────────────────────────────────────────
+function openGalleryForm() {
+  currentEditId = null;
+  galleryUI.uploads = [];
+  document.getElementById('modalTitle').textContent = 'Upload to gallery';
+
+  document.getElementById('modalForm').innerHTML = `
+    <div class="pb-3 border-b border-gray-700 mb-1">
+      <p class="text-sm text-gray-400">Pick one or more photos. They are resized in your browser before uploading, so this works fine on mobile data.</p>
+    </div>
+
+    <label id="galleryDropZone" for="galleryFiles"
+      class="block border-2 border-dashed border-gray-700 hover:border-purple-500 rounded-xl p-6 text-center cursor-pointer transition">
+      <i class="fas fa-cloud-arrow-up text-2xl text-gray-500 mb-2"></i>
+      <p class="text-sm font-medium text-gray-300">Tap to choose files, or drag them here</p>
+      <p class="text-xs text-gray-600 mt-1">JPG · PNG · WebP · MP4 — up to 50 MB each</p>
+    </label>
+    <input type="file" id="galleryFiles" multiple accept="image/*,video/mp4,video/webm" class="hidden">
+
+    <div id="galleryFileList" class="space-y-2"></div>
+
+    <div class="pt-3 border-t border-gray-700 space-y-3">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Applies to all files</p>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm mb-1" for="galleryCategory">Category</label>
+          <select id="galleryCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions('General')}</select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1" for="galleryEventDate">Event date <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+          <input type="date" id="galleryEventDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1" for="galleryServiceSlug">Link to a service <span class="text-gray-600 font-normal text-xs">(shows these photos on that service's page)</span></label>
+        <select id="galleryServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions()}</select>
+      </div>
+
+      <div class="flex flex-wrap gap-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="galleryPublished" class="accent-green-500" checked>
+          <span class="text-sm">Publish immediately</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="galleryFeatured" class="accent-yellow-400">
+          <span class="text-sm">⭐ Feature</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="galleryUploadProgress" class="hidden space-y-2 pt-3 border-t border-gray-700"></div>`;
+
+  const input = document.getElementById('galleryFiles');
+  const zone  = document.getElementById('galleryDropZone');
+
+  input.addEventListener('change', e => addGalleryFiles([...e.target.files]));
+
+  ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); zone.classList.add('border-purple-500', 'bg-purple-900/10');
+  }));
+  ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); zone.classList.remove('border-purple-500', 'bg-purple-900/10');
+  }));
+  zone.addEventListener('drop', e => addGalleryFiles([...(e.dataTransfer?.files || [])]));
+
+  document.getElementById('formModal').classList.remove('hidden');
+}
+
+function addGalleryFiles(files) {
+  const MAX = 50 * 1024 * 1024;
+  for (const file of files) {
+    if (file.size > MAX) {
+      Swal.fire({ icon: 'error', title: 'File too large',
+        text: `“${file.name}” is ${(file.size / 1048576).toFixed(1)} MB. The limit is 50 MB.`,
+        background: '#1e1e2a', color: '#fff' });
+      continue;
+    }
+    galleryUI.uploads.push({
+      file,
+      // A filename makes a poor caption, but it is a far better starting point
+      // than an empty box the manager must fill in for every single photo.
+      title: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 120),
+      status: 'queued', progress: 0, note: '',
+    });
+  }
+  renderGalleryFileList();
+}
+
+function renderGalleryFileList() {
+  const el = document.getElementById('galleryFileList');
+  if (!el) return;
+
+  el.innerHTML = galleryUI.uploads.map((u, i) => `
+    <div class="flex items-center gap-2 bg-gray-800/60 rounded-lg p-2">
+      <i class="fas ${u.file.type.startsWith('video/') ? 'fa-film text-blue-400' : 'fa-image text-purple-400'} text-sm w-4 text-center"></i>
+      <input type="text" value="${escapeHtml(u.title)}" oninput="galleryUI.uploads[${i}].title = this.value"
+        class="flex-1 min-w-0 bg-transparent border-b border-gray-700 focus:border-purple-500 focus:outline-none text-sm py-0.5"
+        aria-label="Title for ${escapeHtml(u.file.name)}">
+      <span class="text-xs text-gray-500 flex-none">${(u.file.size / 1048576).toFixed(1)} MB</span>
+      <button type="button" onclick="removeGalleryFile(${i})" class="text-gray-500 hover:text-red-400 flex-none px-1" aria-label="Remove">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>`).join('');
+}
+
+function removeGalleryFile(i) { galleryUI.uploads.splice(i, 1); renderGalleryFileList(); }
+
+async function saveGalleryItem() {
+  if (!galleryUI.uploads.length) {
+    Swal.fire({ icon: 'info', title: 'No files chosen', text: 'Pick at least one photo to upload.', background: '#1e1e2a', color: '#fff' });
+    return;
+  }
+  const untitled = galleryUI.uploads.find(u => !u.title.trim());
+  if (untitled) {
+    Swal.fire({ icon: 'error', title: 'Missing title', text: `Give “${untitled.file.name}” a title.`, background: '#1e1e2a', color: '#fff' });
+    return;
+  }
+
+  const meta = {
+    category:    document.getElementById('galleryCategory').value,
+    serviceSlug: document.getElementById('galleryServiceSlug').value || null,
+    eventDate:   document.getElementById('galleryEventDate').value || null,
+    isPublished: document.getElementById('galleryPublished').checked,
+    isFeatured:  document.getElementById('galleryFeatured').checked,
+  };
+
+  const saveBtn = document.getElementById('saveModalBtn');
+  const progressEl = document.getElementById('galleryUploadProgress');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Uploading…';
+  progressEl.classList.remove('hidden');
+
+  const paint = () => {
+    progressEl.innerHTML = galleryUI.uploads.map(u => `
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="truncate text-gray-300">${escapeHtml(u.title || u.file.name)}</span>
+          <span class="${u.status === 'error' ? 'text-red-400' : u.status === 'done' ? 'text-green-400' : 'text-gray-500'} flex-none ml-2">
+            ${u.status === 'error' ? escapeHtml(u.note) : u.status === 'done' ? '✓ Done' : `${Math.round(u.progress * 100)}%`}
+          </span>
+        </div>
+        <div class="bg-gray-700 rounded-full h-1.5">
+          <div class="${u.status === 'error' ? 'bg-red-500' : 'bg-purple-600'} h-1.5 rounded-full transition-all"
+               style="width:${Math.round(u.progress * 100)}%"></div>
+        </div>
+      </div>`).join('');
+  };
+  paint();
+
+  const created = [];
+  // Sequential, not parallel: a manager on Kenyan mobile data uploading eight
+  // photos at once gets slower total throughput and a progress bar that lies.
+  for (const u of galleryUI.uploads) {
+    try {
+      u.status = 'uploading';
+      const item = await uploadOneFile(u.file, { ...meta, title: u.title.trim() },
+        (frac, note) => { u.progress = frac; u.note = note; paint(); });
+      u.status = 'done'; u.progress = 1;
+      created.push(item);
+    } catch (err) {
+      u.status = 'error';
+      u.note = err.message || 'Failed';
+    }
+    paint();
+  }
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'Save';
+
+  if (created.length) {
+    store.gallery = [...created, ...store.gallery];
+    updateStats();
+  }
+
+  const failed = galleryUI.uploads.filter(u => u.status === 'error');
+  if (!failed.length) {
+    closeModal();
+    renderGallery();
+    Swal.fire({
+      icon: 'success',
+      title: `${created.length} photo${created.length !== 1 ? 's' : ''} uploaded`,
+      html: meta.isPublished
+        ? `<p style="color:#9ca3af">Live on your website now.</p><a href="/gallery.html" target="_blank" style="color:#a78bfa;font-size:.85rem">→ View the gallery</a>`
+        : `<p style="color:#9ca3af">Saved as drafts. Publish them when you are ready.</p>`,
+      timer: 4000, showConfirmButton: false, background: '#1e1e2a', color: '#fff',
+    });
+  } else {
+    // Keep only the failures in the list so a retry does not re-upload the ones
+    // that already succeeded.
+    galleryUI.uploads = failed;
+    renderGalleryFileList();
+    renderGallery();
+    Swal.fire({
+      icon: 'warning', title: `${failed.length} of ${failed.length + created.length} failed`,
+      html: `<p style="color:#9ca3af">${escapeHtml(failed[0].note)}</p><p style="color:#6b7280;font-size:.8rem;margin-top:.5rem">The failed files are still listed — press Save to retry.</p>`,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+}
+
+// ── Edit modal ─────────────────────────────────────────────────
+function openGalleryEditForm(id) {
+  const item = store.gallery.find(i => i.id === id);
+  if (!item) return;
+  currentEditId = id;
+  galleryUI.replacement = null;
+
+  document.getElementById('modalTitle').textContent = 'Edit photo';
+  document.getElementById('modalForm').innerHTML = `
+    <div class="mb-3 rounded-xl overflow-hidden bg-gray-800" style="height:140px">
+      <img id="galleryEditPreview" src="${escapeHtml(item.thumbUrl || item.imageUrl)}" alt="" class="w-full h-full object-cover">
+    </div>
+
+    <label for="galleryReplaceFile" class="block text-center text-xs text-purple-400 hover:text-purple-300 cursor-pointer mb-3">
+      <i class="fas fa-arrows-rotate mr-1"></i> Replace this image
+    </label>
+    <input type="file" id="galleryReplaceFile" accept="image/*" class="hidden">
+    <p id="galleryReplaceNote" class="hidden text-xs text-green-400 text-center mb-3"></p>
+
+    <div><label class="block text-sm mb-1" for="galleryEditTitle">Title *</label>
+      <input type="text" id="galleryEditTitle" value="${escapeHtml(item.title)}" required
+        class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"></div>
+
+    <div><label class="block text-sm mb-1" for="galleryEditAlt">Description for screen readers
+        <span class="text-gray-600 font-normal text-xs">(what is in the photo)</span></label>
+      <input type="text" id="galleryEditAlt" value="${escapeHtml(item.altText || '')}" placeholder="e.g. DJ booth lit in blue at a wedding reception"
+        class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"></div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-sm mb-1" for="galleryEditCategory">Category</label>
+        <select id="galleryEditCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryCategoryOptions(item.category || '')}</select></div>
+      <div><label class="block text-sm mb-1" for="galleryEditEventDate">Event date</label>
+        <input type="date" id="galleryEditEventDate" value="${escapeHtml(item.eventDate || '')}"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"></div>
+    </div>
+
+    <div><label class="block text-sm mb-1" for="galleryEditServiceSlug">Link to a service</label>
+      <select id="galleryEditServiceSlug" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${galleryServiceOptions(item.serviceSlug || '')}</select></div>
+
+    <div><label class="block text-sm mb-1" for="galleryEditCaption">Caption <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+      <textarea id="galleryEditCaption" rows="2" maxlength="500"
+        class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(item.caption || '')}</textarea></div>
+
+    <div class="flex flex-wrap gap-4">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="galleryEditPublished" class="accent-green-500" ${item.isPublished !== false ? 'checked' : ''}>
+        <span class="text-sm">Visible on the website</span></label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="galleryEditFeatured" class="accent-yellow-400" ${item.isFeatured ? 'checked' : ''}>
+        <span class="text-sm">⭐ Featured</span></label>
+    </div>
+
+    <p class="text-xs text-gray-600 pt-2 border-t border-gray-800">
+      ${item.width ? `${item.width}×${item.height}px · ` : ''}${item.fileSize ? `${(item.fileSize / 1024).toFixed(0)} KB · ` : ''}added ${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+    </p>`;
+
+  document.getElementById('galleryReplaceFile').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const prepped = await prepareImage(file);
+      galleryUI.replacement = { ...prepped, name: file.name };
+      document.getElementById('galleryEditPreview').src = URL.createObjectURL(prepped.blob);
+      const note = document.getElementById('galleryReplaceNote');
+      note.textContent = `New image ready — press Save to replace (${(prepped.blob.size / 1024).toFixed(0)} KB, ${prepped.width}×${prepped.height})`;
+      note.classList.remove('hidden');
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Could not read that image', text: err.message, background: '#1e1e2a', color: '#fff' });
+    }
+  });
+
+  document.getElementById('formModal').classList.remove('hidden');
+}
+
+async function saveGalleryEdit() {
+  const title = document.getElementById('galleryEditTitle')?.value?.trim();
+  if (!title) { Swal.fire({ icon: 'error', title: 'Title is required', background: '#1e1e2a', color: '#fff' }); return; }
+
+  const item = store.gallery.find(i => i.id === currentEditId);
+  if (!item) return;
+
+  const saveBtn = document.getElementById('saveModalBtn');
+  saveBtn.disabled = true;
+
+  const payload = {
+    title,
+    altText:     document.getElementById('galleryEditAlt').value.trim() || title,
+    category:    document.getElementById('galleryEditCategory').value,
+    serviceSlug: document.getElementById('galleryEditServiceSlug').value || null,
+    eventDate:   document.getElementById('galleryEditEventDate').value || null,
+    caption:     document.getElementById('galleryEditCaption').value.trim() || null,
+    isPublished: document.getElementById('galleryEditPublished').checked,
+    isFeatured:  document.getElementById('galleryEditFeatured').checked,
+    type:        item.type,
+    displayOrder: item.displayOrder,
+  };
+
+  try {
+    // Replacement image goes to Storage first. If that fails we abort before
+    // touching the row, so the item is never left pointing at nothing.
+    if (galleryUI.replacement) {
+      saveBtn.textContent = 'Uploading…';
+      const r = galleryUI.replacement;
+      const signed = await apiRequest('POST', '/api/admin/gallery/upload-url',
+        { fileName: title, mimeType: r.mimeType, fileSize: r.blob.size });
+      if (signed?._error) throw new Error(signed.message);
+
+      await putToStorage(signed.data.signedUrl, r.blob, r.mimeType, signed.data.cacheControl, () => {});
+      Object.assign(payload, {
+        imageUrl: signed.data.publicUrl, storagePath: signed.data.path,
+        mimeType: r.mimeType, fileSize: r.blob.size, width: r.width, height: r.height,
+      });
+    }
+
+    saveBtn.textContent = 'Saving…';
+    const res = await apiRequest('PUT', `/api/admin/gallery/${currentEditId}`, payload);
+    if (res?._error) {
+      const detail = res.fields ? Object.values(res.fields)[0] : res.message;
+      throw new Error(detail || 'Could not save');
+    }
+
+    store.gallery = store.gallery.map(i => i.id === currentEditId ? res.data : i);
+    galleryUI.replacement = null;
+    closeModal();
+    renderGallery();
+    updateStats();
+    showToast('Photo updated', 'success');
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'Save failed', text: err.message, background: '#1e1e2a', color: '#fff' });
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+    // ==================== REVIEWS MODERATION ====================
+    //
+    // This screen exists to answer one question quickly: what is waiting for me?
+    // Everything else is secondary, so pending sorts first and lands on the
+    // default tab. The manager is deciding whether to publish a real person's
+    // words under their name, so the things that bear on that decision —
+    // recorded consent, whether they are a verified client, what they actually
+    // agreed to — are on the card, not hidden behind a detail view.
+
+    const reviewUI = {
+      filter:   'pending',        // pending | published | rejected | withdrawn | all
+      selected: new Set(),
+    };
+
+    const REVIEW_STATUS_META = {
+      pending:   { label: 'Awaiting review', cls: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/40', icon: 'fa-clock' },
+      published: { label: 'Live on site',    cls: 'bg-green-600/20 text-green-400 border-green-600/40',   icon: 'fa-circle-check' },
+      rejected:  { label: 'Rejected',        cls: 'bg-red-600/15 text-red-400 border-red-600/30',         icon: 'fa-ban' },
+      withdrawn: { label: 'Withdrawn by client', cls: 'bg-gray-700/40 text-gray-400 border-gray-600/40',  icon: 'fa-user-slash' },
+    };
+
+    function reviewStars(n) {
+      const r = Math.max(0, Math.min(5, Number(n) || 0));
+      return '★'.repeat(r) + '☆'.repeat(5 - r);
+    }
+
+    function visibleReviews() {
+      const all = store.reviews || [];
+      if (reviewUI.filter === 'all') return all;
+      return all.filter(r => (r.status || (r.isApproved ? 'published' : 'pending')) === reviewUI.filter);
+    }
+
+    function renderReviews() {
+      const container = document.getElementById('sectionContent');
+      if (!container) return;
+
+      const all    = store.reviews || [];
+      const counts = ['pending', 'published', 'rejected', 'withdrawn'].reduce((acc, s) => {
+        acc[s] = all.filter(r => (r.status || (r.isApproved ? 'published' : 'pending')) === s).length;
+        return acc;
+      }, {});
+      const items = visibleReviews();
+
+      const chip = (key, label, count, urgent = false) => `
+        <button onclick="setReviewFilter('${key}')"
+          class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition border ${
+            reviewUI.filter === key
+              ? 'bg-purple-600 border-purple-500 text-white'
+              : urgent && count
+                ? 'bg-yellow-600/15 border-yellow-600/40 text-yellow-400 hover:bg-yellow-600/25'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">
+          ${label}${count !== null ? ` <span class="opacity-60">${count}</span>` : ''}
+        </button>`;
+
+      const avg = (() => {
+        const pub = all.filter(r => (r.status || (r.isApproved ? 'published' : '')) === 'published');
+        if (!pub.length) return null;
+        return (pub.reduce((s, r) => s + (r.rating || 0), 0) / pub.length).toFixed(1);
+      })();
+
+      const header = `
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white">Reviews</h2>
+            <p class="text-sm text-gray-500 mt-0.5">
+              ${all.length} total
+              ${avg ? ` · <span class="text-yellow-400">${avg}★ average</span> from ${counts.published} published` : ''}
+              ${counts.pending ? ` · <span class="text-yellow-400 font-semibold">${counts.pending} waiting for you</span>` : ''}
+            </p>
+          </div>
+          <a href="/leave-review.html" target="_blank" rel="noopener"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center gap-2">
+            <i class="fas fa-external-link-alt text-xs"></i> View the public form
+          </a>
+        </div>
+
+        <div class="flex gap-1.5 flex-wrap mb-4">
+          ${chip('pending',   '⏳ Awaiting review', counts.pending, true)}
+          ${chip('published', '✅ Live',            counts.published)}
+          ${chip('rejected',  '🚫 Rejected',        counts.rejected)}
+          ${chip('withdrawn', '👤 Withdrawn',       counts.withdrawn)}
+          ${chip('all',       'All',                all.length)}
+        </div>`;
+
+      const bulkBar = reviewUI.selected.size ? `
+        <div class="sticky top-2 z-20 mb-4 bg-purple-900/90 backdrop-blur border border-purple-600/50 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-2">
+          <span class="text-sm font-semibold text-white mr-1">${reviewUI.selected.size} selected</span>
+          <button onclick="bulkReviews('publish')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
+          <button onclick="bulkReviews('reject')"  class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Reject</button>
+          <button onclick="bulkReviews('delete')"  class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Delete</button>
+          <button onclick="clearReviewSelection()" class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
+        </div>` : '';
+
+      if (!all.length) {
+        container.innerHTML = header + `
+          <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-16 text-center">
+            <div class="w-20 h-20 bg-yellow-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-comment-dots text-yellow-400 text-3xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">No reviews yet</h3>
+            <p class="text-gray-500 text-sm max-w-md mx-auto mb-6">
+              Reviews now have a public form. Share the link with clients after an event —
+              it is the fastest way to build a wall of real feedback.
+            </p>
+            <a href="/leave-review.html" target="_blank" rel="noopener"
+              class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition">
+              <i class="fas fa-link"></i> Open the review form
+            </a>
+          </div>`;
+        return;
+      }
+
+      if (!items.length) {
+        container.innerHTML = header + bulkBar + `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+            <i class="fas fa-inbox text-3xl text-gray-600 mb-3"></i>
+            <h3 class="text-base font-bold text-white mb-1">Nothing here</h3>
+            <p class="text-gray-500 text-sm">${reviewUI.filter === 'pending' ? 'No reviews are waiting — you are all caught up.' : 'No reviews with this status.'}</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = header + bulkBar + `<div class="space-y-3">${items.map(reviewCard).join('')}</div>`;
+    }
+
+    function reviewCard(r) {
+      const status   = r.status || (r.isApproved ? 'published' : 'pending');
+      const meta     = REVIEW_STATUS_META[status] || REVIEW_STATUS_META.pending;
+      const selected = reviewUI.selected.has(r.id);
+      const pending  = status === 'pending';
+      const withdrawn = status === 'withdrawn';
+
+      const date = r.createdAt
+        ? new Date(r.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '';
+
+      return `
+        <div class="bg-gray-900 rounded-xl border p-4 transition ${selected ? 'border-purple-500 ring-2 ring-purple-500/30' : pending ? 'border-yellow-600/40' : 'border-gray-800'}">
+
+          <div class="flex items-start gap-3">
+            <label class="flex-none mt-1 cursor-pointer">
+              <input type="checkbox" ${selected ? 'checked' : ''} onchange="toggleReviewSelect('${r.id}')"
+                class="accent-purple-500 w-4 h-4 cursor-pointer" aria-label="Select review by ${escapeHtml(r.displayName || r.clientName)}">
+            </label>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                <span class="text-yellow-400 text-base">${reviewStars(r.rating)}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full border ${meta.cls}">
+                  <i class="fas ${meta.icon} mr-1"></i>${meta.label}
+                </span>
+                ${r.isVerified ? `<span class="text-xs px-2 py-0.5 rounded-full bg-green-600/15 text-green-400 border border-green-600/30" title="Matched to a real booking"><i class="fas fa-circle-check mr-1"></i>Verified client</span>` : ''}
+                ${r.isFeatured ? `<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-500/90 text-black font-bold">⭐ Featured</span>` : ''}
+              </div>
+
+              ${r.comment
+                ? `<p class="text-gray-300 text-sm leading-relaxed">${escapeHtml(r.comment)}</p>`
+                : `<p class="text-gray-600 text-sm italic">No written comment — rating only.</p>`}
+
+              <p class="text-xs text-gray-500 mt-2">
+                <!-- Both names shown deliberately: the manager needs the real one
+                     to recognise the client, and needs to see exactly what the
+                     public will get, which is not the same string. -->
+                Shows publicly as <strong class="text-gray-300">${escapeHtml(r.displayName || '—')}</strong>
+                · actually <span class="text-gray-400">${escapeHtml(r.clientName || '—')}</span>
+                ${r.eventType ? ` · ${escapeHtml(r.eventType)}` : ''}
+                ${date ? ` · ${date}` : ''}
+              </p>
+
+              <p class="text-xs mt-1.5 ${r.consentPublish ? 'text-gray-600' : 'text-red-400'}">
+                <i class="fas ${r.consentPublish ? 'fa-shield-halved' : 'fa-triangle-exclamation'} mr-1"></i>
+                ${r.consentPublish
+                  ? `Consented to publication${r.consentVersion ? ` (notice ${escapeHtml(r.consentVersion)})` : ''}${r.consentedAt ? ` on ${new Date(r.consentedAt).toLocaleDateString('en-KE')}` : ''}`
+                  : withdrawn
+                    ? 'Consent withdrawn by the client — cannot be republished'
+                    : 'No recorded consent — cannot be published'}
+              </p>
+
+              ${r.rejectionReason ? `<p class="text-xs text-red-400/80 mt-1"><i class="fas fa-comment-slash mr-1"></i>Reason: ${escapeHtml(r.rejectionReason)}</p>` : ''}
+              ${r.moderatedBy ? `<p class="text-xs text-gray-600 mt-1">Handled by ${escapeHtml(r.moderatedBy)}</p>` : ''}
+
+              ${r.adminReply ? `
+                <div class="mt-3 pl-3 border-l-2 border-purple-500 bg-purple-900/10 rounded-r-lg p-2.5">
+                  <p class="text-xs font-bold text-purple-300 mb-1">Your public reply</p>
+                  <p class="text-sm text-gray-300">${escapeHtml(r.adminReply)}</p>
+                </div>` : ''}
+
+              <div class="flex flex-wrap gap-1.5 mt-3">
+                ${pending ? `
+                  <button onclick="setReviewStatus('${r.id}','published')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 hover:bg-green-500 transition">
+                    <i class="fas fa-check mr-1"></i>Publish
+                  </button>
+                  <button onclick="rejectReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
+                    <i class="fas fa-xmark mr-1"></i>Reject
+                  </button>` : ''}
+
+                ${status === 'published' ? `
+                  <button onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                    <i class="fas fa-eye-slash mr-1"></i>Unpublish
+                  </button>
+                  <button onclick="toggleReviewFeatured('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${r.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-400 hover:text-yellow-400 hover:bg-gray-700'}">
+                    <i class="fas fa-star mr-1"></i>${r.isFeatured ? 'Unfeature' : 'Feature'}
+                  </button>` : ''}
+
+                ${status === 'rejected' ? `
+                  <button onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                    <i class="fas fa-rotate-left mr-1"></i>Move back to pending
+                  </button>` : ''}
+
+                ${!withdrawn ? `
+                  <button onclick="replyToReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                    <i class="fas fa-reply mr-1"></i>${r.adminReply ? 'Edit reply' : 'Reply publicly'}
+                  </button>` : ''}
+
+                <button onclick="deleteReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function setReviewFilter(f) { reviewUI.filter = f; reviewUI.selected.clear(); renderReviews(); }
+    function toggleReviewSelect(id) {
+      reviewUI.selected.has(id) ? reviewUI.selected.delete(id) : reviewUI.selected.add(id);
+      renderReviews();
+    }
+    function clearReviewSelection() { reviewUI.selected.clear(); renderReviews(); }
+
+    async function setReviewStatus(id, status, rejectionReason = null) {
+      const res = await apiRequest('PATCH', `/api/admin/reviews/${id}/status`, { status, rejectionReason });
+      if (res?._error) {
+        // 409 here is the consent guard doing its job — surface the reason
+        // rather than a generic failure, because it is a decision, not a fault.
+        Swal.fire({ icon: 'warning', title: 'Cannot do that', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      store.reviews = store.reviews.map(r => r.id === id ? res.data : r);
+      renderReviews();
+      updateStats();
+      showToast(status === 'published' ? 'Review is now live' : `Review moved to ${status}`, 'success');
+    }
+
+    async function rejectReview(id) {
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'Reject this review?',
+        input: 'text',
+        inputLabel: 'Reason (kept internal — the client is not told)',
+        inputPlaceholder: 'e.g. duplicate, spam, not about our service',
+        showCancelButton: true, confirmButtonText: 'Reject', confirmButtonColor: '#ef4444',
+        background: '#1e1e2a', color: '#fff',
+      });
+      if (!isConfirmed) return;
+      await setReviewStatus(id, 'rejected', reason || null);
+    }
+
+    async function toggleReviewFeatured(id) {
+      const res = await apiRequest('PATCH', `/api/admin/reviews/${id}/feature`);
+      if (res?._error) { Swal.fire({ icon: 'warning', title: 'Cannot feature', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+      store.reviews = store.reviews.map(r => r.id === id ? res.data : r);
+      renderReviews();
+    }
+
+    async function replyToReview(id) {
+      const current = store.reviews.find(r => r.id === id)?.adminReply || '';
+      const { value: reply, isConfirmed } = await Swal.fire({
+        title: 'Reply publicly',
+        input: 'textarea',
+        inputValue: current,
+        inputLabel: 'This appears under the review on your website',
+        inputAttributes: { maxlength: 1000 },
+        showCancelButton: true, confirmButtonText: 'Save reply', confirmButtonColor: '#7c3aed',
+        background: '#1e1e2a', color: '#fff',
+      });
+      if (!isConfirmed) return;
+
+      const res = await apiRequest('PATCH', `/api/admin/reviews/${id}/reply`, { reply: reply?.trim() || null });
+      if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not save', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+      store.reviews = store.reviews.map(r => r.id === id ? res.data : r);
+      renderReviews();
+      showToast('Reply saved', 'success');
+    }
+
+    async function approveReview(id) { return setReviewStatus(id, 'published'); }
+
+    async function deleteReview(id) {
+      const r = store.reviews.find(x => x.id === id);
+      const result = await Swal.fire({
+        title: 'Delete permanently?',
+        html: `<p style="color:#9ca3af">This erases the review and its consent record. If you only want it off the website, use <strong>Unpublish</strong> or <strong>Reject</strong> instead — those keep the audit trail.</p>`,
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete for good', background: '#1e1e2a', color: '#fff',
+      });
+      if (!result.isConfirmed) return;
+
+      const res = await apiRequest('DELETE', `/api/admin/reviews/${id}`);
+      if (res?._error) { Swal.fire({ icon: 'error', title: 'Delete failed', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+      store.reviews = store.reviews.filter(x => x.id !== id);
+      reviewUI.selected.delete(id);
+      renderReviews();
+      updateStats();
+      showToast('Review deleted', 'success');
+    }
+
+    async function bulkReviews(action) {
+      const ids = [...reviewUI.selected];
+      if (!ids.length) return;
+
+      if (action === 'delete') {
+        const ok = await Swal.fire({
+          title: `Delete ${ids.length} review${ids.length !== 1 ? 's' : ''}?`,
+          text: 'This erases them and their consent records permanently.',
+          icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+          confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
+        });
+        if (!ok.isConfirmed) return;
+      }
+
+      const res = await apiRequest('POST', '/api/admin/reviews/bulk', { action, ids });
+      if (res?._error) { Swal.fire({ icon: 'warning', title: 'Could not apply', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+
+      if (action === 'delete') {
+        store.reviews = store.reviews.filter(r => !ids.includes(r.id));
+      } else {
+        const byId = Object.fromEntries((res.data?.items || []).map(r => [r.id, r]));
+        store.reviews = store.reviews.map(r => byId[r.id] || r);
+      }
+      reviewUI.selected.clear();
+      renderReviews();
+      updateStats();
+
+      // Rows skipped for missing consent are reported, not silently dropped —
+      // otherwise "publish 5" quietly publishing 3 looks like it worked.
+      const skipped = res.data?.skipped || 0;
+      showToast(skipped
+        ? `${res.data.affected} updated · ${skipped} skipped (no consent)`
+        : `${ids.length} review${ids.length !== 1 ? 's' : ''} updated`, 'success');
+    }
 
 // ==================== FIXED MARKETING MANAGEMENT ====================
 let marketingViewMode = 'active';
@@ -4149,7 +4944,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
         saveBtn.addEventListener('click', () => {
           if (document.getElementById('posterTitle')) savePoster();
           else if (document.getElementById('eventTitle')) saveEvent();
-          else if (document.getElementById('galleryTitle')) saveGalleryItem();
+          else if (document.getElementById('galleryFiles')) saveGalleryItem();
           else if (document.getElementById('galleryEditTitle')) saveGalleryEdit();
           else if (document.getElementById('bannerMessage')) saveMarketingBanner();
           else if (document.getElementById('empName')) saveEmployee();
@@ -4166,7 +4961,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.toggleGalleryFeatured = toggleGalleryFeatured; window.deleteGalleryItem = deleteGalleryItem; window.approveReview = approveReview; window.deleteReview = deleteReview; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.seedExistingImages = seedExistingImages; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts;
   </script>
 </body>
 </html>

@@ -307,15 +307,13 @@
     return GALLERY_FALLBACK[slug] || [];
   }
 
+  // Filter on the server. This used to download every review in the database
+  // and discard almost all of them in the browser — fine at zero rows, quietly
+  // expensive at a few hundred, and it defeats the point of paginating.
   async function fetchReviewsForService(serviceId) {
     try {
-      const res = await fetch('/api/reviews');
-      if (res.ok) {
-        const json = await res.json();
-        return (json.data || []).filter(r =>
-          r.serviceId === serviceId || r.service_id === serviceId
-        ).slice(0, 6);
-      }
+      const res = await fetch(`/api/reviews?service=${encodeURIComponent(serviceId)}&limit=6`);
+      if (res.ok) return (await res.json()).data || [];
     } catch {}
     return [];
   }
@@ -455,15 +453,24 @@
             <div class="grid md:grid-cols-${Math.min(reviews.length,3)} gap-5 max-w-5xl mx-auto">
               ${reviews.map((r,i) => `
                 <div class="reveal" style="animation-delay:${i*0.07}s;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.25rem">
-                  <div class="stars text-lg mb-2">${stars(r.rating)}</div>
-                  <p class="text-gray-300 text-sm italic leading-relaxed mb-4">"${escHtml(r.comment || '')}"</p>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="stars text-lg">${stars(r.rating)}</div>
+                    ${r.isVerified ? `<span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:rgba(34,197,94,.15);color:#4ade80" title="This client has a booking with us"><i class="fas fa-circle-check mr-1"></i>Verified</span>` : ''}
+                  </div>
+                  ${r.comment ? `<p class="text-gray-300 text-sm italic leading-relaxed mb-4">"${escHtml(r.comment)}"</p>` : ''}
+                  ${r.adminReply ? `<div class="mb-4 pl-3 border-l-2 border-yellow-400"><p class="text-xs font-bold text-yellow-400 mb-1">Lawie Sounds replied</p><p class="text-xs text-gray-400">${escHtml(r.adminReply)}</p></div>` : ''}
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 flex-shrink-0">
                       <i class="fas fa-user text-gray-400 text-sm"></i>
                     </div>
                     <div>
-                      <p class="font-bold text-sm">${escHtml(r.clientName || r.client_name || 'Client')}</p>
-                      <p class="text-xs text-gray-500">${escHtml(r.eventType || r.event_type || '')}</p>
+                      <!-- r.name is the minimised display name from the public
+                           API. clientName no longer exists in that payload: the
+                           full name is admin-only by design. (No backticks in
+                           here - this markup lives inside a template literal,
+                           where a backtick would close the string.) -->
+                      <p class="font-bold text-sm">${escHtml(r.name || 'A client')}</p>
+                      <p class="text-xs text-gray-500">${escHtml(r.eventType || '')}</p>
                     </div>
                   </div>
                 </div>`).join('')}

@@ -14,3 +14,12 @@ supabase-config.php
 config.php
 test-connection.php
 .env*.local
+
+# Credential-bearing handover docs. MANAGER-GUIDE.md contains the manager's
+# dashboard login in plain text. Ignored rather than committed-and-redacted,
+# because a password that reaches git history stays there until the history is
+# rewritten - and the file is genuinely useful to keep locally.
+# Share these through a password manager or a direct message, not the repo.
+MANAGER-GUIDE.md
+*-CREDENTIALS.md
+*-GUIDE.local.md

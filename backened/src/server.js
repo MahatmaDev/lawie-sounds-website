@@ -85,6 +85,7 @@ const map = {
   service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
   gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, altText: r.alt_text, caption: r.caption, width: r.width, height: r.height, isPublished: r.is_published, storagePath: r.storage_path, mimeType: r.mime_type, fileSize: r.file_size, thumbUrl: r.thumb_url, eventDate: r.event_date, createdAt: r.created_at }),
   galleryCategory: (r) => r && ({ slug: r.slug, label: r.label, emoji: r.emoji, displayOrder: r.display_order }),
+  payment: (r) => r && ({ id: r.id, bookingId: r.booking_id, amount: Number(r.amount), paidOn: r.paid_on, method: r.method, reference: r.reference, note: r.note, recordedBy: r.recorded_by, createdAt: r.created_at }),
   // ADMIN view. Includes the real name so the manager can recognise a client.
   // withdrawal_token is deliberately absent — it is a bearer secret belonging to
   // the reviewer, and nothing in the dashboard needs it.
@@ -96,7 +97,7 @@ const map = {
   // client_name, booking_id, submitter_hash, user_agent, withdrawal_token.
   publicReview: (r) => r && ({ id: r.id, name: r.display_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, isFeatured: r.is_featured, isVerified: r.is_verified, adminReply: r.admin_reply, createdAt: r.created_at }),
   banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
-  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, createdAt: r.created_at }),
+  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
   poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, createdAt: r.created_at }),
@@ -1465,6 +1466,141 @@ app.patch('/api/admin/settings/:key', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — DASHBOARD STATS ====================
+// ==================== ADMIN — ANALYTICS ====================
+//
+// One endpoint, one database round trip. The aggregation lives in the
+// analytics_summary() SQL function rather than here or in the browser: the old
+// tab pulled every booking, review, banner and gallery row into the client and
+// summed them there, which is correct at one booking and unbounded at scale.
+
+const ANALYTICS_MAX_DAYS = 730;   // two years; beyond that use an export
+
+// Money is financial data about identifiable clients. Managers run the day to
+// day, but revenue, costs and margins are the owner's business — the same line
+// already drawn around employees and payroll.
+app.get('/api/admin/analytics', adminAuth, adminOnly, async (req, res) => {
+  const today = new Date();
+  const iso   = (d) => d.toISOString().split('T')[0];
+
+  // Default to the last 30 days including today.
+  const defFrom = new Date(today); defFrom.setDate(defFrom.getDate() - 29);
+
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : iso(defFrom);
+  const to   = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to   || '') ? req.query.to   : iso(today);
+
+  if (from > to) {
+    return res.status(400).json({ error: 'The start date must be on or before the end date.' });
+  }
+  // The function gap-fills one row per day; an unbounded range would build a
+  // series with tens of thousands of entries and ship it to a phone.
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+  if (days > ANALYTICS_MAX_DAYS) {
+    return res.status(400).json({ error: `Choose a range of ${ANALYTICS_MAX_DAYS} days or fewer.` });
+  }
+
+  const { data, error } = await supabase.rpc('analytics_summary', { p_from: from, p_to: to });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+
+// Record what the client agreed to pay. This is the number every revenue figure
+// on the dashboard is built from, so it is deliberately explicit rather than
+// inferred from the budget bracket they picked before any quote existed.
+app.patch('/api/admin/bookings/:id/amount', adminAuth, adminOnly, async (req, res) => {
+  const raw = req.body.agreedAmount;
+
+  // null clears it — a mistyped amount must be removable, not merely editable.
+  if (raw === null || raw === '') {
+    const { data, error } = await supabase.from('bookings')
+      .update({ agreed_amount: null, agreed_at: null, agreed_by: null })
+      .eq('id', req.params.id).select().maybeSingle();
+    if (error) return handleError(res, error);
+    if (!data) return res.status(404).json({ error: 'Enquiry not found' });
+    return res.json({ success: true, data: map.booking(data) });
+  }
+
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return res.status(400).json({ error: 'Enter the agreed amount in KES, for example 45000.' });
+  }
+  if (amount > 100000000) {
+    return res.status(400).json({ error: 'That amount looks wrong — check for an extra digit.' });
+  }
+
+  const { data, error } = await supabase.from('bookings').update({
+    agreed_amount: amount,
+    agreed_at:     new Date().toISOString(),
+    agreed_by:     req.admin?.username || req.admin?.role || null,
+  }).eq('id', req.params.id).select().maybeSingle();
+
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Enquiry not found' });
+  res.json({ success: true, data: map.booking(data) });
+});
+
+app.get('/api/admin/bookings/:id/payments', adminAuth, adminOnly, async (req, res) => {
+  const { data, error } = await supabase.from('booking_payments')
+    .select('*').eq('booking_id', req.params.id).order('paid_on', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.payment) });
+});
+
+app.post('/api/admin/bookings/:id/payments', adminAuth, adminOnly, async (req, res) => {
+  const amount = Number(req.body.amount);
+  const errors = {};
+
+  if (!Number.isFinite(amount) || amount <= 0) errors.amount = 'Enter the amount received, for example 15000.';
+  if (amount > 100000000)                      errors.amount = 'That amount looks wrong — check for an extra digit.';
+  if (req.body.paidOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.paidOn)) errors.paidOn = 'Invalid date.';
+  if (req.body.paidOn && req.body.paidOn > new Date().toISOString().split('T')[0]) {
+    errors.paidOn = 'That date is in the future.';
+  }
+  const METHODS = ['mpesa', 'cash', 'bank', 'cheque', 'other'];
+  if (req.body.method && !METHODS.includes(req.body.method)) {
+    errors.method = `Method must be one of: ${METHODS.join(', ')}`;
+  }
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  const { data: booking } = await supabase.from('bookings')
+    .select('id, agreed_amount').eq('id', req.params.id).maybeSingle();
+  if (!booking) return res.status(404).json({ error: 'Enquiry not found' });
+
+  const { data, error } = await supabase.from('booking_payments').insert({
+    booking_id:  req.params.id,
+    amount,
+    paid_on:     req.body.paidOn || new Date().toISOString().split('T')[0],
+    method:      req.body.method || 'mpesa',
+    reference:   req.body.reference?.trim() || null,
+    note:        req.body.note?.trim() || null,
+    recorded_by: req.admin?.username || req.admin?.role || null,
+  }).select().single();
+
+  if (error) {
+    // A duplicate M-Pesa code is a double-count in every revenue figure, and an
+    // easy slip when reconciling a stack of messages. Name it plainly.
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'That payment reference has already been recorded. Check the payments list before adding it again.',
+        fields: { reference: 'Already recorded.' },
+      });
+    }
+    return handleError(res, error);
+  }
+  res.status(201).json({ success: true, data: map.payment(data) });
+});
+
+app.delete('/api/admin/payments/:id', adminAuth, adminOnly, async (req, res) => {
+  const { data: cur } = await supabase.from('booking_payments')
+    .select('id').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Payment not found' });
+
+  const { error } = await supabase.from('booking_payments').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
 app.get('/api/admin/stats', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('dashboard_stats').select('*').single();
   if (error) return handleError(res, error);

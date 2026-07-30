@@ -6561,8 +6561,14 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
       if (role === 'manager') {
         const subtitle = document.getElementById('dashboardSubtitle');
         if (subtitle) subtitle.innerHTML = '<span class="text-yellow-400 font-semibold">Manager Mode</span>';
-        document.getElementById('tabEmployees')?.classList.add('hidden');
-        document.getElementById('tabPayroll')?.classList.add('hidden');
+        // Hide every tab the manager has no access to, not just some of them.
+        // Analytics and the work log were left in the nav, so a manager could
+        // click either and be told they are not allowed — an invitation
+        // followed by a refusal, on a screen meant to be uncluttered. The
+        // server-side guards remain the actual enforcement; these panels still
+        // render their locked state if reached another way.
+        ['tabEmployees', 'tabPayroll', 'tabAnalytics', 'tabUpdates']
+          .forEach(id => document.getElementById(id)?.classList.add('hidden'));
       }
     }
 

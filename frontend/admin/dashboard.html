@@ -154,7 +154,10 @@
       <button data-tab="analytics" id="tabAnalytics" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📈 Analytics</button>
       <button data-tab="training" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📚 Training</button>
       <button data-tab="beta" id="tabBeta" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🧪 Beta</button>
-      <button data-tab="updates" id="tabUpdates" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap relative">🚀 Updates<span id="updatesBadge" class="ml-1.5 hidden text-xs font-bold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"></span></button>
+      <!-- Was "Updates" showing a hardcoded changelog. It is now the work log:
+           development delivered, and the company's acceptance of it. The badge
+           counts entries waiting for the owner to accept. -->
+      <button data-tab="updates" id="tabUpdates" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap relative">📋 Work log<span id="updatesBadge" class="ml-1.5 hidden text-xs font-bold bg-yellow-500 text-black px-1.5 py-0.5 rounded-full"></span></button>
     </div>
   </header>
 
@@ -306,12 +309,18 @@
       updateBadge();
       renderUpdates();
     }
-    function updateBadge() {
-      const read = getReadUpdates();
-      const unread = CHANGELOG.filter(c => !read.includes(c.version)).length;
+    // Counts work waiting for the owner to accept, not unread changelog entries.
+    // A badge against a hardcoded array told nobody anything actionable; this
+    // one is the amount of delivered work sitting unacknowledged.
+    async function updateBadge() {
       const badge = document.getElementById('updatesBadge');
       if (!badge) return;
-      if (unread > 0) { badge.textContent = unread; badge.classList.remove('hidden'); }
+      const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
+      if (!['admin', 'developer'].includes(role)) { badge.classList.add('hidden'); return; }
+
+      const res = await apiRequest('GET', '/api/admin/work-log?status=delivered');
+      const n = res?._error ? 0 : (res.meta?.total || 0);
+      if (n > 0) { badge.textContent = n; badge.classList.remove('hidden'); }
       else { badge.classList.add('hidden'); }
     }
 
@@ -5335,92 +5344,6 @@ function duplicateMarketingBanner(id) {
 
     // ==================== TRAINING / ONBOARDING ====================
     // ==================== UPDATES / CHANGELOG ====================
-    function renderUpdates() {
-      const container = document.getElementById('sectionContent');
-      if (!container) return;
-      const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
-      const read = getReadUpdates();
-      const unread = CHANGELOG.filter(c => !read.includes(c.version)).length;
-      const typeColor = { feature:'purple', fix:'yellow', launch:'green', improvement:'blue' };
-      const typeLabel = { feature:'New Feature', fix:'Bug Fix', launch:'Launch', improvement:'Improvement' };
-
-      const entries = CHANGELOG
-        .filter(c => c.affects.includes(role))
-        .map(c => {
-          const isRead = read.includes(c.version);
-          const tc = typeColor[c.type] || 'gray';
-          return `
-            <div class="bg-gray-900 border ${isRead ? 'border-gray-800' : 'border-purple-600/50'} rounded-2xl overflow-hidden transition-all">
-              <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-${tc}-900/30 border border-${tc}-700/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span class="text-${tc}-400 text-xs font-black">v${c.version}</span>
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <h3 class="font-bold text-white text-sm">${c.title}</h3>
-                      <span class="text-xs bg-${tc}-900/40 text-${tc}-300 px-2 py-0.5 rounded-full border border-${tc}-700/30">${typeLabel[c.type] || c.type}</span>
-                      ${!isRead ? '<span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">NEW</span>' : ''}
-                    </div>
-                    <p class="text-xs text-gray-500 mt-0.5">${c.date}</p>
-                  </div>
-                </div>
-                ${!isRead ? `<button onclick="markUpdateRead('${c.version}')" class="flex-shrink-0 text-xs bg-purple-600/20 border border-purple-600/40 text-purple-300 px-3 py-1.5 rounded-lg hover:bg-purple-600/40 transition font-semibold">
-                  <i class="fas fa-check mr-1"></i>Acknowledge
-                </button>` : '<span class="flex-shrink-0 text-xs text-gray-600 flex items-center gap-1"><i class="fas fa-check-circle"></i> Read</span>'}
-              </div>
-              <div class="px-5 pb-4 border-t border-gray-800/60 pt-3">
-                <ul class="space-y-1.5">
-                  ${c.items.map(item => `<li class="flex items-start gap-2 text-xs text-gray-400"><i class="fas fa-circle text-${tc}-500 mt-1.5 flex-shrink-0" style="font-size:5px"></i>${item}</li>`).join('')}
-                </ul>
-              </div>
-            </div>`;
-        }).join('');
-
-      container.innerHTML = `
-        <div class="max-w-3xl mx-auto space-y-4">
-
-          <!-- Header -->
-          <div class="bg-gradient-to-r from-purple-900/40 to-indigo-900/30 border border-purple-700/30 rounded-2xl p-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div class="flex items-start gap-4">
-                <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-600/30">
-                  <i class="fas fa-rocket text-purple-400 text-xl"></i>
-                </div>
-                <div>
-                  <h2 class="text-xl font-bold text-white">System Updates</h2>
-                  <p class="text-sm text-gray-400 mt-0.5">Every change made to your website — features, fixes, and improvements.</p>
-                  ${unread > 0 ? `<p class="text-xs text-purple-300 mt-1 font-semibold"><i class="fas fa-bell mr-1"></i>${unread} new update${unread > 1 ? 's' : ''} to review</p>` : '<p class="text-xs text-green-400 mt-1"><i class="fas fa-check-circle mr-1"></i>All caught up!</p>'}
-                </div>
-              </div>
-              ${unread > 0 ? `<button onclick="markAllUpdatesRead()" class="flex-shrink-0 text-sm bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition font-semibold"><i class="fas fa-check-double mr-1.5"></i>Acknowledge All</button>` : ''}
-            </div>
-          </div>
-
-          <!-- Why this matters -->
-          <div class="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex gap-4">
-            <i class="fas fa-info-circle text-blue-400 mt-0.5 flex-shrink-0"></i>
-            <div class="text-xs text-gray-400 leading-relaxed">
-              <strong class="text-white">Why acknowledge updates?</strong> Acknowledging keeps a record of what you've reviewed and helps the developer track which changes are live and accepted. It also gives you a clear picture of how the system has grown over time — your own company's product roadmap.
-            </div>
-          </div>
-
-          <!-- Changelog entries -->
-          ${entries}
-
-          <!-- Developer note -->
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
-            <i class="fas fa-code text-gray-600 text-2xl mb-3 block"></i>
-            <p class="text-xs text-gray-500 leading-relaxed">
-              Built by <strong class="text-gray-400">Mahatma Dev</strong> · Every update here represents real growth in the system's capabilities.<br>
-              Questions or requests? Contact the developer with specifics — the faster the feedback, the faster improvements ship.
-            </p>
-          </div>
-
-        </div>`;
-    }
-
-    // ==================== BETA FEATURES TAB ====================
     function renderBeta() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
@@ -5530,219 +5453,458 @@ function duplicateMarketingBanner(id) {
         </div>`;
     }
 
-    function renderTraining() {
+    // ==================== WORK LOG ====================
+    //
+    // A register of development work delivered, and the company's acceptance of
+    // it. Replaces the hardcoded CHANGELOG array that used to live in this file.
+    //
+    // The point is separation of duties: the developer records what was
+    // delivered, only the owner can accept it, and acceptance locks the entry.
+    // Every status change is appended to an audit trail by a database trigger.
+    // A log one party can revise afterwards is a claim, not evidence.
+
+    let workLog = null;
+    let workLogFilter = 'all';
+
+    const WORK_STATUS_META = {
+      delivered: { label: 'Awaiting acceptance', cls: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/40', icon: 'fa-hourglass-half' },
+      accepted:  { label: 'Accepted',            cls: 'bg-green-600/20 text-green-400 border-green-600/40',    icon: 'fa-circle-check' },
+      rejected:  { label: 'Needs changes',       cls: 'bg-red-600/15 text-red-400 border-red-600/30',          icon: 'fa-rotate-left' },
+      invoiced:  { label: 'Invoiced',            cls: 'bg-blue-600/20 text-blue-400 border-blue-600/40',       icon: 'fa-file-invoice' },
+      paid:      { label: 'Paid',                cls: 'bg-gray-700/40 text-gray-300 border-gray-600/40',       icon: 'fa-check-double' },
+    };
+
+    const WORK_CATEGORIES = ['feature','fix','security','performance','documentation','infrastructure','other'];
+
+    function isOwner()     { return (window._adminRole || sessionStorage.getItem('adminRole')) === 'admin'; }
+    function isDeveloper() { return (window._adminRole || sessionStorage.getItem('adminRole')) === 'developer'; }
+
+    function wlKes(n) {
+      const v = Number(n) || 0;
+      return 'KES ' + v.toLocaleString('en-KE', { maximumFractionDigits: 0 });
+    }
+
+    async function loadWorkLog() {
+      const res = await apiRequest('GET', '/api/admin/work-log');
+      workLog = res?._error ? { error: res.status === 403 ? 'forbidden' : (res.message || 'unavailable') } : res;
+    }
+
+    async function renderUpdates() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
 
-      const guides = [
-        {
-          id: 'gallery', icon: 'fa-images', color: 'text-blue-400', bg: 'bg-blue-900/20', border: 'border-blue-700/30', label: 'Gallery — Upload & Manage',
-          intro: 'Your gallery is the portfolio clients browse before booking. Keep it fresh — upload photos after every event. New: star photos to feature them prominently.',
-          steps: [
-            { n:1, title:'Open the Gallery tab', body:'Click <strong>🖼️ Gallery</strong> in the top navigation bar.' },
-            { n:2, title:'Upload a new photo', body:'Click <strong>Upload New</strong>. Choose your file from your phone or computer. Images are automatically compressed so they load fast.' },
-            { n:3, title:'Fill in title and category', body:'Give the photo a clear title (e.g. <em>"Ruracio — Itara Hills 2026"</em>). Choose the right category: Weddings, Ruracio, Corporate, Parties, Sound & Equipment, Behind the Scenes, Drone, or General.' },
-            { n:4, title:'Link to a service (optional but powerful)', body:'Use the <strong>Service</strong> dropdown to tag which service the photo belongs to (e.g. "Drone Services"). Tagged photos appear inside the service detail page automatically, giving clients real evidence of your work.' },
-            { n:5, title:'Star a photo as Featured ⭐', body:'Toggle the <strong>Featured ⭐</strong> checkbox. Featured photos appear in the <em>Staff Picks</em> spotlight grid at the very top of your public gallery — the first thing visitors see. Use this for your absolute best shots.' },
-            { n:6, title:'Save — live immediately', body:'Click <strong>Save</strong>. The photo appears on your website within seconds.' },
-            { n:7, title:'Edit or remove later', body:'Each gallery card has an <strong>Edit</strong> button to change title/category/service/featured, a <strong>⭐ star button</strong> to toggle featured instantly, and a <strong>Delete</strong> button to remove permanently.' },
-          ],
-          sections: [
-            { label:'⭐ Staff Picks', desc:'Photos you\'ve starred as Featured. These appear in a spotlight grid at the top of the public gallery page. Aim for 4–6 of your very best shots.' },
-            { label:'🔗 Service-Tagged', desc:'Photos linked to a specific service. They appear automatically on that service\'s detail page alongside packages and reviews.' },
-            { label:'📂 All Photos', desc:'Your full gallery by category — Weddings, Ruracio, Corporate, Drone, etc. Visitors can filter by category.' },
-          ],
-          tips: ['Star your best 4–6 photos — they become the "first impression" spotlight on the gallery page.', 'After a drone shoot, tag all aerial shots to "Drone Services" — they\'ll appear on the service page automatically.', 'Upload at least 3 photos after every event, same day if possible — fresh content drives bookings.', 'Use the Edit button to change category/service — you never need to delete and re-upload.']
-        },
-        {
-          id: 'services', icon: 'fa-headphones', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-700/30', label: 'Services',
-          intro: 'Services are what you sell. This is where you manage what clients see — names, descriptions, images, and packages.',
-          steps: [
-            { n:1, title:'Open the Services tab', body:'Click <strong>🎧 Services</strong> in the navigation bar.' },
-            { n:2, title:'Add a new service', body:'Click <strong>Add Service</strong>. Fill in the name, choose a category, and write a short description.' },
-            { n:3, title:'Upload a service image', body:'Tap the image area to pick a photo from your phone or computer. This is the main photo clients see on the services page — use your best shot of that equipment or setup.' },
-            { n:4, title:'Set Active or Draft', body:'Active = visible on the website. Draft = saved but hidden from clients. Use Draft when you\'re still setting things up.' },
-            { n:5, title:'Add pricing packages', body:'Click the <strong>💰 Packages</strong> tab inside the service form. Add packages like Basic, Standard, Premium. Price is optional — leave it blank to show "Contact for pricing" instead.' },
-            { n:6, title:'Add features and FAQs', body:'Features tell clients what they get (e.g., "Professional DJ with 10 years experience"). FAQs answer common questions. Both help clients decide to book without calling you.' },
-            { n:7, title:'Duplicate a service', body:'Use the <strong>Copy</strong> button on any service card to duplicate it. Useful when creating a similar service — edit the copy instead of starting from scratch.' },
-          ],
-          tips: ['Always add an image — services with photos get 3× more enquiries.', 'Pricing is optional. If you prefer to quote per event, leave price blank.', 'Keep short descriptions to 1–2 sentences. Clients skim, they don\'t read.', 'Use the Draft status when testing — only publish when the service is complete.']
-        },
-        {
-          id: 'events', icon: 'fa-calendar-alt', color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-700/30', label: 'Events',
-          intro: 'Events are ticketed shows or appearances Lawie Sounds performs at. Manage your calendar, sell tickets, and track seats.',
-          steps: [
-            { n:1, title:'Open the Events tab', body:'Click <strong>📅 Events</strong> in the navigation bar.' },
-            { n:2, title:'Create a new event', body:'Click <strong>Create Event</strong>. Fill in the title, date, venue, and ticket price. Set the total number of seats available.' },
-            { n:3, title:'View Upcoming / Past events', body:'Use the <strong>Upcoming</strong> and <strong>Past Events</strong> buttons to switch views. Upcoming events show on the public events page.' },
-            { n:4, title:'Update seat availability', body:'Edit the event and change "Seats Left" when tickets sell. This updates the counter shown to visitors in real time.' },
-            { n:5, title:'Cancel or complete an event', body:'Change the status to Cancelled if an event is called off. Past events stay in your history for reference.' },
-          ],
-          tips: ['Add events as soon as you know the date — early visibility drives early bookings.', 'Set ticket price to 0 if the event is free — it will show "Free Entry" on the website.', 'The dashboard shows a 30-day warning for upcoming events so you never miss preparation.']
-        },
-        {
-          id: 'bookings', icon: 'fa-clipboard-list', color: 'text-yellow-400', bg: 'bg-yellow-900/20', border: 'border-yellow-700/30', label: 'Bookings',
-          intro: 'Every time a client fills in the booking form on your website, a booking appears here. Stay on top of them — fast response wins clients.',
-          steps: [
-            { n:1, title:'Open the Bookings tab', body:'Click <strong>📋 Bookings</strong>. New bookings appear at the top.' },
-            { n:2, title:'Read the booking details', body:'Click <strong>View</strong> on any booking to see the client\'s name, phone, event type, date, and budget.' },
-            { n:3, title:'Contact the client', body:'Call or WhatsApp the client directly from the booking details. Aim to respond within 2 hours — clients remember speed.' },
-            { n:4, title:'Update the status', body:'Change status from <em>Pending</em> → <em>Confirmed</em> once you\'ve agreed terms. Update to <em>Completed</em> after the event.' },
-          ],
-          tips: ['A red badge on the bell icon means new bookings are waiting.', 'Never let a booking sit at Pending for more than 24 hours.', 'Confirmed bookings count toward your revenue estimates on the Dashboard.']
-        },
-        {
-          id: 'reviews', icon: 'fa-star', color: 'text-orange-400', bg: 'bg-orange-900/20', border: 'border-orange-700/30', label: 'Reviews',
-          intro: 'Client reviews build trust and get new clients to book. Review every submission before it appears publicly.',
-          steps: [
-            { n:1, title:'Open the Reviews tab', body:'Click <strong>⭐ Reviews</strong>. Reviews needing approval show with a yellow border.' },
-            { n:2, title:'Read the review', body:'Check that the review is genuine, positive or constructive, and not spam.' },
-            { n:3, title:'Approve or Delete', body:'Click <strong>Approve</strong> to publish it on the website. Click <strong>Delete</strong> to remove it permanently.' },
-            { n:4, title:'Reply to the client', body:'You can add a short thank-you reply. This shows professionalism and often leads to repeat bookings.' },
-          ],
-          tips: ['Always approve genuine 4–5 star reviews quickly.', 'A good reply to a review can convert a reader into a paying client.', 'If a review is negative but fair, approve it and reply professionally — it shows confidence.']
-        },
-        {
-          id: 'marketing', icon: 'fa-bullhorn', color: 'text-pink-400', bg: 'bg-pink-900/20', border: 'border-pink-700/30', label: 'Marketing',
-          intro: 'Banners appear at the top of your website homepage to promote offers, events, or announcements. Posters are visual promo cards in the gallery.',
-          steps: [
-            { n:1, title:'Create a marketing banner', body:'Click <strong>📢 Marketing</strong> → <strong>Create Banner</strong>. Write a short punchy message like <em>"Book now for December — slots filling fast!"</em>' },
-            { n:2, title:'Set start and end dates', body:'Banners can run for a specific period (e.g., only in December). Leave end date blank to keep it running indefinitely.' },
-            { n:3, title:'Add a Call-to-Action button', body:'Set the CTA text ("Book Now", "Learn More") and where it links to (/booking.html is the most common).' },
-            { n:4, title:'Upload a promotional poster', body:'Click <strong>🖼️ Posters</strong> → upload a designed poster image (from Canva or similar). Set an order number to control which appears first.' },
-          ],
-          tips: ['Change your banner at least once a month to keep the site feeling fresh.', 'Seasonal banners (Christmas, New Year, Valentine\'s) get much higher engagement.', 'Use Canva (free) to design professional posters — export at 1200×628px for best quality.']
-        },
-        {
-          id: 'updates', icon: 'fa-rocket', color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-700/30', label: 'Updates & Changelog',
-          intro: 'The Updates tab shows every change, fix, and new feature added to your system — and lets you acknowledge that you\'ve reviewed them.',
-          steps: [
-            { n:1, title:'Open the Updates tab', body:'Click <strong>🚀 Updates</strong> in the navigation. A purple badge shows how many updates you haven\'t reviewed yet.' },
-            { n:2, title:'Read what changed', body:'Each entry shows the version number, release date, and a bullet list of what was added or fixed.' },
-            { n:3, title:'Acknowledge the update', body:'Click <strong>Acknowledge</strong> on each update you\'ve read. This marks it as reviewed — the badge count decreases. It also signals to the developer that the change is accepted and live.' },
-            { n:4, title:'Acknowledge All at once', body:'Use the <strong>Acknowledge All</strong> button at the top to clear all pending updates in one click.' },
-          ],
-          tips: ['Check the Updates tab weekly — it shows your system growing over time.', 'Acknowledging updates is your confirmation that you\'ve seen what changed. It helps the developer know what\'s understood and accepted.', 'If an update broke something, note the version number when contacting the developer — it speeds up diagnosis.']
-        },
-        {
-          id: 'beta', icon: 'fa-flask', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-700/30', label: 'Beta Features',
-          intro: 'The Beta tab is your preview window — features being tested before full release, features that need setup, and what\'s being built next.',
-          steps: [
-            { n:1, title:'Open the Beta tab', body:'Click <strong>🧪 Beta</strong> in the navigation bar.' },
-            { n:2, title:'Read the status labels', body:'Each feature shows a status: <strong>Active</strong> (live now), <strong>Experimental</strong> (works but needs setup), or <strong>Coming Soon</strong> (on the roadmap).' },
-            { n:3, title:'Enable an Experimental feature', body:'Features with a toggle switch can be turned on or off. Your preference is saved on this device. Toggling won\'t break anything — you can always turn it back off.' },
-            { n:4, title:'Set up WhatsApp Alerts', body:'If you want instant WhatsApp notifications for new bookings, follow the setup note on the <em>WhatsApp Booking Alerts</em> card. Takes 2 minutes and requires no code.' },
-            { n:5, title:'Send feature feedback', body:'Use the <strong>Send Feedback</strong> button to WhatsApp the developer. The more specific your request, the faster it can be built.' },
-          ],
-          tips: ['Active features are already live on your website — no action needed.', 'Experimental features are safe to try — they won\'t crash the site.', 'Planned features show what\'s being worked on. Your feedback can move them up the priority list.']
-        },
-      ];
+      if (!workLog) {
+        container.innerHTML = `<div class="flex justify-center py-16"><div class="spinner"></div></div>`;
+        await loadWorkLog();
+      }
 
-      const guideCards = guides.map(g => `
-        <details class="bg-gray-900 border ${g.border} rounded-2xl overflow-hidden group" id="guide-${g.id}">
-          <summary class="flex items-center gap-4 p-5 cursor-pointer select-none hover:bg-gray-800/50 transition list-none">
-            <div class="w-10 h-10 ${g.bg} rounded-xl flex items-center justify-center border ${g.border} flex-shrink-0">
-              <i class="fas ${g.icon} ${g.color}"></i>
-            </div>
-            <div class="flex-1">
-              <h3 class="font-bold text-white text-sm">${g.label}</h3>
-              <p class="text-xs text-gray-500 mt-0.5">${g.intro.slice(0, 80)}…</p>
-            </div>
-            <i class="fas fa-chevron-down text-gray-500 transition-transform duration-200 group-open:rotate-180 flex-shrink-0"></i>
-          </summary>
-          <div class="px-5 pb-5 pt-1 border-t border-gray-800 space-y-4">
-            <p class="text-sm text-gray-400 leading-relaxed">${g.intro}</p>
-            <div class="space-y-3">
-              ${g.steps.map(step => `
-                <div class="flex gap-3">
-                  <div class="w-7 h-7 rounded-full ${g.bg} border ${g.border} flex items-center justify-center flex-shrink-0 text-xs font-bold ${g.color}">${step.n}</div>
-                  <div>
-                    <p class="text-sm font-semibold text-white">${step.title}</p>
-                    <p class="text-xs text-gray-400 mt-0.5 leading-relaxed">${step.body}</p>
-                  </div>
-                </div>`).join('')}
-            </div>
-            ${g.sections ? `
-            <div class="mt-3">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">How images are organised</p>
-              <div class="space-y-1.5">
-                ${g.sections.map(s => `<div class="flex items-start gap-2 text-sm"><span class="text-gray-300 font-medium whitespace-nowrap">${s.label}</span><span class="text-gray-500">— ${s.desc}</span></div>`).join('')}
-              </div>
-            </div>` : ''}
-            <div class="bg-yellow-900/15 border border-yellow-700/25 rounded-xl p-4">
-              <p class="text-xs font-bold text-yellow-400 mb-2"><i class="fas fa-lightbulb mr-1.5"></i>Pro Tips</p>
-              <ul class="space-y-1.5">
-                ${g.tips.map(t => `<li class="text-xs text-gray-300 flex items-start gap-2"><i class="fas fa-check-circle text-yellow-500 mt-0.5 flex-shrink-0"></i>${t}</li>`).join('')}
-              </ul>
-            </div>
-          </div>
-        </details>`).join('');
+      if (workLog?.error === 'forbidden') {
+        container.innerHTML = `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+            <i class="fas fa-lock text-3xl text-gray-600 mb-3"></i>
+            <h3 class="font-bold text-white mb-1">Not available for this account</h3>
+            <p class="text-sm text-gray-500">The work log is visible to the business owner and the developer.</p>
+          </div>`;
+        return;
+      }
+      if (workLog?.error) {
+        container.innerHTML = `
+          <div class="bg-gray-900 border border-red-900/40 rounded-2xl p-12 text-center">
+            <p class="text-sm text-gray-400 mb-4">Could not load the work log: ${escapeHtml(workLog.error)}</p>
+            <button onclick="reloadWorkLog()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-sm transition">Try again</button>
+          </div>`;
+        return;
+      }
+
+      const items = workLog.data || [];
+      const t = workLog.meta.totals;
+      const c = workLog.meta.counts;
+      const shown = workLogFilter === 'all' ? items : items.filter(i => i.status === workLogFilter);
+
+      const tile = (label, value, hint, accent) => `
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+          <p class="text-xs text-gray-400 mb-1">${label}</p>
+          <p class="text-2xl font-bold ${accent}">${value}</p>
+          <p class="text-xs text-gray-600 mt-1">${hint}</p>
+        </div>`;
+
+      const chip = (k, label, n) => `
+        <button onclick="setWorkFilter('${k}')"
+          class="px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+            workLogFilter === k ? 'bg-purple-600 border-purple-500 text-white'
+                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">
+          ${label}${n !== null ? ` <span class="opacity-60">${n}</span>` : ''}
+        </button>`;
 
       container.innerHTML = `
-        <div class="max-w-3xl mx-auto space-y-4">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white">Work log</h2>
+            <p class="text-sm text-gray-500 mt-0.5">
+              Development delivered, and what the company has accepted.
+              ${isDeveloper() ? 'You record deliverables; the owner accepts them.'
+                              : isOwner() ? 'You accept, invoice and mark work paid.' : ''}
+            </p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="exportWorkLogCsv()" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+              <i class="fas fa-download mr-1"></i> Export
+            </button>
+            ${!isOwner() || isDeveloper() ? `
+              <button onclick="openWorkItemForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+                <i class="fas fa-plus mr-1"></i> Record work
+              </button>` : `
+              <button onclick="openWorkItemForm()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+                <i class="fas fa-plus mr-1"></i> Add entry
+              </button>`}
+          </div>
+        </div>
 
-          <!-- Welcome -->
-          <div class="bg-gradient-to-r from-purple-900/40 to-blue-900/30 border border-purple-700/30 rounded-2xl p-6">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-600/30">
-                <i class="fas fa-graduation-cap text-purple-400 text-xl"></i>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          ${tile('Awaiting acceptance', wlKes(t.delivered), `${c.delivered} item${c.delivered === 1 ? '' : 's'} for the owner to review`, 'text-yellow-400')}
+          ${tile('Accepted, not invoiced', wlKes(t.accepted), 'agreed but not yet billed', 'text-green-400')}
+          ${tile('Outstanding', wlKes(t.outstanding), 'accepted plus invoiced, still unpaid', t.outstanding > 0 ? 'text-blue-400' : 'text-gray-500')}
+          ${tile('Paid to date', wlKes(t.paid), `${t.hours ? t.hours + ' hours recorded' : 'settled'}`, 'text-white')}
+        </div>
+
+        <div class="flex gap-1.5 flex-wrap mb-4">
+          ${chip('all', 'All', items.length)}
+          ${chip('delivered', '⏳ Awaiting acceptance', c.delivered)}
+          ${chip('accepted', '✅ Accepted', c.accepted)}
+          ${chip('rejected', '↩ Needs changes', c.rejected)}
+          ${chip('invoiced', '🧾 Invoiced', c.invoiced)}
+          ${chip('paid', '✔ Paid', c.paid)}
+        </div>
+
+        ${!items.length ? `
+          <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-14 text-center">
+            <div class="w-16 h-16 bg-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-clipboard-list text-2xl text-purple-400"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">Nothing recorded yet</h3>
+            <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">
+              Record each piece of work delivered with the agreed fee. The owner accepts it here,
+              which locks the entry and gives both sides the same record to invoice against.
+            </p>
+            <button onclick="openWorkItemForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Record the first item</button>
+          </div>`
+        : !shown.length ? `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+            <p class="text-gray-400 text-sm">Nothing with this status.</p>
+          </div>`
+        : `<div class="space-y-3">${shown.map(workItemCard).join('')}</div>`}`;
+    }
+
+    function workItemCard(w) {
+      const m = WORK_STATUS_META[w.status] || WORK_STATUS_META.delivered;
+      const canAccept = isOwner() && w.status === 'delivered';
+      const canInvoice = isOwner() && w.status === 'accepted';
+      const canPay     = isOwner() && w.status === 'invoiced';
+      const canEdit    = !w.locked && w.status !== 'paid';
+
+      return `
+        <div class="bg-gray-900 rounded-2xl border ${w.status === 'delivered' ? 'border-yellow-600/40' : 'border-gray-800'} p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <code class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400">${escapeHtml(w.reference || '')}</code>
+                <span class="text-xs px-2 py-0.5 rounded-full border ${m.cls}"><i class="fas ${m.icon} mr-1"></i>${m.label}</span>
+                <span class="text-xs text-gray-600">${escapeHtml(w.category)}</span>
+                ${w.locked ? '<span class="text-xs text-gray-600"><i class="fas fa-lock mr-1"></i>read-only</span>' : ''}
               </div>
-              <div>
-                <h2 class="text-xl font-bold text-white">Lawie Sounds — System Guide</h2>
-                <p class="text-sm text-gray-400 mt-1 leading-relaxed">Everything you need to manage your website independently. No developer, no technical knowledge required. Open any section below to learn how it works.</p>
-                <div class="flex flex-wrap gap-2 mt-3">
-                  <span class="text-xs bg-purple-600/20 text-purple-300 px-3 py-1 rounded-full border border-purple-600/30"><i class="fas fa-check mr-1"></i>No coding needed</span>
-                  <span class="text-xs bg-green-600/20 text-green-300 px-3 py-1 rounded-full border border-green-600/30"><i class="fas fa-check mr-1"></i>Changes go live instantly</span>
-                  <span class="text-xs bg-blue-600/20 text-blue-300 px-3 py-1 rounded-full border border-blue-600/30"><i class="fas fa-check mr-1"></i>Safe — nothing breaks permanently</span>
+              <p class="font-semibold text-white">${escapeHtml(w.title)}</p>
+              ${w.summary ? `<p class="text-sm text-gray-400 mt-1">${escapeHtml(w.summary)}</p>` : ''}
+              <p class="text-xs text-gray-500 mt-2">
+                Delivered ${w.deliveredOn}
+                ${w.hours ? ` · ${w.hours} hrs` : ''}
+                ${w.evidence ? ` · ${escapeHtml(w.evidence)}` : ''}
+                ${w.createdBy ? ` · recorded by ${escapeHtml(w.createdBy)}` : ''}
+              </p>
+              ${w.acceptedBy ? `<p class="text-xs text-green-500/80 mt-1"><i class="fas fa-signature mr-1"></i>Accepted by ${escapeHtml(w.acceptedBy)} on ${new Date(w.acceptedAt).toLocaleDateString('en-KE')}</p>` : ''}
+              ${w.rejectedReason ? `<p class="text-xs text-red-400 mt-1"><i class="fas fa-comment-slash mr-1"></i>${escapeHtml(w.rejectedReason)}</p>` : ''}
+              ${w.invoiceRef ? `<p class="text-xs text-blue-400/80 mt-1"><i class="fas fa-file-invoice mr-1"></i>${escapeHtml(w.invoiceRef)}</p>` : ''}
+            </div>
+
+            <div class="text-right flex-shrink-0">
+              <p class="text-xl font-bold ${w.status === 'paid' ? 'text-gray-400' : 'text-white'}">${w.fee != null ? wlKes(w.fee) : '—'}</p>
+              <button onclick="viewWorkHistory('${w.id}')" class="text-xs text-purple-400 hover:underline mt-1">History →</button>
+            </div>
+          </div>
+
+          <div class="flex gap-1.5 flex-wrap mt-3 pt-3 border-t border-gray-800">
+            ${canAccept ? `
+              <button onclick="setWorkStatus('${w.id}','accepted')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-500 transition">
+                <i class="fas fa-check mr-1"></i>Accept this work
+              </button>
+              <button onclick="rejectWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
+                <i class="fas fa-rotate-left mr-1"></i>Needs changes
+              </button>` : ''}
+            ${w.status === 'rejected' && !isOwner() ? `
+              <button onclick="setWorkStatus('${w.id}','delivered')" class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 transition">
+                Resubmit for acceptance
+              </button>` : ''}
+            ${canInvoice ? `<button onclick="invoiceWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition"><i class="fas fa-file-invoice mr-1"></i>Mark invoiced</button>` : ''}
+            ${canPay ? `<button onclick="setWorkStatus('${w.id}','paid')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"><i class="fas fa-check-double mr-1"></i>Mark paid</button>` : ''}
+            ${canEdit ? `<button onclick="openWorkItemForm('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>` : ''}
+            ${canEdit && w.status === 'delivered' ? `<button onclick="deleteWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto"><i class="fas fa-trash"></i></button>` : ''}
+          </div>
+        </div>`;
+    }
+
+    function setWorkFilter(k) { workLogFilter = k; renderUpdates(); }
+    async function reloadWorkLog() { workLog = null; await renderUpdates(); }
+
+    async function setWorkStatus(id, status, extra = {}) {
+      const res = await apiRequest('PATCH', `/api/admin/work-log/${id}/status`, { status, ...extra });
+      if (res?._error) {
+        Swal.fire({ icon: 'warning', title: 'Cannot do that', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return false;
+      }
+      await reloadWorkLog();
+      showToast(`Marked ${status}`, 'success');
+      return true;
+    }
+
+    async function rejectWorkItem(id) {
+      const { value: note, isConfirmed } = await Swal.fire({
+        title: 'Send back for changes',
+        input: 'text',
+        inputLabel: 'What needs to change? The developer sees this.',
+        inputPlaceholder: 'e.g. the gallery upload still fails on my phone',
+        showCancelButton: true, confirmButtonText: 'Send back', confirmButtonColor: '#ef4444',
+        background: '#1e1e2a', color: '#fff',
+      });
+      if (!isConfirmed || !note?.trim()) return;
+      await setWorkStatus(id, 'rejected', { note: note.trim() });
+    }
+
+    async function invoiceWorkItem(id) {
+      const { value: ref, isConfirmed } = await Swal.fire({
+        title: 'Mark as invoiced',
+        input: 'text', inputLabel: 'Invoice reference (optional)',
+        inputPlaceholder: 'INV-2026-001',
+        showCancelButton: true, confirmButtonText: 'Mark invoiced', confirmButtonColor: '#3b82f6',
+        background: '#1e1e2a', color: '#fff',
+      });
+      if (!isConfirmed) return;
+      await setWorkStatus(id, 'invoiced', { invoiceRef: ref || null });
+    }
+
+    async function viewWorkHistory(id) {
+      const res = await apiRequest('GET', `/api/admin/work-log/${id}/history`);
+      if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not load', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+      const rows = res.data || [];
+      Swal.fire({
+        title: 'History',
+        html: `<div style="text-align:left">${rows.map(h => `
+          <div style="padding:.5rem 0;border-bottom:1px solid #2a2a3a">
+            <div style="color:#fff;font-size:.9rem">${escapeHtml(h.from || 'created')} → <strong>${escapeHtml(h.to)}</strong></div>
+            <div style="color:#9ca3af;font-size:.78rem">by ${escapeHtml(h.actor || 'unknown')} · ${new Date(h.at).toLocaleString('en-KE')}</div>
+            ${h.note ? `<div style="color:#f87171;font-size:.78rem;margin-top:.2rem">${escapeHtml(h.note)}</div>` : ''}
+          </div>`).join('')}
+          <p style="color:#6b7280;font-size:.75rem;margin-top:.75rem">Recorded by the database on each change.</p></div>`,
+        width: 520, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c3aed',
+      });
+    }
+
+    async function deleteWorkItem(id) {
+      const ok = await Swal.fire({
+        title: 'Delete this entry?', text: 'Only possible before the owner has accepted it.',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
+      });
+      if (!ok.isConfirmed) return;
+      const res = await apiRequest('DELETE', `/api/admin/work-log/${id}`);
+      if (res?._error) { Swal.fire({ icon: 'warning', title: 'Cannot delete', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+      await reloadWorkLog();
+      showToast('Entry deleted', 'success');
+    }
+
+    function openWorkItemForm(id = null) {
+      currentEditId = id;
+      const w = id ? (workLog?.data || []).find(x => x.id === id) : null;
+      document.getElementById('modalTitle').textContent = w ? 'Edit entry' : 'Record work delivered';
+
+      document.getElementById('modalForm').innerHTML = `
+        <div><label class="block text-sm mb-1" for="wlTitle">What was delivered *</label>
+          <input type="text" id="wlTitle" maxlength="160" value="${escapeHtml(w?.title || '')}"
+            class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. Reviews consent and moderation engine">
+          <p class="wl-err text-xs text-red-400 mt-1 hidden" data-for="title"></p></div>
+
+        <div><label class="block text-sm mb-1" for="wlSummary">What changed <span class="text-gray-600 font-normal text-xs">(the owner reads this)</span></label>
+          <textarea id="wlSummary" rows="3" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"
+            placeholder="Plain language, not commit messages.">${escapeHtml(w?.summary || '')}</textarea></div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-sm mb-1" for="wlCategory">Type</label>
+            <select id="wlCategory" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+              ${WORK_CATEGORIES.map(c => `<option value="${c}" ${w?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm mb-1" for="wlDelivered">Delivered on</label>
+            <input type="date" id="wlDelivered" max="${new Date().toISOString().split('T')[0]}"
+              value="${w?.deliveredOn || new Date().toISOString().split('T')[0]}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <p class="wl-err text-xs text-red-400 mt-1 hidden" data-for="deliveredOn"></p></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-sm mb-1" for="wlFee">Agreed fee (KES)</label>
+            <input type="number" id="wlFee" min="0" step="1000" value="${w?.fee ?? ''}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. 85000">
+            <p class="wl-err text-xs text-red-400 mt-1 hidden" data-for="fee"></p></div>
+          <div><label class="block text-sm mb-1" for="wlHours">Hours <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+            <input type="number" id="wlHours" min="0" step="0.5" value="${w?.hours ?? ''}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"></div>
+        </div>
+
+        <div><label class="block text-sm mb-1" for="wlEvidence">Where to see it</label>
+          <input type="text" id="wlEvidence" maxlength="200" value="${escapeHtml(w?.evidence || '')}"
+            class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"
+            placeholder="branch, pull request, or the page to look at">
+          <p class="text-xs text-gray-600 mt-1">Gives the owner something concrete to check before accepting.</p></div>
+
+        <p class="text-xs text-gray-500 pt-2 border-t border-gray-800">
+          Once the owner accepts an entry it becomes read-only, and every change is recorded with who made it and when.
+        </p>`;
+
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    async function saveWorkItem() {
+      document.querySelectorAll('#modalForm .wl-err').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
+      const feeRaw = document.getElementById('wlFee').value.trim();
+      const hrsRaw = document.getElementById('wlHours').value.trim();
+
+      const payload = {
+        title:       document.getElementById('wlTitle').value.trim(),
+        summary:     document.getElementById('wlSummary').value.trim() || null,
+        category:    document.getElementById('wlCategory').value,
+        deliveredOn: document.getElementById('wlDelivered').value || null,
+        fee:         feeRaw === '' ? null : Number(feeRaw),
+        hours:       hrsRaw === '' ? null : Number(hrsRaw),
+        evidence:    document.getElementById('wlEvidence').value.trim() || null,
+      };
+
+      const btn = document.getElementById('saveModalBtn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const res = currentEditId
+        ? await apiRequest('PUT',  `/api/admin/work-log/${currentEditId}`, payload)
+        : await apiRequest('POST', '/api/admin/work-log', payload);
+      btn.disabled = false; btn.textContent = 'Save';
+
+      if (res?._error) {
+        if (res.fields) {
+          Object.entries(res.fields).forEach(([f, m]) => {
+            const el = document.querySelector(`#modalForm .wl-err[data-for="${f}"]`);
+            if (el) { el.textContent = m; el.classList.remove('hidden'); }
+          });
+          return;
+        }
+        Swal.fire({ icon: 'error', title: 'Could not save', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      closeModal();
+      await reloadWorkLog();
+      showToast(currentEditId ? 'Entry updated' : 'Work recorded', 'success');
+    }
+
+    // CSV so it can go straight into an invoice or to an accountant.
+    function exportWorkLogCsv() {
+      if (!workLog?.data) return;
+      const cell = (v) => {
+        const s = String(v ?? '');
+        return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`;
+      };
+      const lines = [];
+      lines.push(cell('Lawie Sounds — development work log'));
+      lines.push([cell('Generated'), cell(new Date().toISOString())].join(','));
+      lines.push('');
+      lines.push([cell('Reference'), cell('Delivered'), cell('Title'), cell('Type'), cell('Status'),
+                  cell('Fee (KES)'), cell('Hours'), cell('Accepted by'), cell('Accepted on'), cell('Invoice ref')].join(','));
+      workLog.data.forEach(w => lines.push([
+        cell(w.reference), cell(w.deliveredOn), cell(w.title), cell(w.category), cell(w.status),
+        cell(w.fee ?? ''), cell(w.hours ?? ''), cell(w.acceptedBy ?? ''),
+        cell(w.acceptedAt ? w.acceptedAt.split('T')[0] : ''), cell(w.invoiceRef ?? ''),
+      ].join(',')));
+      lines.push('');
+      const t = workLog.meta.totals;
+      lines.push([cell('Awaiting acceptance'), cell(t.delivered)].join(','));
+      lines.push([cell('Accepted, not invoiced'), cell(t.accepted)].join(','));
+      lines.push([cell('Outstanding'), cell(t.outstanding)].join(','));
+      lines.push([cell('Paid to date'), cell(t.paid)].join(','));
+
+      const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `lawie-sounds-work-log-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      showToast('Work log downloaded', 'success');
+    }
+
+    // ==================== TRAINING ====================
+    let trainingGuides = null;
+
+    async function renderTraining() {
+      const container = document.getElementById('sectionContent');
+      if (!container) return;
+
+      if (!trainingGuides) {
+        container.innerHTML = `<div class="flex justify-center py-16"><div class="spinner"></div></div>`;
+        const res = await apiRequest('GET', '/api/admin/training');
+        trainingGuides = res?._error ? [] : (res.data || []);
+      }
+
+      const today = new Date();
+      const staleAfterDays = 120;
+
+      container.innerHTML = `
+        <div class="mb-5">
+          <h2 class="text-xl font-bold text-white">How to use the system</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Step-by-step guides. Open a section to expand it.</p>
+        </div>
+
+        ${!trainingGuides.length ? `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+            <i class="fas fa-book text-3xl text-gray-600 mb-3"></i>
+            <p class="text-gray-400 text-sm">No guides available for your account yet.</p>
+          </div>`
+        : `<div class="space-y-3">${trainingGuides.map(g => {
+            const reviewed = g.lastReviewedOn ? new Date(g.lastReviewedOn) : null;
+            const days = reviewed ? Math.round((today - reviewed) / 86400000) : null;
+            // Instructions rot faster than code. If nobody has checked a guide
+            // since the screen changed, following it wastes the manager's time.
+            const stale = days !== null && days > staleAfterDays;
+            return `
+              <details class="bg-gray-900 rounded-2xl border ${stale ? 'border-yellow-700/40' : 'border-gray-800'} overflow-hidden">
+                <summary class="px-4 py-3.5 cursor-pointer select-none flex items-center gap-3 hover:bg-gray-800/50 transition">
+                  <i class="fas ${escapeHtml(g.icon || 'fa-book')} text-purple-400"></i>
+                  <span class="font-semibold text-white flex-1">${escapeHtml(g.title)}</span>
+                  ${stale ? `<span class="text-xs text-yellow-500">last checked ${days} days ago</span>` : ''}
+                  <i class="fas fa-chevron-down text-xs text-gray-600"></i>
+                </summary>
+                <div class="px-4 pb-4">
+                  ${g.intro ? `<p class="text-sm text-gray-400 mb-4">${escapeHtml(g.intro)}</p>` : ''}
+                  <ol class="space-y-3">
+                    ${(g.steps || []).map(s => `
+                      <li class="flex gap-3">
+                        <span class="flex-none w-6 h-6 rounded-full bg-purple-600/20 text-purple-300 text-xs font-bold flex items-center justify-center">${s.n}</span>
+                        <div class="min-w-0">
+                          <p class="text-sm font-semibold text-white">${escapeHtml(s.title || '')}</p>
+                          <p class="text-sm text-gray-400 mt-0.5">${escapeHtml(s.body || '')}</p>
+                        </div>
+                      </li>`).join('')}
+                  </ol>
+                  <p class="text-xs text-gray-600 mt-4 pt-3 border-t border-gray-800">
+                    ${g.lastReviewedOn ? `Last checked ${new Date(g.lastReviewedOn).toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' })}` : 'Never reviewed'}
+                    ${g.updatedBy ? ` by ${escapeHtml(g.updatedBy)}` : ''}
+                  </p>
                 </div>
-              </div>
-            </div>
-          </div>
+              </details>`;
+          }).join('')}</div>`}
 
-          <!-- Quick reference -->
-          <div class="bg-gray-900 border border-gray-700 rounded-2xl p-5">
-            <p class="text-sm font-bold text-white mb-3">🚀 Quick Reference — What to Do After Every Event</p>
-            <div class="grid sm:grid-cols-2 gap-2">
-              ${[
-                { icon:'fa-upload',         color:'text-blue-400',   text:'Upload 3–10 gallery photos' },
-                { icon:'fa-star',           color:'text-yellow-400', text:'Star your best 4–6 photos as Featured ⭐' },
-                { icon:'fa-link',           color:'text-indigo-400', text:'Tag photos to the right service' },
-                { icon:'fa-clipboard-list', color:'text-purple-400', text:'Respond to any pending bookings' },
-                { icon:'fa-comment-dots',   color:'text-orange-400', text:'Approve any new client reviews' },
-                { icon:'fa-bullhorn',       color:'text-pink-400',   text:'Update your marketing banner if needed' },
-                { icon:'fa-rocket',         color:'text-green-400',  text:'Check Updates tab — acknowledge new changes' },
-              ].map(q => `
-                <div class="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl text-sm">
-                  <i class="fas ${q.icon} ${q.color}"></i>
-                  <span class="text-gray-300">${q.text}</span>
-                </div>`).join('')}
-            </div>
-          </div>
-
-          <!-- Guide sections (accordion) -->
-          ${guideCards}
-
-          <!-- FAQ -->
-          <div class="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-800">
-              <h3 class="font-bold text-white">❓ Frequently Asked Questions</h3>
-            </div>
-            <div class="divide-y divide-gray-800">
-              ${[
-                { q:'Will my changes break the website?', a:'No. All changes through this dashboard are safe. You can always undo — delete something, change a status, or re-upload. Nothing in the dashboard can take the website offline.' },
-                { q:'How long before my changes appear on the website?', a:'Immediately. As soon as you save a service, gallery photo, or banner, it appears on your live website within seconds.' },
-                { q:'What image size/format should I use?', a:'JPG or PNG. The system automatically compresses and resizes images so you don\'t need to edit them first. Any photo from your phone will work perfectly.' },
-                { q:'Can I manage the site from my phone?', a:'Yes. The dashboard is designed to work on mobile. You can upload photos directly from your camera roll on any smartphone.' },
-                { q:'What if I accidentally delete something?', a:'Gallery photos can\'t be recovered once deleted, so be careful. Services and events can be re-added. As a rule, don\'t delete unless you\'re certain.' },
-                { q:'Who do I contact if something stops working?', a:'Reach out to the developer with a screenshot and a short description of what happened. Most issues are resolved within 24 hours.' },
-              ].map(f => `
-                <div class="px-6 py-4">
-                  <p class="text-sm font-semibold text-white mb-1">Q: ${f.q}</p>
-                  <p class="text-sm text-gray-400 leading-relaxed">${f.a}</p>
-                </div>`).join('')}
-            </div>
-          </div>
-
+        <div class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <p class="text-sm text-gray-300"><i class="fas fa-circle-question text-purple-400 mr-2"></i>Stuck on something not covered here?</p>
+          <p class="text-xs text-gray-500 mt-1">Call the office on +254 703 925 826 — it is quicker than guessing, and tells us which guide to add next.</p>
         </div>`;
     }
 
@@ -6414,6 +6576,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
           else if (document.getElementById('eventTitle')) saveEvent();
           else if (document.getElementById('galleryFiles')) saveGalleryItem();
           else if (document.getElementById('galleryEditTitle')) saveGalleryEdit();
+          else if (document.getElementById('wlTitle')) saveWorkItem();
           else if (document.getElementById('offerCode')) saveOffer();
           else if (document.getElementById('bannerMessage')) saveMarketingBanner();
           else if (document.getElementById('empName')) saveEmployee();
@@ -6430,7 +6593,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.setWorkFilter = setWorkFilter; window.reloadWorkLog = reloadWorkLog; window.setWorkStatus = setWorkStatus; window.rejectWorkItem = rejectWorkItem; window.invoiceWorkItem = invoiceWorkItem; window.viewWorkHistory = viewWorkHistory; window.deleteWorkItem = deleteWorkItem; window.openWorkItemForm = openWorkItemForm; window.saveWorkItem = saveWorkItem; window.exportWorkLogCsv = exportWorkLogCsv; window.renderTraining = renderTraining; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

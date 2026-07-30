@@ -115,6 +115,10 @@ const map = {
   // Packages are real rows now, not JSONB array entries addressed by index.
   // `id` is the point: editing and deleting no longer depend on array position,
   // which is what made concurrent edits hit the wrong package.
+  workItem: (r) => r && ({ id: r.id, reference: r.reference, title: r.title, summary: r.summary, category: r.category, deliveredOn: r.delivered_on, fee: r.fee === null || r.fee === undefined ? null : Number(r.fee), hours: r.hours === null || r.hours === undefined ? null : Number(r.hours), evidence: r.evidence, status: r.status, createdBy: r.created_by, acceptedBy: r.accepted_by, acceptedAt: r.accepted_at, rejectedReason: r.rejected_reason, invoiceRef: r.invoice_ref, invoicedAt: r.invoiced_at, paidAt: r.paid_at, notes: r.notes, locked: r.locked, createdAt: r.created_at }),
+
+  trainingGuide: (r) => r && ({ id: r.id, slug: r.slug, title: r.title, intro: r.intro, icon: r.icon, audience: r.audience, steps: r.steps || [], displayOrder: r.display_order, isPublished: r.is_published, lastReviewedOn: r.last_reviewed_on, updatedBy: r.updated_by }),
+
   servicePackage: (r) => r && ({ id: r.id, serviceId: r.service_id, name: r.name, price: r.price === null || r.price === undefined ? null : Number(r.price), duration: r.duration, features: r.features || [], displayOrder: r.display_order, isActive: r.is_active, isPopular: r.is_popular, createdAt: r.created_at }),
 
   offer: (r) => r && ({ id: r.id, code: r.code, label: r.label, description: r.description, discountType: r.discount_type, discountValue: Number(r.discount_value), minAmount: r.min_amount === null ? null : Number(r.min_amount), appliesTo: r.applies_to || [], startsOn: r.starts_on, endsOn: r.ends_on, maxRedemptions: r.max_redemptions, timesRedeemed: r.times_redeemed, isActive: r.is_active, notes: r.notes, createdBy: r.created_by, createdAt: r.created_at }),
@@ -1131,13 +1135,26 @@ app.post('/api/admin/auth/login', (req, res) => {
   const managerUser = process.env.MANAGER_USERNAME;
   const managerPass = process.env.MANAGER_PASSWORD;
 
+  // A third identity, separate from the owner's.
+  //
+  // The work log only means something if the person who did the work is not the
+  // person who signs it off. With only `admin` and `manager` logins, the
+  // developer and the owner shared one account and "the owner accepted this"
+  // could not be evidenced. DEVELOPER_USERNAME gives a real separation of
+  // duties: the developer records deliverables, the owner accepts them.
+  const devUser = process.env.DEVELOPER_USERNAME;
+  const devPass = process.env.DEVELOPER_PASSWORD;
+
   let role = null;
   if (username === adminUser && password === adminPass) role = 'admin';
   else if (managerUser && managerPass && username === managerUser && password === managerPass) role = 'manager';
+  else if (devUser && devPass && username === devUser && password === devPass) role = 'developer';
 
   if (role) {
-    const name    = role === 'admin' ? 'Administrator' : 'Website Manager';
-    const payload = { id: role === 'admin' ? 1 : 2, username, name, role, loginTime: Date.now() };
+    const NAMES = { admin: 'Administrator', manager: 'Website Manager', developer: 'Developer' };
+    const IDS   = { admin: 1, manager: 2, developer: 3 };
+    const name    = NAMES[role];
+    const payload = { id: IDS[role], username, name, role, loginTime: Date.now() };
     const token   = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
     res.json({ success: true, token, user: { id: payload.id, name, role } });
   } else {
@@ -2206,6 +2223,267 @@ app.patch('/api/admin/settings/:key', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('settings').update({ value }).eq('key', req.params.key).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.setting(data) });
+});
+
+// ==================== ADMIN — WORK LOG ====================
+//
+// A register of work delivered, and the company's acceptance of it.
+//
+// The point is separation of duties. The developer records what was delivered;
+// only the owner can accept it; acceptance locks the entry and is stamped with
+// who and when. Every status change is appended to work_item_events by a
+// database trigger, so the history exists even if a row is edited later. A log
+// one party can revise after the fact is a claim, not evidence.
+
+const WORK_STATUSES  = ['delivered', 'accepted', 'rejected', 'invoiced', 'paid'];
+const WORK_CATEGORIES = ['feature', 'fix', 'security', 'performance', 'documentation', 'infrastructure', 'other'];
+
+// The owner. `developer` is deliberately excluded — signing off your own
+// invoice is exactly what this table exists to prevent.
+function ownerOnly(req, res, next) {
+  if (req.admin?.role !== 'admin') {
+    return res.status(403).json({ error: 'Only the business owner can accept, invoice or mark work as paid.' });
+  }
+  next();
+}
+
+// Either party may read the register and add entries.
+function workLogAccess(req, res, next) {
+  if (!['admin', 'developer'].includes(req.admin?.role)) {
+    return res.status(403).json({ error: 'The work log is visible to the owner and the developer only.' });
+  }
+  next();
+}
+
+function validateWorkItem(b, { isUpdate = false } = {}) {
+  const errors = {};
+  const title = String(b.title ?? '').trim();
+
+  if (!isUpdate || b.title !== undefined) {
+    if (title.length < 4)   errors.title = 'Describe the work in a few words at least.';
+    if (title.length > 160) errors.title = 'Keep the title under 160 characters.';
+  }
+  if (b.category && !WORK_CATEGORIES.includes(b.category)) {
+    errors.category = `Category must be one of: ${WORK_CATEGORIES.join(', ')}`;
+  }
+  if (b.deliveredOn && !/^\d{4}-\d{2}-\d{2}$/.test(b.deliveredOn)) errors.deliveredOn = 'Invalid date.';
+  if (b.deliveredOn && b.deliveredOn > new Date().toISOString().split('T')[0]) {
+    errors.deliveredOn = 'Work cannot be delivered in the future.';
+  }
+  if (b.fee !== undefined && b.fee !== null && b.fee !== '') {
+    const f = Number(b.fee);
+    if (!Number.isFinite(f) || f < 0) errors.fee = 'Enter the agreed fee in KES, or leave it blank.';
+    else if (f > 100000000)           errors.fee = 'That figure looks wrong — check for an extra digit.';
+  }
+  if (b.hours !== undefined && b.hours !== null && b.hours !== '') {
+    const h = Number(b.hours);
+    if (!Number.isFinite(h) || h < 0 || h > 10000) errors.hours = 'Enter hours as a number.';
+  }
+  return errors;
+}
+
+function toWorkItemDB(b) {
+  const row = {};
+  if (b.title       !== undefined) row.title    = String(b.title).trim();
+  if (b.summary     !== undefined) row.summary  = b.summary?.trim() || null;
+  if (b.category    !== undefined) row.category = WORK_CATEGORIES.includes(b.category) ? b.category : 'other';
+  if (b.deliveredOn !== undefined) row.delivered_on = b.deliveredOn || new Date().toISOString().split('T')[0];
+  if (b.fee         !== undefined) row.fee   = (b.fee === '' || b.fee === null) ? null : Number(b.fee);
+  if (b.hours       !== undefined) row.hours = (b.hours === '' || b.hours === null) ? null : Number(b.hours);
+  if (b.evidence    !== undefined) row.evidence = b.evidence?.trim() || null;
+  if (b.notes       !== undefined) row.notes    = b.notes?.trim() || null;
+  // status, locked, accepted_by and the timestamps are never taken from a
+  // payload — they are set only by the transition endpoint below.
+  return row;
+}
+
+app.get('/api/admin/work-log', adminAuth, workLogAccess, async (req, res) => {
+  let q = supabase.from('work_items').select('*', { count: 'exact' });
+  if (req.query.status && WORK_STATUSES.includes(req.query.status)) q = q.eq('status', req.query.status);
+  if (req.query.from) q = q.gte('delivered_on', req.query.from);
+  if (req.query.to)   q = q.lte('delivered_on', req.query.to);
+  q = q.order('delivered_on', { ascending: false }).order('created_at', { ascending: false });
+
+  const { data, error, count } = await q;
+  if (error) return handleError(res, error);
+
+  const items = data.map(map.workItem);
+  const sum = (st) => items.filter(i => st.includes(i.status))
+                           .reduce((s, i) => s + (Number(i.fee) || 0), 0);
+
+  res.json({
+    success: true,
+    data: items,
+    meta: {
+      total: count ?? items.length,
+      // What each side cares about: the developer wants to know what is still
+      // unpaid; the owner wants to know what is committed but not yet invoiced.
+      totals: {
+        delivered:   sum(['delivered']),
+        accepted:    sum(['accepted']),
+        invoiced:    sum(['invoiced']),
+        paid:        sum(['paid']),
+        outstanding: sum(['accepted', 'invoiced']),
+        hours:       items.reduce((s, i) => s + (Number(i.hours) || 0), 0),
+      },
+      counts: WORK_STATUSES.reduce((a, s) => (a[s] = items.filter(i => i.status === s).length, a), {}),
+    },
+  });
+});
+
+app.get('/api/admin/work-log/:id/history', adminAuth, workLogAccess, async (req, res) => {
+  const { data, error } = await supabase.from('work_item_events')
+    .select('*').eq('item_id', req.params.id).order('created_at', { ascending: true });
+  if (error) return handleError(res, error);
+  res.json({
+    success: true,
+    data: (data || []).map(e => ({
+      id: e.id, from: e.from_status, to: e.to_status,
+      actor: e.actor, note: e.note, at: e.created_at,
+    })),
+  });
+});
+
+app.post('/api/admin/work-log', adminAuth, workLogAccess, async (req, res) => {
+  const errors = validateWorkItem(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const row = toWorkItemDB(req.body);
+  row.created_by = req.admin?.username || req.admin?.role || null;
+  row.status = 'delivered';
+
+  const { data, error } = await supabase.from('work_items').insert(row).select().single();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: map.workItem(data) });
+});
+
+app.put('/api/admin/work-log/:id', adminAuth, workLogAccess, async (req, res) => {
+  const { data: cur } = await supabase.from('work_items')
+    .select('id, locked, status').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Work item not found' });
+
+  // Once the owner has accepted, the description of what they accepted cannot
+  // change. Otherwise the signature is against a moving target.
+  if (cur.locked) {
+    return res.status(409).json({
+      error: `This entry was accepted by the owner and is now read-only. Add a new entry instead if further work was done.`,
+    });
+  }
+
+  const errors = validateWorkItem(req.body, { isUpdate: true });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const { data, error } = await supabase.from('work_items')
+    .update(toWorkItemDB(req.body)).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.workItem(data) });
+});
+
+// The only route that changes status. Transitions are explicit so the register
+// cannot jump straight from delivered to paid without a recorded acceptance.
+const WORK_TRANSITIONS = {
+  delivered: ['accepted', 'rejected'],
+  rejected:  ['delivered'],
+  accepted:  ['invoiced'],
+  invoiced:  ['paid'],
+  paid:      [],
+};
+
+app.patch('/api/admin/work-log/:id/status', adminAuth, ownerOnly, async (req, res) => {
+  const { status, note, invoiceRef } = req.body;
+  if (!WORK_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${WORK_STATUSES.join(', ')}` });
+  }
+  const { data: cur } = await supabase.from('work_items')
+    .select('id, status, fee, title').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Work item not found' });
+
+  const allowed = WORK_TRANSITIONS[cur.status] || [];
+  if (!allowed.includes(status)) {
+    return res.status(409).json({
+      error: allowed.length
+        ? `A "${cur.status}" entry can only move to: ${allowed.join(' or ')}.`
+        : `A "${cur.status}" entry is final and cannot be changed.`,
+    });
+  }
+  if (status === 'rejected' && !String(note || '').trim()) {
+    // Rejecting without a reason gives the developer nothing to act on.
+    return res.status(400).json({ error: 'Give a reason so the work can be corrected.', fields: { note: 'Required.' } });
+  }
+
+  const actor = req.admin?.username || req.admin?.role || null;
+  const patch = { status };
+
+  if (status === 'accepted') {
+    patch.accepted_by = actor;
+    patch.accepted_at = new Date().toISOString();
+    patch.locked = true;                 // the signature is against a fixed record
+    patch.rejected_reason = null;
+  }
+  if (status === 'rejected') {
+    patch.rejected_reason = String(note).trim();
+    patch.locked = false;                // must be editable to be corrected
+  }
+  if (status === 'delivered') { patch.locked = false; patch.rejected_reason = null; }
+  if (status === 'invoiced')  { patch.invoiced_at = new Date().toISOString(); patch.invoice_ref = invoiceRef?.trim() || null; }
+  if (status === 'paid')      { patch.paid_at = new Date().toISOString(); }
+
+  const { data, error } = await supabase.from('work_items')
+    .update(patch).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.workItem(data) });
+});
+
+app.delete('/api/admin/work-log/:id', adminAuth, workLogAccess, async (req, res) => {
+  const { data: cur } = await supabase.from('work_items')
+    .select('locked, status').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Work item not found' });
+
+  // An accepted entry is part of a financial record. Rejecting is the way to
+  // remove something from the total; deleting would erase the trail with it.
+  if (cur.locked || cur.status !== 'delivered') {
+    return res.status(409).json({
+      error: 'Only an entry that has not been accepted can be deleted. This one is part of the agreed record.',
+    });
+  }
+  const { error } = await supabase.from('work_items').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+// ==================== ADMIN — TRAINING GUIDES ====================
+app.get('/api/admin/training', adminAuth, async (req, res) => {
+  const role = req.admin?.role;
+  let q = supabase.from('training_guides').select('*').order('display_order');
+  // Managers see only what is published and aimed at them.
+  if (role === 'manager') q = q.eq('is_published', true).in('audience', ['manager', 'both']);
+
+  const { data, error } = await q;
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: (data || []).map(map.trainingGuide) });
+});
+
+app.put('/api/admin/training/:id', adminAuth, adminOnly, async (req, res) => {
+  const row = {};
+  if (req.body.title    !== undefined) row.title = String(req.body.title).trim();
+  if (req.body.intro    !== undefined) row.intro = req.body.intro?.trim() || null;
+  if (req.body.icon     !== undefined) row.icon  = req.body.icon?.trim() || 'fa-book';
+  if (req.body.audience !== undefined) row.audience = ['manager','admin','both'].includes(req.body.audience) ? req.body.audience : 'manager';
+  if (req.body.steps    !== undefined) row.steps = Array.isArray(req.body.steps) ? req.body.steps : [];
+  if (req.body.isPublished !== undefined) row.is_published = req.body.isPublished !== false;
+  if (req.body.displayOrder !== undefined) row.display_order = Number(req.body.displayOrder) || 0;
+  // Stamped on every save: a guide nobody has checked since the screen changed
+  // is worse than no guide, so the date has to be visible.
+  row.last_reviewed_on = new Date().toISOString().split('T')[0];
+  row.updated_by = req.admin?.username || req.admin?.role || null;
+
+  const { data, error } = await supabase.from('training_guides')
+    .update(row).eq('id', req.params.id).select().maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Guide not found' });
+  res.json({ success: true, data: map.trainingGuide(data) });
 });
 
 // ==================== ADMIN — DASHBOARD STATS ====================

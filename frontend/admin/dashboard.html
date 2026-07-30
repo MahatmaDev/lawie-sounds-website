@@ -1374,6 +1374,22 @@
       await renderServices();
     }
 
+    // Spells out the consequence of each mode as it is chosen, including the
+    // cost of hiding prices — which is easy to underweight because the customers
+    // it loses never appear as an enquiry.
+    function updatePriceDisplayHint() {
+      const sel = document.getElementById('svcPriceDisplay');
+      const out = document.getElementById('svcPriceHint');
+      if (!sel || !out) return;
+      const hints = {
+        from:       'Recommended. A visible entry price tells someone with a small event that they can afford you.',
+        range:      'Shows both ends. Useful when the cheapest option is genuinely small — less so if the top figure is far above it.',
+        on_request: 'No figures are sent to the browser at all. Be aware this also loses visitors who compare suppliers and pick whoever published a price — they never enquire, so you will not see them.',
+      };
+      out.textContent = hints[sel.value] || '';
+      out.className = 'text-xs mt-1.5 ' + (sel.value === 'on_request' ? 'text-yellow-500/90' : 'text-gray-500');
+    }
+
     // Hiding a service is the safe alternative to deleting one: the website
     // stops offering it while every booking that ever referenced it keeps its
     // attribution. Awaited and checked, so the card cannot show a state the
@@ -1496,6 +1512,36 @@
               <span class="text-xs text-gray-600">URL slug:</span>
               <code class="text-xs text-purple-400 font-mono" id="svcSlugPreview">${escapeHtml(service?.slug || '')}</code>
             </div>
+          </div>
+
+          <!-- How much pricing the public sees, per service.
+               "on_request" strips the figures from the API response rather than
+               hiding them in the page — a price hidden with CSS is still sitting
+               in the network response. -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5" for="svcPriceDisplay">
+              What visitors see about price
+            </label>
+            <select id="svcPriceDisplay" onchange="updatePriceDisplayHint()"
+              class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition">
+              <option value="from"       ${(service?.priceDisplay || 'from') === 'from'       ? 'selected' : ''}>From the lowest package — "From KES 15,000"</option>
+              <option value="range"      ${service?.priceDisplay === 'range'      ? 'selected' : ''}>A range — "KES 15,000 – 60,000"</option>
+              <option value="on_request" ${service?.priceDisplay === 'on_request' ? 'selected' : ''}>No prices — "Price on request"</option>
+            </select>
+            <p id="svcPriceHint" class="text-xs text-gray-500 mt-1.5"></p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5" for="svcBudgetNote">
+              Note beside the price
+            </label>
+            <input type="text" id="svcBudgetNote" maxlength="160"
+              class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition"
+              value="${escapeHtml(service?.budgetNote || '')}"
+              placeholder="Smaller event? Tell us your budget and we will build something that fits.">
+            <p class="text-xs text-gray-500 mt-1.5">
+              Shown above the packages, so someone with a smaller budget reads it before deciding they cannot afford you.
+            </p>
           </div>
 
           <!-- Category + Icon row -->
@@ -1992,7 +2038,11 @@
         mainImage: finalImageUrl,
         isActive,
         displayOrder: currentEditId ? service?.displayOrder : store.services.length + 1,
-        packages: service?.packages || [],
+        priceDisplay: document.getElementById('svcPriceDisplay')?.value || 'from',
+        budgetNote:   document.getElementById('svcBudgetNote')?.value.trim() || null,
+        // packages deliberately omitted: they are rows in service_packages now,
+        // and sending the old JSONB array here would give two conflicting
+        // sources of truth for the same prices.
         features: service?.features || [],
         faqs: service?.faqs || []
       };
@@ -6380,7 +6430,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

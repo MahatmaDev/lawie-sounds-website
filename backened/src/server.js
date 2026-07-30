@@ -90,7 +90,7 @@ function adminOnly(req, res, next) {
 // ==================== MAPPING (DB snake_case → API camelCase) ====================
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
-  service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
+  service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, priceDisplay: r.price_display || 'from', budgetNote: r.budget_note, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
   gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, altText: r.alt_text, caption: r.caption, width: r.width, height: r.height, isPublished: r.is_published, storagePath: r.storage_path, mimeType: r.mime_type, fileSize: r.file_size, thumbUrl: r.thumb_url, eventDate: r.event_date, createdAt: r.created_at }),
   galleryCategory: (r) => r && ({ slug: r.slug, label: r.label, emoji: r.emoji, displayOrder: r.display_order }),
   payment: (r) => r && ({ id: r.id, bookingId: r.booking_id, amount: Number(r.amount), paidOn: r.paid_on, method: r.method, reference: r.reference, note: r.note, recordedBy: r.recorded_by, createdAt: r.created_at }),
@@ -136,7 +136,26 @@ function toEventDB(b, isUpdate = false) {
   return row;
 }
 function toServiceDB(b) {
-  return { name: b.name, slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), category: b.category, icon: b.icon, short_desc: b.shortDesc, long_desc: b.longDesc, image: b.mainImage || b.image, is_active: b.isActive !== false, display_order: b.displayOrder || 0, packages: b.packages || [], features: b.features || [], faqs: b.faqs || [] };
+  const row = {
+    name: b.name,
+    slug: b.slug || String(b.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    category: b.category, icon: b.icon,
+    short_desc: b.shortDesc, long_desc: b.longDesc,
+    image: b.mainImage || b.image,
+    is_active: b.isActive !== false,
+    display_order: b.displayOrder || 0,
+    features: b.features || [], faqs: b.faqs || [],
+  };
+
+  // Packages live in service_packages now. Writing the JSONB column here would
+  // resurrect the old copy every time a service was saved and give two
+  // conflicting sources of truth for the same prices.
+  if (b.priceDisplay !== undefined) {
+    row.price_display = ['from', 'range', 'on_request'].includes(b.priceDisplay) ? b.priceDisplay : 'from';
+  }
+  if (b.budgetNote !== undefined) row.budget_note = b.budgetNote?.trim() || null;
+
+  return row;
 }
 // Gallery rows are written from two places (create-after-upload, and the edit
 // form), so the shape lives in one function. `isUpdate` omits keys the edit
@@ -562,13 +581,16 @@ app.get('/api/services', async (req, res) => {
     .select('*').eq('is_active', true).order('display_order');
 
   const byService = (pkgs || []).reduce((acc, p) => {
-    (acc[p.service_id] ||= []).push(map.servicePackage(p));
+    (acc[p.service_id] ||= []).push(p);
     return acc;
   }, {});
 
   res.json({
     success: true,
-    data: data.map(s => ({ ...map.service(s), packages: byService[s.id] || [] })),
+    // applyPriceDisplay decides what actually leaves the server. Under
+    // 'on_request' the numbers are stripped from the payload rather than hidden
+    // by the page.
+    data: data.map(s => ({ ...map.service(s), ...applyPriceDisplay(s, byService[s.id] || []) })),
   });
 });
 
@@ -609,7 +631,7 @@ app.get('/api/services/:slug', async (req, res) => {
     success: true,
     data: {
       ...map.service(data),
-      packages: (pkgs || []).map(map.servicePackage),
+      ...applyPriceDisplay(data, pkgs || []),
       reviews: (reviews || []).map(map.publicReview),
       gallery: (gallery || []).map(map.gallery),
     },
@@ -1534,6 +1556,56 @@ app.delete('/api/admin/reviews/:id', adminAuth, async (req, res) => {
   if (error) return handleError(res, error);
   res.json({ success: true });
 });
+
+// ==================== PRICE DISPLAY POLICY ====================
+//
+// How much pricing a visitor sees, decided per service.
+//
+// The concern behind this: a client with a small event sees a large package
+// price and leaves. Deleting packages would have "fixed" that by returning the
+// site to showing no price at all — which loses the customers who compare
+// suppliers and choose whoever published one, a loss that leaves no trace.
+//
+// So packages stay as data and the display becomes policy. Crucially the
+// suppression happens HERE, not in the page: a price hidden with CSS is still
+// in the network response for anyone who opens developer tools, and "we do not
+// publish prices" has to actually mean it.
+
+const PRICE_DISPLAY_MODES = ['from', 'range', 'on_request'];
+
+function applyPriceDisplay(service, packages) {
+  const mode = PRICE_DISPLAY_MODES.includes(service.price_display) ? service.price_display : 'from';
+  const active = (packages || []).filter(p => p.is_active !== false);
+  const prices = active.map(p => p.price).filter(p => p !== null && p !== undefined).map(Number);
+
+  if (mode === 'on_request') {
+    return {
+      priceDisplay: mode,
+      // Package names and contents still ship — a client should be able to see
+      // WHAT is offered even when the figure is quote-only. Only the numbers go.
+      packages: active.map(p => ({ ...map.servicePackage(p), price: null })),
+      priceSummary: { mode, fromPrice: null, topPrice: null, label: 'Price on request' },
+    };
+  }
+
+  const from = prices.length ? Math.min(...prices) : null;
+  const top  = prices.length ? Math.max(...prices) : null;
+
+  return {
+    priceDisplay: mode,
+    packages: active.map(map.servicePackage),
+    priceSummary: {
+      mode,
+      fromPrice: from,
+      topPrice: mode === 'range' ? top : null,
+      label: from === null
+        ? 'Price on request'
+        : mode === 'range' && top !== null && top !== from
+          ? `KES ${from.toLocaleString('en-KE')} – ${top.toLocaleString('en-KE')}`
+          : `From KES ${from.toLocaleString('en-KE')}`,
+    },
+  };
+}
 
 // ==================== ADMIN — SERVICE PACKAGES ====================
 //

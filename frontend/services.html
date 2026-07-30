@@ -579,12 +579,43 @@
       return key ? IMG_FALLBACK[key] : '../IMAGES/LOGO/2.jpg';
     }
 
+    const ESC_SVC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
+    function escSvc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ESC_SVC[c]); }
+
     function getStartingPrice(s) {
-      const pkgs = s.packages || [];
-      if (!pkgs.length) return null;
-      const prices = pkgs.map(p => parseInt(p.price) || 0).filter(p => p > 0);
-      if (!prices.length) return null;
-      return Math.min(...prices);
+      // The API computes this per service and applies the display policy, so a
+      // service set to "price on request" arrives with no figures at all.
+      if (s.priceSummary) return s.priceSummary.fromPrice;
+      const prices = (s.packages || []).map(p => Number(p.price)).filter(p => Number.isFinite(p) && p > 0);
+      return prices.length ? Math.min(...prices) : null;
+    }
+
+    // What appears where the price goes.
+    //
+    // A visible entry price is the point: it tells a client with a small event
+    // that they can afford us. With no price at all they assume they cannot and
+    // never enquire — a loss that leaves no trace. Where the figure is withheld
+    // deliberately, we say so and invite them to name their budget rather than
+    // showing nothing.
+    function priceLine(s) {
+      const summary = s.priceSummary;
+      const note = s.budgetNote
+        ? `<p class="text-xs text-gray-500 mt-1">${escSvc(s.budgetNote)}</p>`
+        : '';
+
+      if (summary && summary.mode === 'on_request') {
+        return `<p class="price-from"><strong>Price on request</strong></p>${note}`;
+      }
+      if (summary && summary.label && summary.fromPrice != null) {
+        return `<p class="price-from">${escSvc(summary.label)}</p>${note}`;
+      }
+      const from = getStartingPrice(s);
+      if (from != null) {
+        return `<p class="price-from">Starting from <strong>KES ${from.toLocaleString()}</strong></p>${note}`;
+      }
+      // No packages priced yet. Say something useful rather than leaving a gap
+      // the visitor has to interpret.
+      return `<p class="price-from text-gray-500">Ask us for a quote</p>${note}`;
     }
 
     async function fetchServices() {
@@ -663,11 +694,14 @@
 
               ${pkgCount > 0 ? `
               <div class="flex flex-wrap gap-1.5 mb-1">
-                ${(s.packages || []).slice(0,3).map(p => `<span class="pkg-pill"><i class="fas fa-box" style="font-size:9px"></i>${p.name}${p.price ? ' — KES ' + parseInt(p.price).toLocaleString() : ''}</span>`).join('')}
+                ${(s.packages || []).slice(0,3).map(p => `<span class="pkg-pill"><i class="fas fa-box" style="font-size:9px"></i>${escSvc(p.name)}${p.price != null ? ' — KES ' + Number(p.price).toLocaleString() : ''}</span>`).join('')}
                 ${pkgCount > 3 ? `<span class="pkg-pill">+${pkgCount-3} more</span>` : ''}
               </div>` : ''}
 
-              ${startPrice ? `<p class="price-from">Starting from <strong>KES ${startPrice.toLocaleString()}</strong></p>` : ''}
+              <!-- The server decides how much price to publish, per service.
+                   Under "on_request" the figures are not in this payload at all,
+                   so there is nothing here to leak. -->
+              ${priceLine(s)}
             </div>
 
             <div class="card-footer">

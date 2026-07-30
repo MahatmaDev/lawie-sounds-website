@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
+  <title>Withdraw Your Review | LAWIE SOUNDS</title>
+  <!-- noindex + no referrer: the token lives in the URL, and a referrer header
+       would leak it to every third-party asset the page loads. -->
+  <meta name="description" content="Withdraw a review you left for Lawie Sounds. Removes it from the website immediately.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    * { font-family: 'Inter', sans-serif; }
+    :root { --bg:#08080f; --surface:#0f0f1a; --border:rgba(255,255,255,0.08); --yellow:#facc15; }
+    body { background:var(--bg); color:#fff; margin:0; }
+    .btn {
+      padding:0.8rem 1.75rem; border-radius:999px; font-weight:700; border:none;
+      cursor:pointer; min-height:48px; transition:opacity .18s, background .18s;
+    }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+    .btn-danger { background:#dc2626; color:#fff; }
+    .btn-danger:hover:not(:disabled) { background:#b91c1c; }
+    .btn-ghost { background:rgba(255,255,255,0.08); color:#fff; }
+    .btn-ghost:hover { background:rgba(255,255,255,0.14); }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    a { color:var(--yellow); }
+  </style>
+</head>
+<body>
+
+  <header class="border-b" style="border-color:var(--border)">
+    <div class="container mx-auto px-4 py-3.5">
+      <a href="index.html" class="flex items-center gap-3 w-fit">
+        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+        <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-12 max-w-lg">
+
+    <div id="loadingView" class="text-center py-16">
+      <i class="fas fa-spinner fa-spin text-2xl text-yellow-400"></i>
+      <p class="text-gray-500 text-sm mt-3">Checking your link…</p>
+    </div>
+
+    <!-- Confirm. The reviewer is shown their own words before acting, so the
+         link never removes something they cannot see. -->
+    <div id="confirmView" class="hidden">
+      <h1 class="text-2xl font-black mb-2">Withdraw your review?</h1>
+      <p class="text-gray-400 text-sm mb-6">
+        This removes it from the Lawie Sounds website straight away. You do not need to give a reason,
+        and nobody will contact you about it.
+      </p>
+
+      <div class="rounded-xl p-5 mb-6" style="background:var(--surface);border:1.5px solid var(--border)">
+        <div class="flex items-center justify-between mb-2">
+          <span id="reviewStars" class="text-yellow-400 text-lg"></span>
+          <span id="reviewStatus" class="text-xs px-2 py-0.5 rounded-full"></span>
+        </div>
+        <p id="reviewComment" class="text-gray-300 text-sm italic leading-relaxed"></p>
+        <p class="text-xs text-gray-500 mt-3">
+          Shown publicly as <strong id="reviewName" class="text-gray-400"></strong> ·
+          submitted <span id="reviewDate"></span>
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button id="withdrawBtn" class="btn btn-danger"><i class="fas fa-trash-can mr-2"></i>Yes, withdraw it</button>
+        <a href="index.html" class="btn btn-ghost inline-flex items-center no-underline">Keep my review</a>
+      </div>
+      <p id="actionError" class="hidden text-sm mt-4" style="color:#fca5a5"></p>
+    </div>
+
+    <!-- Done -->
+    <div id="doneView" class="hidden text-center py-10">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background:rgba(34,197,94,0.12)">
+        <i class="fas fa-check text-3xl text-green-400"></i>
+      </div>
+      <h1 class="text-2xl font-black mb-3">Your review has been withdrawn</h1>
+      <p class="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+        It is no longer shown anywhere on the Lawie Sounds website. Thank you for having taken the time
+        to write it in the first place.
+      </p>
+      <a href="index.html" class="btn btn-ghost inline-flex items-center no-underline">Back to the site</a>
+    </div>
+
+    <!-- Bad or spent token -->
+    <div id="invalidView" class="hidden text-center py-10">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background:rgba(239,68,68,0.1)">
+        <i class="fas fa-link-slash text-3xl text-red-400/70"></i>
+      </div>
+      <h1 class="text-2xl font-black mb-3">This link is not valid</h1>
+      <p class="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+        It may already have been used, or the review may have been removed. If you still want a review
+        taken down, message us and we will handle it.
+      </p>
+      <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="btn btn-ghost inline-flex items-center no-underline">
+        <i class="fab fa-whatsapp mr-2"></i>Message us
+      </a>
+    </div>
+
+    <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const token = new URLSearchParams(location.search).get('token');
+
+    const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ESC[c]);
+
+    const show = id => {
+      ['loadingView','confirmView','doneView','invalidView']
+        .forEach(v => $(v).classList.toggle('hidden', v !== id));
+    };
+
+    (async () => {
+      if (!token) { show('invalidView'); return; }
+      try {
+        const res = await fetch(`/api/reviews/withdraw/${encodeURIComponent(token)}`);
+        if (!res.ok) { show('invalidView'); return; }
+        const { data } = await res.json();
+
+        if (data.alreadyWithdrawn) { show('doneView'); return; }
+
+        const n = Math.max(0, Math.min(5, data.rating || 0));
+        $('reviewStars').textContent   = '★'.repeat(n) + '☆'.repeat(5 - n);
+        $('reviewComment').innerHTML   = data.comment ? `"${esc(data.comment)}"` : '<span class="text-gray-600">No written comment</span>';
+        $('reviewName').textContent    = data.displayName || 'A client';
+        $('reviewDate').textContent    = data.createdAt
+          ? new Date(data.createdAt).toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' })
+          : '—';
+
+        // Being explicit about whether it is actually live matters: withdrawing
+        // something still awaiting moderation is a different, calmer act.
+        const badge = $('reviewStatus');
+        if (data.status === 'published') {
+          badge.textContent = 'Live on the website';
+          badge.style.cssText = 'background:rgba(34,197,94,.15);color:#4ade80';
+        } else {
+          badge.textContent = 'Not published yet';
+          badge.style.cssText = 'background:rgba(250,204,21,.15);color:#facc15';
+        }
+
+        show('confirmView');
+      } catch {
+        show('invalidView');
+      }
+    })();
+
+    $('withdrawBtn').addEventListener('click', async () => {
+      const btn = $('withdrawBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Withdrawing…';
+      try {
+        const res = await fetch(`/api/reviews/withdraw/${encodeURIComponent(token)}`, { method: 'POST' });
+        if (!res.ok) throw new Error('failed');
+        show('doneView');
+        $('srStatus').textContent = 'Your review has been withdrawn.';
+      } catch {
+        $('actionError').textContent = 'We could not withdraw it just now. Please try again, or message us on WhatsApp.';
+        $('actionError').classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-trash-can mr-2"></i>Yes, withdraw it';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="canonical" href="https://lawie-sounds-website.vercel.app/service-detail.html">
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
   <title id="pageTitle">Service | LAWIE SOUNDS</title>
   <meta id="metaDesc" name="description" content="Professional event entertainment services in Kenya.">
   <meta property="og:type" content="website">
@@ -131,7 +135,7 @@
     <div class="container mx-auto px-4 py-3.5">
       <div class="flex items-center justify-between gap-3">
         <a href="index.html" class="flex items-center gap-3 flex-shrink-0">
-          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+          <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
           <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
         </a>
         <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
@@ -178,11 +182,11 @@
   <footer class="border-t" style="background:#000;border-color:var(--border)">
     <div class="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
       <div>
-        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
+        <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
         <p class="text-sm text-gray-500 leading-relaxed">
           &copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>
           Professional Event Entertainment · Kenya<br>
-          <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
+          <a rel="noopener noreferrer" href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
         </p>
       </div>
       <div>
@@ -197,10 +201,10 @@
       <div>
         <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Connect</h3>
         <div class="flex gap-4 text-2xl mb-5">
-          <a href="https://instagram.com/lawie_sounds"  target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="https://facebook.com/lawie.sounds"   target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a href="https://wa.me/254703925826"          target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-          <a href="https://tiktok.com/@lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+          <a rel="noopener noreferrer" href="https://instagram.com/lawie_sounds"  target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a rel="noopener noreferrer" href="https://facebook.com/lawie.sounds"   target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a rel="noopener noreferrer" href="https://wa.me/254703925826"          target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+          <a rel="noopener noreferrer" href="https://tiktok.com/@lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
         </div>
         <p class="text-sm text-gray-500"><i class="fas fa-phone mr-2 text-yellow-400"></i><a href="tel:+254703925826" class="hover:text-yellow-400 transition">+254 703 925 826</a></p>
         <p class="text-sm text-gray-500 mt-1.5"><i class="fas fa-map-marker-alt mr-2 text-yellow-400"></i>Nairobi, Kenya</p>
@@ -211,7 +215,7 @@
   <!-- Floating Action Buttons -->
   <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
     <a href="tel:+254703925826" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#22c55e;color:#fff" aria-label="Call"><i class="fas fa-phone-alt"></i></a>
-    <a href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#16a34a;color:#fff" aria-label="WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
+    <a rel="noopener noreferrer" href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#16a34a;color:#fff" aria-label="WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
     <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#facc15;color:#000" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
   </div>
 
@@ -273,7 +277,35 @@
     return new URLSearchParams(window.location.search).get('service') || 'dj-mc-services';
   }
 
+  // Start fetching the moment this script is parsed, rather than waiting for
+  // DOMContentLoaded.
+  //
+  // This page loads eleven render-blocking third-party resources — the Tailwind
+  // CDN bundle, Font Awesome, Google Fonts and six lightGallery files — and
+  // DOMContentLoaded does not fire until they are all down. init() then started
+  // the API call, so the request the page actually needs was queued BEHIND every
+  // CDN round trip. Measured during the audit: on a cold cache the page sat
+  // visibly empty, intermittently for several seconds. On Kenyan mobile data
+  // that gap is considerably worse.
+  //
+  // Kicking the fetch off here lets it run in parallel with those downloads.
+  // Nothing else changes: init() awaits this same promise.
+  const _servicePreload = (() => {
+    try {
+      const slug = new URLSearchParams(window.location.search).get('service') || 'dj-mc-services';
+      return fetch(`/api/services/${encodeURIComponent(slug)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(j => (j && j.success && j.data ? j.data : null))
+        .catch(() => null);
+    } catch { return Promise.resolve(null); }
+  })();
+
   async function fetchService(slug) {
+    // Use the in-flight preload when it is for this same slug.
+    try {
+      const pre = await _servicePreload;
+      if (pre && (pre.slug === slug || pre.id === slug)) return pre;
+    } catch {}
     try {
       const res = await fetch(`/api/services/${encodeURIComponent(slug)}`);
       if (res.ok) {
@@ -307,15 +339,13 @@
     return GALLERY_FALLBACK[slug] || [];
   }
 
+  // Filter on the server. This used to download every review in the database
+  // and discard almost all of them in the browser — fine at zero rows, quietly
+  // expensive at a few hundred, and it defeats the point of paginating.
   async function fetchReviewsForService(serviceId) {
     try {
-      const res = await fetch('/api/reviews');
-      if (res.ok) {
-        const json = await res.json();
-        return (json.data || []).filter(r =>
-          r.serviceId === serviceId || r.service_id === serviceId
-        ).slice(0, 6);
-      }
+      const res = await fetch(`/api/reviews?service=${encodeURIComponent(serviceId)}&limit=6`);
+      if (res.ok) return (await res.json()).data || [];
     } catch {}
     return [];
   }
@@ -361,19 +391,40 @@
       </div>` : '';
 
     // ── Build packages HTML ──
+    //
+    // Ordered cheapest first, and the entry option is what a visitor meets. The
+    // concern this addresses is a client with a small event seeing a large
+    // figure and leaving — so the page never opens with the expensive tier, and
+    // the invitation to name a smaller budget sits directly beside the prices
+    // rather than at the bottom of the page.
+    const priceMode  = service.priceDisplay || 'from';
+    const budgetNote = service.budgetNote || 'Smaller event? Tell us your budget and we will build something that fits.';
+
     let packagesHtml = '';
     if (packages.length) {
-      const cards = packages.map(pkg => `
-        <div class="pkg-card ${pkg.popular ? 'popular' : ''} reveal">
-          ${pkg.popular ? '<div class="mb-3 text-center"><span class="text-xs font-bold text-black bg-yellow-400 px-3 py-1 rounded-full">🔥 MOST POPULAR</span></div>' : ''}
+      // Cheapest first. A priced package always precedes a quote-only one, so
+      // the lowest concrete number is the first thing read.
+      const ordered = [...packages].sort((a, b) => {
+        const ap = a.price == null ? Infinity : Number(a.price);
+        const bp = b.price == null ? Infinity : Number(b.price);
+        return ap - bp;
+      });
+
+      const cards = ordered.map((pkg, i) => `
+        <div class="pkg-card ${pkg.isPopular || pkg.popular ? 'popular' : ''} reveal">
+          ${pkg.isPopular || pkg.popular ? '<div class="mb-3 text-center"><span class="text-xs font-bold text-black bg-yellow-400 px-3 py-1 rounded-full">🔥 MOST POPULAR</span></div>' : ''}
+          ${i === 0 && priceMode !== 'on_request' && pkg.price != null && !(pkg.isPopular || pkg.popular)
+            ? '<div class="mb-3 text-center"><span class="text-xs font-bold text-green-400 border border-green-700/40 px-3 py-1 rounded-full">BEST FOR SMALLER EVENTS</span></div>' : ''}
           <h3 class="text-lg font-bold text-white mb-1">${escHtml(pkg.name)}</h3>
           ${pkg.duration ? `<p class="text-xs text-gray-400 mb-3"><i class="fas fa-clock mr-1"></i>${escHtml(pkg.duration)}</p>` : ''}
-          ${pkg.price ? `<p class="text-2xl font-black mb-4" style="color:var(--yellow)">KES ${fmtKES(pkg.price)}<span class="text-sm font-normal text-gray-400"> / event</span></p>` : '<p class="text-sm font-semibold text-gray-400 mb-4">Contact for pricing</p>'}
+          ${priceMode === 'on_request' || pkg.price == null
+            ? '<p class="text-sm font-semibold text-gray-400 mb-4">Price on request</p>'
+            : `<p class="text-2xl font-black mb-4" style="color:var(--yellow)">KES ${fmtKES(pkg.price)}<span class="text-sm font-normal text-gray-400"> / event</span></p>`}
           <ul class="space-y-2 flex-1 mb-5">
             ${(pkg.features || []).map(f => `<li class="flex items-start gap-2 text-sm text-gray-300"><i class="fas fa-check-circle text-green-400 mt-0.5 flex-shrink-0"></i>${escHtml(f)}</li>`).join('')}
           </ul>
           <a href="${bookUrl}&package=${encodeURIComponent(pkg.name)}"
-            class="btn-touch block text-center py-2.5 rounded-xl font-bold text-sm transition ${pkg.popular ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-gray-800 text-white hover:bg-gray-700'}">
+            class="btn-touch block text-center py-2.5 rounded-xl font-bold text-sm transition ${pkg.isPopular || pkg.popular ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-gray-800 text-white hover:bg-gray-700'}">
             Request This Package <i class="fas fa-arrow-right ml-1"></i>
           </a>
         </div>`).join('');
@@ -381,14 +432,41 @@
       packagesHtml = `
         <section class="py-16 reveal" style="background:var(--surface)">
           <div class="container mx-auto px-4">
-            <div class="text-center mb-10">
+            <div class="text-center mb-6">
               <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Pricing</p>
-              <h2 class="text-2xl md:text-3xl font-black">Choose Your Package</h2>
-              <p class="text-gray-400 text-sm mt-2">Not sure? <a href="${bookUrl}" class="text-yellow-400 hover:underline">Let us build a custom package together →</a></p>
+              <h2 class="text-2xl md:text-3xl font-black">
+                ${priceMode === 'on_request' ? 'What We Offer' : 'Options To Suit Your Event'}
+              </h2>
             </div>
-            <div class="grid md:grid-cols-${Math.min(packages.length,3)} gap-5 max-w-5xl mx-auto">
+
+            <!-- Placed above the prices, not below them. Someone whose budget is
+                 smaller than the entry tier should meet the invitation before
+                 they conclude they cannot afford us and close the page. -->
+            <div class="max-w-2xl mx-auto mb-8 rounded-xl px-4 py-3 text-center"
+                 style="background:rgba(250,204,21,0.07);border:1px solid rgba(250,204,21,0.22)">
+              <p class="text-sm text-gray-200">${escHtml(budgetNote)}</p>
+              <a href="${bookUrl}" class="inline-block mt-2 text-sm font-bold text-yellow-400 hover:underline">
+                Tell us your budget →
+              </a>
+            </div>
+
+            <div class="grid md:grid-cols-${Math.min(ordered.length, 3)} gap-5 max-w-5xl mx-auto">
               ${cards}
             </div>
+          </div>
+        </section>`;
+    } else {
+      // No packages yet. Still ask for the budget rather than showing nothing —
+      // silence is what makes a visitor assume the answer is "too expensive".
+      packagesHtml = `
+        <section class="py-14 reveal" style="background:var(--surface)">
+          <div class="container mx-auto px-4 text-center max-w-xl">
+            <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Pricing</p>
+            <h2 class="text-2xl font-black mb-3">Priced Around Your Event</h2>
+            <p class="text-gray-400 text-sm mb-6">${escHtml(budgetNote)}</p>
+            <a href="${bookUrl}" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-7 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
+              <i class="fas fa-file-invoice"></i> Get a quote
+            </a>
           </div>
         </section>`;
     }
@@ -455,15 +533,24 @@
             <div class="grid md:grid-cols-${Math.min(reviews.length,3)} gap-5 max-w-5xl mx-auto">
               ${reviews.map((r,i) => `
                 <div class="reveal" style="animation-delay:${i*0.07}s;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.25rem">
-                  <div class="stars text-lg mb-2">${stars(r.rating)}</div>
-                  <p class="text-gray-300 text-sm italic leading-relaxed mb-4">"${escHtml(r.comment || '')}"</p>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="stars text-lg">${stars(r.rating)}</div>
+                    ${r.isVerified ? `<span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:rgba(34,197,94,.15);color:#4ade80" title="This client has a booking with us"><i class="fas fa-circle-check mr-1"></i>Verified</span>` : ''}
+                  </div>
+                  ${r.comment ? `<p class="text-gray-300 text-sm italic leading-relaxed mb-4">"${escHtml(r.comment)}"</p>` : ''}
+                  ${r.adminReply ? `<div class="mb-4 pl-3 border-l-2 border-yellow-400"><p class="text-xs font-bold text-yellow-400 mb-1">Lawie Sounds replied</p><p class="text-xs text-gray-400">${escHtml(r.adminReply)}</p></div>` : ''}
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 flex-shrink-0">
                       <i class="fas fa-user text-gray-400 text-sm"></i>
                     </div>
                     <div>
-                      <p class="font-bold text-sm">${escHtml(r.clientName || r.client_name || 'Client')}</p>
-                      <p class="text-xs text-gray-500">${escHtml(r.eventType || r.event_type || '')}</p>
+                      <!-- r.name is the minimised display name from the public
+                           API. clientName no longer exists in that payload: the
+                           full name is admin-only by design. (No backticks in
+                           here - this markup lives inside a template literal,
+                           where a backtick would close the string.) -->
+                      <p class="font-bold text-sm">${escHtml(r.name || 'A client')}</p>
+                      <p class="text-xs text-gray-500">${escHtml(r.eventType || '')}</p>
                     </div>
                   </div>
                 </div>`).join('')}
@@ -576,6 +663,25 @@
     const lgEl = document.getElementById('serviceGalleryGrid');
     if (lgEl && typeof lightGallery !== 'undefined') {
       lightGallery(lgEl, { plugins:[lgZoom, lgThumbnail], speed:380, thumbnail:true, zoom:true, download:false });
+
+      // lightGallery injects thumbnail and slide images with no alt attribute.
+      // A missing alt makes a screen reader read out the file name; an empty one
+      // correctly marks them as decorative duplicates of images already
+      // described in the grid above. Observed rather than hooked to an event,
+      // because the library adds these nodes on its own schedule.
+      if (!window._lgAltObserver) {
+        const fix = (root = document) =>
+          root.querySelectorAll?.('img:not([alt])').forEach(i => i.setAttribute('alt', ''));
+        fix();
+        window._lgAltObserver = new MutationObserver(muts => {
+          for (const m of muts) for (const n of m.addedNodes) {
+            if (n.nodeType !== 1) continue;
+            if (n.tagName === 'IMG' && !n.hasAttribute('alt')) n.setAttribute('alt', '');
+            else fix(n);
+          }
+        });
+        window._lgAltObserver.observe(document.body, { childList: true, subtree: true });
+      }
     }
 
     observeReveal();
@@ -587,9 +693,67 @@
   }
   window.toggleFaq = toggleFaq;
 
+  // Shown when the page cannot build itself. Previously there was nothing: any
+  // failure in init() left the visitor looking at a header and a footer with an
+  // empty space between them, permanently and silently. That was observed
+  // intermittently during the audit — no exception, no console error, just a
+  // blank page. Whatever the cause, silence is the wrong outcome for a customer
+  // trying to buy something.
+  function showServiceError(slug, detail) {
+    document.getElementById('skeletonHero')?.remove();
+    document.getElementById('skeletonBody')?.remove();
+    const host = document.getElementById('pageContent') || document.body;
+    if (document.getElementById('svcErrorState')) return;
+
+    const el = document.createElement('section');
+    el.id = 'svcErrorState';
+    el.className = 'py-24';
+    el.innerHTML = `
+      <div class="container mx-auto px-4 text-center max-w-lg">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style="background:rgba(239,68,68,0.1)">
+          <i class="fas fa-triangle-exclamation text-2xl text-red-400/80"></i>
+        </div>
+        <h1 class="text-2xl font-black mb-3">We could not load this service</h1>
+        <p class="text-gray-400 text-sm mb-7">
+          Something went wrong on our side. Your connection is probably fine.
+          You can still reach us directly and we will answer within 2 hours.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <button onclick="location.reload()" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
+            <i class="fas fa-rotate-right"></i> Try again
+          </button>
+          <a href="services.html" class="btn-touch inline-flex items-center gap-2 border px-6 py-3 rounded-full font-bold transition" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.8)">
+            All services
+          </a>
+          <a href="https://wa.me/254703925826" target="_blank" rel="noopener noreferrer" class="btn-touch inline-flex items-center gap-2 border px-6 py-3 rounded-full font-bold transition" style="border-color:rgba(34,197,94,0.4);color:#4ade80">
+            <i class="fab fa-whatsapp"></i> WhatsApp us
+          </a>
+        </div>
+      </div>`;
+    host.appendChild(el);
+    console.error('[service-detail] render failed for', slug, detail || '');
+  }
+
   async function init() {
     const slug = getSlugFromUrl();
 
+    // Watchdog. If nothing has rendered after 12 seconds — a stalled request, a
+    // dropped connection, an exception swallowed somewhere — stop showing an
+    // empty page and give the visitor a way forward.
+    const watchdog = setTimeout(() => {
+      if (!document.querySelector('h1')) showServiceError(slug, 'timed out');
+    }, 12000);
+
+    try {
+      await buildPage(slug);
+    } catch (err) {
+      showServiceError(slug, err && err.message);
+    } finally {
+      clearTimeout(watchdog);
+    }
+  }
+
+  async function buildPage(slug) {
     // Try API first
     let service = await fetchService(slug);
 
@@ -625,7 +789,14 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  // Handles the case where DOMContentLoaded has already fired by the time this
+  // script runs — the listener would then never fire and the page would sit
+  // empty forever with no error to explain it.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
   </script>
 </body>
 </html>

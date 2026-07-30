@@ -3,9 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="canonical" href="https://lawie-sounds-website.vercel.app/gallery.html">
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
   <title>Gallery | LAWIE SOUNDS — Event Moments</title>
   <meta name="description" content="Browse our portfolio — weddings, corporate events, ruracio ceremonies, and equipment setups. Every event tells a story. See Lawie Sounds in action.">
   <meta property="og:title" content="Gallery | Lawie Sounds">
+  <meta property="og:image" content="https://lawie-sounds-website.vercel.app/IMAGES/LOGO/2.jpg">
+  <meta property="og:url" content="https://lawie-sounds-website.vercel.app/gallery.html">
+  <meta property="og:site_name" content="Lawie Sounds">
+  <meta name="twitter:card" content="summary_large_image">
   <meta property="og:description" content="500+ events captured. Browse our portfolio.">
   <meta property="og:type" content="website">
 
@@ -45,14 +53,26 @@
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-    /* ── Masonry columns ── */
-    .masonry { columns: 2; column-gap: 10px; }
-    @media(min-width:640px)  { .masonry { columns: 3; column-gap: 12px; } }
-    @media(min-width:1024px) { .masonry { columns: 4; column-gap: 14px; } }
+    /* ── Masonry ──
+       CSS `columns` was the obvious choice here and it was wrong: it flows items
+       DOWN each column, so the visual order stops matching the DOM order. A
+       keyboard or screen-reader user tabs through photos in an order that has
+       nothing to do with what is on screen, and "newest first" reads as
+       "newest, then eight older ones, then the second newest".
 
-    .masonry-item { break-inside: avoid; margin-bottom: 10px; display: block; }
-    @media(min-width:640px)  { .masonry-item { margin-bottom: 12px; } }
-    @media(min-width:1024px) { .masonry-item { margin-bottom: 14px; } }
+       Grid with computed row spans keeps left-to-right reading order AND
+       preserves the varied heights. The spans come from each image's real
+       dimensions, which is also what removes the layout shift. */
+    .masonry {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: 8px;          /* fine-grained track; spans are multiples */
+      gap: 10px;
+    }
+    @media(min-width:640px)  { .masonry { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; } }
+    @media(min-width:1024px) { .masonry { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; } }
+
+    .masonry-item { display: block; min-width: 0; }
 
     /* ── Gallery card ── */
     .gallery-card {
@@ -61,12 +81,21 @@
       overflow: hidden;
       display: block;
       cursor: zoom-in;
+      background: #111122;          /* visible while the image decodes */
+      height: 100%;
     }
     .gallery-card img {
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: cover;
       display: block;
       transition: transform 0.5s cubic-bezier(.4,0,.2,1);
+    }
+    /* Keyboard users must be able to see where they are. The card is an <a>,
+       so it is focusable by default — it just had no visible focus state. */
+    .gallery-card:focus-visible {
+      outline: 3px solid var(--yellow);
+      outline-offset: 3px;
     }
     .gallery-card:hover img { transform: scale(1.07); }
     .gallery-card .card-overlay {
@@ -175,7 +204,7 @@
       <div class="flex items-center justify-between gap-3">
 
         <a href="index.html" class="flex items-center gap-3 flex-shrink-0">
-          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+          <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
           <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
         </a>
 
@@ -253,14 +282,21 @@
        STICKY FILTER BAR
   ===================================================== -->
   <div id="filterBar" class="sticky z-30 border-b py-3" style="top:58px; background:rgba(8,8,15,0.95); backdrop-filter:blur(16px); border-color:var(--border)">
-    <div class="container mx-auto px-4">
-      <div id="filterContainer" class="filter-scroll flex gap-2 pb-0.5">
+    <div class="container mx-auto px-4 flex items-center gap-3">
+      <nav id="filterContainer" class="filter-scroll flex gap-2 pb-0.5 flex-1" aria-label="Filter gallery by category">
         <!-- Populated by JS; show skeletons initially -->
         <div class="skeleton h-9 w-16 rounded-full"></div>
         <div class="skeleton h-9 w-36 rounded-full"></div>
         <div class="skeleton h-9 w-28 rounded-full"></div>
         <div class="skeleton h-9 w-24 rounded-full"></div>
         <div class="skeleton h-9 w-20 rounded-full"></div>
+      </nav>
+
+      <div class="relative flex-shrink-0">
+        <label for="gallerySearch" class="sr-only">Search photos</label>
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none"></i>
+        <input id="gallerySearch" type="search" placeholder="Search…" autocomplete="off"
+          class="w-28 sm:w-44 pl-8 pr-3 py-2 rounded-full text-sm bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 transition">
       </div>
     </div>
   </div>
@@ -302,17 +338,50 @@
       </a>
     </div>
 
-    <!-- No results for selected filter -->
+    <!-- No results for selected filter or search -->
     <div id="noResults" class="hidden text-center py-28">
       <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style="background:rgba(255,255,255,0.04)">
         <i class="fas fa-filter text-3xl text-gray-600"></i>
       </div>
       <h3 class="text-xl font-bold text-gray-400 mb-2">Nothing Here Yet</h3>
-      <p class="text-gray-600 text-sm mb-7">No photos in this category yet — the team is working on it.</p>
-      <button onclick="setFilter('all')" class="btn-touch inline-flex items-center gap-2 px-7 py-3 rounded-full font-semibold transition" style="background:rgba(255,255,255,0.08);color:#fff">
+      <p id="noResultsMsg" class="text-gray-600 text-sm mb-7">No photos in this category yet — the team is working on it.</p>
+      <button onclick="resetFilters()" class="btn-touch inline-flex items-center gap-2 px-7 py-3 rounded-full font-semibold transition" style="background:rgba(255,255,255,0.08);color:#fff">
         <i class="fas fa-th"></i> View All
       </button>
     </div>
+
+    <!-- Load failed. The old page silently swapped in hardcoded photos when the
+         API was down, so nobody — visitor or manager — ever learned it broke. -->
+    <div id="errorState" class="hidden text-center py-28">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style="background:rgba(239,68,68,0.08)">
+        <i class="fas fa-triangle-exclamation text-3xl text-red-400/70"></i>
+      </div>
+      <h3 class="text-xl font-bold text-gray-300 mb-2">We could not load the gallery</h3>
+      <p class="text-gray-500 text-sm mb-7 max-w-sm mx-auto">Something went wrong on our side. Your connection is probably fine — please try again.</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <button onclick="init()" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-7 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+        <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="btn-touch inline-flex items-center gap-2 border px-7 py-3 rounded-full font-bold transition" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.8)">
+          <i class="fab fa-whatsapp"></i> Ask us for photos
+        </a>
+      </div>
+    </div>
+
+    <!-- Progressive loading. The API is paginated now, so the page pulls 24 at
+         a time instead of every row on first paint. -->
+    <div id="loadMoreArea" class="hidden text-center pt-12">
+      <button id="loadMoreBtn" onclick="loadMore()"
+        class="btn-touch inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold transition"
+        style="background:rgba(255,255,255,0.08);color:#fff">
+        <i class="fas fa-arrow-down"></i> <span id="loadMoreLabel">Load more</span>
+      </button>
+      <p id="loadMoreCount" class="text-xs text-gray-600 mt-3"></p>
+    </div>
+
+    <!-- Screen-reader announcement for filter/search results, which otherwise
+         change silently for anyone not looking at the screen. -->
+    <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
 
   </main>
 
@@ -381,11 +450,11 @@
   <footer class="border-t" style="background:#000;border-color:var(--border)">
     <div class="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
       <div>
-        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
+        <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
         <p class="text-sm text-gray-500 leading-relaxed">
           &copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>
           Professional Event Entertainment · Kenya<br>
-          <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
+          <a rel="noopener noreferrer" href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
         </p>
       </div>
       <div>
@@ -400,10 +469,10 @@
       <div>
         <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Connect</h3>
         <div class="flex gap-4 text-2xl">
-          <a href="https://instagram.com/lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="https://facebook.com/lawie.sounds"     target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a href="https://wa.me/254703925826"            target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-          <a href="https://tiktok.com/@lawie_sounds"      target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+          <a rel="noopener noreferrer" href="https://instagram.com/lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a rel="noopener noreferrer" href="https://facebook.com/lawie.sounds"     target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a rel="noopener noreferrer" href="https://wa.me/254703925826"            target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+          <a rel="noopener noreferrer" href="https://tiktok.com/@lawie_sounds"      target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
         </div>
         <div class="mt-6 text-sm text-gray-500">
           <p><i class="fas fa-phone mr-2 text-yellow-400"></i><a href="tel:+254703925826" class="hover:text-yellow-400 transition">+254 703 925 826</a></p>
@@ -420,7 +489,7 @@
       style="background:#22c55e;color:#fff" aria-label="Call">
       <i class="fas fa-phone-alt"></i>
     </a>
-    <a href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110"
+    <a rel="noopener noreferrer" href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110"
       style="background:#16a34a;color:#fff" aria-label="WhatsApp">
       <i class="fab fa-whatsapp text-lg"></i>
     </a>
@@ -438,288 +507,420 @@
 
   <script>
     // ============================================================
-    // GALLERY — Dynamic from admin dashboard (Supabase via API)
-    // Falls back to local images when DB is empty
+    // GALLERY ENGINE
+    //
+    // Data comes from the paginated /api/gallery endpoint. The category list
+    // comes from /api/gallery/categories — the same table the dashboard reads,
+    // so the two can no longer drift apart the way they had.
+    //
+    // Three things this file is careful about:
+    //   1. Every value from the API is escaped before it reaches innerHTML.
+    //   2. Every <img> carries width/height so nothing shifts as it loads.
+    //   3. Visual order matches DOM order, so tabbing through makes sense.
     // ============================================================
 
-    let allItems   = [];
-    let currentFilter = 'all';
-    let lgInstances   = [];
+    const PAGE_SIZE = 24;
 
-    // Category emoji map
-    const CAT_EMOJI = {
-      'Sound & Equipment': '🎧',
-      'Weddings':          '💍',
-      'Ruracio':           '🎎',
-      'Corporate':         '🏢',
-      'Parties':           '🎉',
-      'Behind the Scenes': '🎬',
-      'Drone':             '🚁',
-      'General':           '📸',
+    const state = {
+      items:      [],      // everything paged in so far, in server order
+      categories: [],      // [{ slug, label, emoji, count }]
+      filter:     'all',
+      search:     '',
+      offset:     0,
+      total:      0,
+      hasMore:    false,
+      loading:    false,
     };
-    function catEmoji(cat) { return CAT_EMOJI[cat] || '📸'; }
 
-    // ── Local fallback images (shown until admin uploads via dashboard) ──
-    const LOCAL_FALLBACK = [
-      { id:'lf01', title:'Line Array Setup',      category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/linearray.jpg' },
-      { id:'lf02', title:'Line Array 2',           category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/linearray2.jpg' },
-      { id:'lf03', title:'Sound Setup',            category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/sound%20setup.jpg' },
-      { id:'lf04', title:'DJ Decks Setup',         category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/Dj%20decks%20setup.jpg' },
-      { id:'lf05', title:'Sound Technicians',      category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/sound%20technicians.jpg' },
-      { id:'lf06', title:'Sound Technicians 2',    category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/sound%20technicians2.jpg' },
-      { id:'lf07', title:'LED Screen',             category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/screen.jpg' },
-      { id:'lf08', title:'Par Can Lights',         category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/par%20can%20lights.jpg' },
-      { id:'lf09', title:'Mixer Setup',            category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/mixer.jpg' },
-      { id:'lf10', title:'Full Setup',             category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/setup2.jpg' },
-      { id:'lf11', title:'Pyrotechnics',           category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/pyrotechnics.jpg' },
-      { id:'lf12', title:'Connecting Cables',      category:'Sound & Equipment', type:'image', imageUrl:'../Gallery/equipment/connecting%20cables.jpg' },
-      { id:'lf13', title:'Wedding Moment 1',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/1.jpg' },
-      { id:'lf14', title:'Wedding Moment 2',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/2.jpg' },
-      { id:'lf15', title:'Wedding Moment 3',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/3.jpg' },
-      { id:'lf16', title:'Wedding Moment 4',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/4.jpg' },
-      { id:'lf17', title:'Wedding Moment 5',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/5.jpg' },
-      { id:'lf18', title:'Wedding Moment 6',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/6.jpg' },
-      { id:'lf19', title:'Wedding Moment 7',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/7.jpg' },
-      { id:'lf20', title:'Wedding Moment 8',       category:'Weddings',          type:'image', imageUrl:'../Gallery/Weddings/8.jpg' },
-      { id:'lf21', title:'Ruracio — Itara 1',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara1.jpg' },
-      { id:'lf22', title:'Ruracio — Itara 2',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara2.jpg' },
-      { id:'lf23', title:'Ruracio — Itara 3',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara3.jpg' },
-      { id:'lf24', title:'Ruracio — Itara 4',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara4.jpg' },
-      { id:'lf25', title:'Ruracio — Itara 5',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara5.jpg' },
-      { id:'lf26', title:'Ruracio — Itara 6',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara6.jpg' },
-      { id:'lf27', title:'Ruracio — Itara 7',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara7.jpg' },
-      { id:'lf28', title:'Ruracio — Itara 8',      category:'Ruracio',           type:'image', imageUrl:'../Gallery/Ruracio/Itara8.jpg' },
-      { id:'lf29', title:'Corporate Event 1',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/1.jpg' },
-      { id:'lf30', title:'Corporate Event 2',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/2.jpg' },
-      { id:'lf31', title:'Corporate Event 3',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/3.jpg' },
-      { id:'lf32', title:'Corporate Event 4',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/4.jpg' },
-      { id:'lf33', title:'Corporate Event 5',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/5.jpg' },
-      { id:'lf34', title:'Corporate Event 6',      category:'Corporate',         type:'image', imageUrl:'../Gallery/corporate/6.jpg' },
-    ];
+    let lgInstance = null;
 
-    // ── Fetch from API (featured items sorted first), fallback to LOCAL_FALLBACK if DB is empty ──
-    async function fetchGallery() {
+    // ── Escaping ───────────────────────────────────────────────
+    // Titles and captions are typed by a human in the dashboard. Even trusted
+    // input breaks markup the moment it contains a quote or an ampersand, and
+    // "trusted" is a property of today's access control, not of the string.
+    const ESC = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ESC[c]); }
+
+    // For values interpolated into a JS string inside an attribute.
+    function escAttr(v) { return esc(v).replace(/`/g, '&#96;'); }
+
+    // ── API ────────────────────────────────────────────────────
+    // No local fallback. The old page swapped in 34 hardcoded photos whenever
+    // the API failed, which meant an outage looked exactly like a working site
+    // and nobody — visitor or manager — ever found out. Failure is now visible.
+    async function fetchPage(offset) {
+      const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+      if (state.filter !== 'all') params.set('category', state.filter);
+      if (state.search)           params.set('q', state.search);
+
+      const res = await fetch(`/api/gallery?${params}`);
+      if (!res.ok) throw new Error(`gallery ${res.status}`);
+      return res.json();
+    }
+
+    async function fetchCategories() {
       try {
-        const res  = await fetch('/api/gallery');
-        if (!res.ok) throw new Error('api-error');
-        const json = await res.json();
-        const data = json.data || [];
-        return data.length > 0 ? data : LOCAL_FALLBACK;
-      } catch {
-        return LOCAL_FALLBACK;
-      }
+        const res = await fetch('/api/gallery/categories');
+        if (!res.ok) return [];
+        return (await res.json()).data || [];
+      } catch { return []; }
     }
 
-    function getCategories(items) {
-      return [...new Set(items.map(i => i.category || 'General').filter(Boolean))].sort();
-    }
-
-    // ── Build filter pill row ──
-    function buildFilters(cats) {
+    // ── Filter pills ───────────────────────────────────────────
+    function buildFilters() {
       const el = document.getElementById('filterContainer');
-      el.innerHTML = [
-        { key: 'all', label: 'All', count: allItems.length },
-        ...cats.map(c => ({ key: c, label: catEmoji(c) + ' ' + c, count: allItems.filter(i => (i.category||'General') === c).length }))
-      ].map(f => {
-        const active = currentFilter === f.key;
-        return `<button onclick="setFilter('${f.key.replace(/'/g,"\\'")}') " class="filter-btn ${active ? 'active' : ''}">${f.label}<span style="opacity:.55;font-size:11px;margin-left:4px">${f.count}</span></button>`;
+      const pills = [
+        { slug: 'all', label: 'All', emoji: '', count: state.categories.reduce((n, c) => n + c.count, 0) },
+        ...state.categories,
+      ];
+      el.innerHTML = pills.map(c => {
+        const active = state.filter === c.slug;
+        return `<button type="button" class="filter-btn ${active ? 'active' : ''}"
+                  data-cat="${escAttr(c.slug)}" aria-pressed="${active}">
+                  ${c.emoji ? esc(c.emoji) + ' ' : ''}${esc(c.label)}<span style="opacity:.55;font-size:11px;margin-left:4px">${c.count}</span>
+                </button>`;
       }).join('');
     }
 
-    // ── Destroy previous LightGallery instances ──
-    function destroyLg() {
-      lgInstances.forEach(lg => { try { lg.destroy(); } catch {} });
-      lgInstances = [];
+    // ── Card markup ────────────────────────────────────────────
+    // Every interpolated value is escaped. width/height are real, so the browser
+    // reserves the right box before a single byte of image arrives.
+    function cardHtml(item, index) {
+      const isVideo  = item.type === 'video';
+      // A video's grid tile shows its poster, never the video itself — loading
+      // video bytes to paint a thumbnail is the most expensive mistake a gallery
+      // can make.
+      const src      = isVideo ? (item.thumbUrl || item.imageUrl) : item.imageUrl;
+      const full     = item.imageUrl;
+      const alt      = item.altText || item.title || item.category || 'Event photo';
+      const w        = item.width  || 1200;
+      const h        = item.height || 1500;
+
+      // The first screenful should not be lazy — lazy-loading above-the-fold
+      // images delays the Largest Contentful Paint instead of helping it.
+      const eager    = index < 4;
+
+      const svcBadge = item.serviceSlug
+        ? `<span style="font-size:10px;background:rgba(250,204,21,0.9);color:#000;padding:2px 7px;border-radius:999px;font-weight:700;margin-bottom:4px;display:inline-block">${esc(prettySlug(item.serviceSlug))}</span>`
+        : '';
+
+      const lgAttrs = isVideo
+        ? `data-video='${escAttr(JSON.stringify({ source: [{ src: full, type: item.mimeType || 'video/mp4' }], attributes: { preload: 'none', controls: true } }))}' data-poster="${escAttr(src)}"`
+        : `href="${escAttr(full)}"`;
+
+      return `
+        <a ${lgAttrs} class="masonry-item gallery-card"
+           data-w="${w}" data-h="${h}"
+           aria-label="${escAttr(alt)}${isVideo ? ' (video)' : ''}">
+          <img src="${escAttr(src)}" alt="${escAttr(alt)}"
+               width="${w}" height="${h}"
+               loading="${eager ? 'eager' : 'lazy'}" decoding="async"
+               ${eager ? 'fetchpriority="high"' : ''}
+               onerror="this.closest('a').dataset.broken='1'">
+          ${isVideo ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+              <span style="width:44px;height:44px;border-radius:999px;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center">
+                <i class="fas fa-play" style="color:#fff;margin-left:3px"></i></span></span>` : ''}
+          <div class="card-overlay">
+            ${svcBadge}
+            ${item.isFeatured ? `<span style="font-size:10px;color:var(--yellow);margin-bottom:3px;display:block">⭐ Featured</span>` : ''}
+            <p>${esc(item.title || '')}</p>
+            <span>${esc(catLabel(item.category))}</span>
+          </div>
+        </a>`;
     }
 
-    // ── Render gallery content ──
-    function renderGallery() {
-      const content  = document.getElementById('galleryContent');
-      const skeleton = document.getElementById('loadingSkeleton');
-      const empty    = document.getElementById('emptyState');
-      const noRes    = document.getElementById('noResults');
+    function prettySlug(slug) {
+      return String(slug).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    function catLabel(slug) {
+      const c = state.categories.find(x => x.slug === slug);
+      return c ? c.label : (slug || '');
+    }
 
-      const filtered = currentFilter === 'all'
-        ? allItems
-        : allItems.filter(i => (i.category || 'General') === currentFilter);
+    // ── Masonry row spans ──────────────────────────────────────
+    // Grid gives correct reading order but needs to be told how tall each tile
+    // is. We know the real aspect ratio, so we can compute spans without ever
+    // measuring a loaded image — which is exactly why nothing shifts.
+    function layoutMasonry() {
+      const grid = document.getElementById('masonryGrid');
+      if (!grid) return;
 
-      skeleton.classList.add('hidden');
-      destroyLg();
+      const styles = getComputedStyle(grid);
+      const cols   = styles.gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+      const gap    = parseFloat(styles.gap) || 10;
+      const rowH   = parseFloat(styles.gridAutoRows) || 8;
+      const colW   = (grid.clientWidth - gap * (cols - 1)) / cols;
 
-      if (allItems.length === 0) {
-        content.classList.add('hidden'); empty.classList.remove('hidden'); noRes.classList.add('hidden');
+      grid.querySelectorAll('.masonry-item').forEach(el => {
+        const w = +el.dataset.w || 1200;
+        const h = +el.dataset.h || 1500;
+        // Cap extreme ratios: a 571x1280 phone photo would otherwise produce a
+        // tile three screens tall and push everything else out of view.
+        const ratio  = Math.min(Math.max(h / w, 0.6), 1.8);
+        const target = colW * ratio;
+        el.style.gridRowEnd = `span ${Math.max(4, Math.round((target + gap) / (rowH + gap)))}`;
+      });
+    }
+
+    // ── LightGallery ───────────────────────────────────────────
+    function initLightGallery() {
+      const grid = document.getElementById('masonryGrid');
+      if (!grid || typeof lightGallery === 'undefined') return;
+
+      if (lgInstance) {
+        // Appending pages must refresh the existing instance, not build a new
+        // one — rebuilding leaks listeners and resets the open slide.
+        lgInstance.refresh();
         return;
       }
-      if (filtered.length === 0) {
-        content.classList.add('hidden'); empty.classList.add('hidden'); noRes.classList.remove('hidden');
-        return;
+      lgInstance = lightGallery(grid, {
+        selector: '.gallery-card',
+        plugins: [lgZoom, lgThumbnail],
+        speed: 380, thumbnail: true, zoom: true, download: false, counter: true,
+        mobileSettings: { controls: true, showCloseIcon: true, download: false },
+      });
+
+      // lightGallery builds its own thumbnail strip and slide images with no alt
+      // attribute — 24 of them on this page. A missing alt makes a screen reader
+      // read out the file name; an empty alt correctly marks them as decorative
+      // duplicates of images already described in the grid above.
+      //
+      // An observer rather than event hooks: the library injects these nodes on
+      // its own schedule, and hooking lgAfterOpen only fixed them once a visitor
+      // had already opened the lightbox.
+      const markDecorative = (root = document) => {
+        root.querySelectorAll?.('img:not([alt])').forEach(img => img.setAttribute('alt', ''));
+      };
+      markDecorative();
+      if (!window._lgAltObserver) {
+        window._lgAltObserver = new MutationObserver(muts => {
+          for (const m of muts) {
+            for (const node of m.addedNodes) {
+              if (node.nodeType !== 1) continue;
+              if (node.tagName === 'IMG' && !node.hasAttribute('alt')) node.setAttribute('alt', '');
+              else markDecorative(node);
+            }
+          }
+        });
+        window._lgAltObserver.observe(document.body, { childList: true, subtree: true });
       }
+    }
 
-      empty.classList.add('hidden'); noRes.classList.add('hidden');
+    function destroyLightGallery() {
+      try { lgInstance?.destroy(true); } catch {}
+      lgInstance = null;
+    }
 
-      const cats = currentFilter === 'all' ? getCategories(allItems) : [currentFilter];
+    // ── Render ─────────────────────────────────────────────────
+    function render({ append = false } = {}) {
+      const content = document.getElementById('galleryContent');
+      const empty   = document.getElementById('emptyState');
+      const noRes   = document.getElementById('noResults');
+      const errEl   = document.getElementById('errorState');
+      const more    = document.getElementById('loadMoreArea');
 
-      // ── Featured spotlight (only when showing all, only if any are starred) ──
-      let featuredHtml = '';
-      if (currentFilter === 'all') {
-        const starred = allItems.filter(i => i.isFeatured || i.is_featured).filter(i => i.type !== 'video');
-        if (starred.length >= 2) {
-          const hero = starred[0];
-          const rest = starred.slice(1, 4);
+      document.getElementById('loadingSkeleton').classList.add('hidden');
+      errEl.classList.add('hidden');
 
-          const heroCard = `
-            <a href="${hero.imageUrl}" class="gallery-card block rounded-xl overflow-hidden h-full" style="min-height:260px">
-              <img src="${hero.imageUrl}" alt="${hero.title || 'Featured'}" loading="lazy"
-                onerror="this.closest('a').style.display='none'"
-                style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.4,0,.2,1)">
-              <div class="card-overlay">
-                ${hero.serviceSlug ? `<span style="font-size:10px;background:rgba(250,204,21,0.9);color:#000;padding:2px 7px;border-radius:999px;font-weight:700;margin-bottom:4px;display:inline-block">${hero.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>` : ''}
-                <p>${hero.title || 'Featured Moment'}</p>
-                <span>${hero.category || ''}</span>
-              </div>
-            </a>`;
+      const filtering = state.filter !== 'all' || state.search;
 
-          const sideCards = rest.map(item => `
-            <a href="${item.imageUrl}" class="gallery-card block rounded-xl overflow-hidden" style="flex:1;min-height:120px">
-              <img src="${item.imageUrl}" alt="${item.title || 'Featured'}" loading="lazy"
-                onerror="this.closest('a').style.display='none'"
-                style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.4,0,.2,1)">
-              <div class="card-overlay">
-                ${item.serviceSlug ? `<span style="font-size:10px;background:rgba(250,204,21,0.9);color:#000;padding:2px 7px;border-radius:999px;font-weight:700;margin-bottom:3px;display:inline-block">${item.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>` : ''}
-                <p style="font-size:11px">${item.title || ''}</p>
-              </div>
-            </a>`).join('');
-
-          featuredHtml = `
-            <section class="reveal mb-16" id="featuredSpotlight">
-              <div class="flex items-center justify-between mb-5">
-                <h2 class="section-heading" style="margin-bottom:0">
-                  ⭐ Staff Picks
-                  <span style="font-size:.8rem;font-weight:500;color:rgba(255,255,255,0.3)">${starred.length} featured</span>
-                </h2>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;height:340px"
-                   class="lg-featured-grid">
-                <div style="height:100%">${heroCard}</div>
-                <div style="display:flex;flex-direction:column;gap:10px;height:100%">${sideCards}</div>
-              </div>
-            </section>`;
+      if (!state.items.length) {
+        content.classList.add('hidden');
+        more.classList.add('hidden');
+        // "No photos at all" and "no photos matching this filter" are different
+        // problems with different fixes. Showing one message for both leaves the
+        // visitor unsure whether to change the filter or come back later.
+        empty.classList.toggle('hidden', filtering);
+        noRes.classList.toggle('hidden', !filtering);
+        if (filtering) {
+          document.getElementById('noResultsMsg').textContent = state.search
+            ? `Nothing matches “${state.search}”. Try a different word, or browse all photos.`
+            : 'No photos in this category yet — the team is working on it.';
         }
+        announce('No photos found.');
+        return;
       }
 
-      content.innerHTML = featuredHtml + cats.map(cat => {
-        const items    = filtered.filter(i => (i.category || 'General') === cat);
-        if (!items.length) return '';
-        const imgItems = items.filter(i => i.type !== 'video');
-        const vidItems = items.filter(i => i.type === 'video');
-        const lgId     = 'lg-' + cat.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-
-        return `
-          <section class="reveal" data-cat="${cat}">
-            <h2 class="section-heading">${catEmoji(cat)} ${cat} <span style="font-size:.85rem;font-weight:500;color:rgba(255,255,255,0.3)">${items.length} item${items.length !== 1 ? 's' : ''}</span></h2>
-
-            ${imgItems.length ? `
-            <div class="masonry" id="${lgId}">
-              ${imgItems.map(item => `
-                <a href="${item.imageUrl}" class="masonry-item gallery-card">
-                  <img src="${item.imageUrl}" alt="${item.title || cat}" loading="lazy" onerror="this.closest('a').style.display='none'">
-                  <div class="card-overlay">
-                    ${(item.isFeatured || item.is_featured) ? `<span style="font-size:10px;color:var(--yellow);margin-bottom:3px;display:block">⭐ Featured</span>` : ''}
-                    <p>${item.title || cat}</p>
-                    <span>${cat}${item.serviceSlug ? ' · ' + item.serviceSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : ''}</span>
-                  </div>
-                </a>
-              `).join('')}
-            </div>` : ''}
-
-            ${vidItems.length ? `
-            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 ${imgItems.length ? 'mt-4' : ''}">
-              ${vidItems.map(item => `
-                <div class="video-thumb border" style="border-color:var(--border)">
-                  <video controls preload="none" class="w-full h-full object-cover">
-                    <source src="${item.imageUrl}" type="video/mp4">
-                  </video>
-                </div>
-                ${item.title ? `<p class="text-xs text-gray-500 mt-1 px-1">${item.title}</p>` : ''}
-              `).join('')}
-            </div>` : ''}
-          </section>`;
-      }).join('');
-
+      empty.classList.add('hidden');
+      noRes.classList.add('hidden');
       content.classList.remove('hidden');
 
-      // Init lightGallery on featured spotlight grid
-      const lgFeatEl = document.querySelector('#featuredSpotlight');
-      if (lgFeatEl && typeof lightGallery !== 'undefined') {
-        const lgFeatInstance = lightGallery(lgFeatEl, {
-          selector: 'a.gallery-card',
-          plugins: [lgZoom, lgThumbnail],
-          speed: 380, thumbnail: true, zoom: true, download: false, counter: true,
-          mobileSettings: { controls: true, showCloseIcon: true, download: false }
-        });
-        lgInstances.push(lgFeatInstance);
+      const heading = state.search
+        ? `Results for “${esc(state.search)}”`
+        : state.filter === 'all' ? 'All Moments' : esc(catLabel(state.filter));
+
+      if (append) {
+        const grid = document.getElementById('masonryGrid');
+        grid.insertAdjacentHTML('beforeend',
+          state.items.slice(state.items.length - state._lastBatch).map((it, i) => cardHtml(it, 999)).join(''));
+        document.getElementById('galleryHeadingCount').textContent =
+          `${state.items.length} of ${state.total}`;
+      } else {
+        content.innerHTML = `
+          <section>
+            <h2 class="section-heading">
+              ${heading}
+              <span id="galleryHeadingCount" style="font-size:.85rem;font-weight:500;color:rgba(255,255,255,0.3)">${state.items.length} of ${state.total}</span>
+            </h2>
+            <div class="masonry" id="masonryGrid">
+              ${state.items.map(cardHtml).join('')}
+            </div>
+          </section>`;
       }
 
-      // Init lightGallery on each image grid
-      cats.forEach(cat => {
-        const lgId = 'lg-' + cat.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-        const el   = document.getElementById(lgId);
-        if (!el || typeof lightGallery === 'undefined') return;
-        const instance = lightGallery(el, {
-          plugins: [lgZoom, lgThumbnail],
-          speed: 380,
-          thumbnail: true,
-          zoom: true,
-          download: false,
-          counter: true,
-          mobileSettings: { controls: true, showCloseIcon: true, download: false }
-        });
-        lgInstances.push(instance);
-      });
+      layoutMasonry();
+      initLightGallery();
 
-      // Scroll reveal
-      requestAnimationFrame(() => {
-        document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-      });
+      more.classList.toggle('hidden', !state.hasMore);
+      document.getElementById('loadMoreCount').textContent =
+        state.hasMore ? `Showing ${state.items.length} of ${state.total}` : '';
+
+      announce(`${state.items.length} of ${state.total} photos shown.`);
     }
 
-    // ── Set active filter ──
+    function announce(msg) {
+      const el = document.getElementById('srStatus');
+      if (el) el.textContent = msg;
+    }
+
+    // ── Data flow ──────────────────────────────────────────────
+    async function loadFirstPage() {
+      state.loading = true;
+      state.offset  = 0;
+      try {
+        const json    = await fetchPage(0);
+        state.items   = json.data || [];
+        state.total   = json.meta?.total ?? state.items.length;
+        state.hasMore = json.meta?.hasMore ?? false;
+        state.offset  = state.items.length;
+        destroyLightGallery();
+        render();
+      } catch (err) {
+        console.error('[gallery]', err);
+        showError();
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    async function loadMore() {
+      if (state.loading || !state.hasMore) return;
+      state.loading = true;
+
+      const btn   = document.getElementById('loadMoreBtn');
+      const label = document.getElementById('loadMoreLabel');
+      btn.disabled = true;
+      label.textContent = 'Loading…';
+
+      try {
+        const json = await fetchPage(state.offset);
+        const batch = json.data || [];
+        state._lastBatch = batch.length;
+        state.items.push(...batch);
+        state.total   = json.meta?.total ?? state.total;
+        state.hasMore = json.meta?.hasMore ?? false;
+        state.offset += batch.length;
+        render({ append: true });
+      } catch (err) {
+        console.error('[gallery]', err);
+        label.textContent = 'Try again';
+      } finally {
+        state.loading = false;
+        btn.disabled = false;
+        if (label.textContent === 'Loading…') label.textContent = 'Load more';
+      }
+    }
+
+    function showError() {
+      ['galleryContent', 'emptyState', 'noResults', 'loadMoreArea', 'loadingSkeleton']
+        .forEach(id => document.getElementById(id)?.classList.add('hidden'));
+      document.getElementById('errorState').classList.remove('hidden');
+    }
+
+    // ── Filters & search ───────────────────────────────────────
     function setFilter(cat) {
-      currentFilter = cat;
-      buildFilters(getCategories(allItems));
-      renderGallery();
+      if (state.filter === cat) return;
+      state.filter = cat;
+      buildFilters();
+      loadFirstPage();
       const bar = document.getElementById('filterBar');
       if (bar) window.scrollTo({ top: bar.offsetTop - 10, behavior: 'smooth' });
     }
 
-    // ── Intersection Observer for scroll reveal ──
+    function resetFilters() {
+      state.filter = 'all';
+      state.search = '';
+      document.getElementById('gallerySearch').value = '';
+      buildFilters();
+      loadFirstPage();
+    }
+
+    // Delegated: pills are re-rendered on every filter change, so binding to the
+    // container survives that instead of re-attaching handlers each time.
+    document.getElementById('filterContainer').addEventListener('click', e => {
+      const btn = e.target.closest('.filter-btn');
+      if (btn) setFilter(btn.dataset.cat);
+    });
+
+    // Debounced so typing does not fire a request per keystroke.
+    let searchTimer;
+    document.getElementById('gallerySearch').addEventListener('input', e => {
+      clearTimeout(searchTimer);
+      const value = e.target.value.trim();
+      searchTimer = setTimeout(() => {
+        if (value === state.search) return;
+        state.search = value;
+        loadFirstPage();
+      }, 300);
+    });
+
+    // ── Reflow on resize ───────────────────────────────────────
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(layoutMasonry, 120);
+    });
+
+    // ── Mobile menu ────────────────────────────────────────────
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+      document.getElementById('mobile-menu')?.classList.toggle('hidden');
+    });
+
+    // ── Boot ───────────────────────────────────────────────────
+    async function init() {
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('loadingSkeleton').classList.remove('hidden');
+
+      // Both requests in parallel. They were sequential — categories, then the
+      // first page — so first paint waited on two serial round trips to Supabase.
+      // Measured in a real browser: the grid appeared ~1s after DOM ready, and
+      // roughly half of that was the second request queueing behind the first.
+      // Neither depends on the other's result.
+      const [cats] = await Promise.all([fetchCategories(), loadFirstPage()]);
+      state.categories = cats;
+      buildFilters();
+      // loadFirstPage() painted before the taxonomy arrived, so category labels
+      // resolve now that state.categories is populated.
+      if (state.items.length) render();
+
+      const totalShown = state.total || state.items.length;
+      document.getElementById('statImgCount').textContent = totalShown || '—';
+      document.getElementById('statCatCount').textContent = state.categories.length || '—';
+
+      document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+    }
+
+    // ── Scroll reveal ──────────────────────────────────────────
     const revealObserver = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
       });
     }, { threshold: 0.08 });
 
-    // ── Mobile menu ──
-    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-      document.getElementById('mobile-menu')?.classList.toggle('hidden');
-    });
-
-    // ── Boot ──
-    async function init() {
-      allItems = await fetchGallery();
-      const cats = getCategories(allItems);
-
-      document.getElementById('statImgCount').textContent = allItems.length ? allItems.length + '+' : '—';
-      document.getElementById('statCatCount').textContent = cats.length  || '—';
-
-      buildFilters(cats);
-      renderGallery();
-
-      // Hero reveal on load
-      document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-    }
-
-    window.setFilter = setFilter;
+    window.setFilter    = setFilter;
+    window.resetFilters = resetFilters;
+    window.loadMore     = loadMore;
+    window.init         = init;
     document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>

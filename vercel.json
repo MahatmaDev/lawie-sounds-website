@@ -12,7 +12,8 @@
     { "src": "/IMAGES/(.*)", "dest": "/IMAGES/$1" },
     { "src": "/Gallery/(.*)", "dest": "/Gallery/$1" },
     { "src": "/", "dest": "/frontend/index.html" },
-    { "src": "/(.*)", "dest": "/frontend/$1" }
+    { "src": "/(.*)", "dest": "/frontend/$1" },
+    { "src": "/(.*)", "dest": "/frontend/404.html", "status": 404 }
   ],
   "headers": [
     {

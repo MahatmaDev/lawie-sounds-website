@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
+  <title>Leave a Review | LAWIE SOUNDS</title>
+  <meta name="description" content="Tell us how your event went. Your review helps other people in Kenya choose the right team for their day.">
+  <meta name="robots" content="noindex">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    * { font-family: 'Inter', sans-serif; }
+    :root { --bg:#08080f; --surface:#0f0f1a; --border:rgba(255,255,255,0.08); --yellow:#facc15; }
+    body { background: var(--bg); color:#fff; margin:0; }
+
+    .field {
+      width:100%; padding:0.7rem 0.9rem; border-radius:0.65rem;
+      background:rgba(255,255,255,0.04); border:1.5px solid var(--border);
+      color:#fff; font-size:0.95rem; transition:border-color .18s;
+    }
+    .field:focus { outline:none; border-color:var(--yellow); }
+    .field::placeholder { color:rgba(255,255,255,0.28); }
+    .field[aria-invalid="true"] { border-color:#f87171; }
+
+    .field-error { color:#fca5a5; font-size:0.78rem; margin-top:0.3rem; display:none; }
+    .field-error.show { display:block; }
+
+    /* Star input. Built from real radio buttons so it is keyboard operable and
+       announced correctly, with the visual layer drawn on top. */
+    .stars { display:inline-flex; flex-direction:row-reverse; gap:0.15rem; }
+    .stars input { position:absolute; opacity:0; width:0; height:0; }
+    .stars label {
+      font-size:2.1rem; line-height:1; cursor:pointer; color:rgba(255,255,255,0.16);
+      transition:color .12s, transform .12s; padding:0 0.1rem;
+    }
+    .stars label:hover, .stars label:hover ~ label,
+    .stars input:checked ~ label { color:var(--yellow); }
+    .stars label:active { transform:scale(0.9); }
+    .stars input:focus-visible + label { outline:2px solid var(--yellow); outline-offset:3px; border-radius:4px; }
+
+    .btn-primary {
+      background:var(--yellow); color:#000; font-weight:800;
+      padding:0.85rem 2rem; border-radius:999px; border:none; cursor:pointer;
+      transition:background .18s, opacity .18s; min-height:48px;
+    }
+    .btn-primary:hover:not(:disabled) { background:#fde047; }
+    .btn-primary:disabled { opacity:.55; cursor:not-allowed; }
+
+    .consent-box {
+      background:rgba(250,204,21,0.05); border:1.5px solid rgba(250,204,21,0.22);
+      border-radius:0.8rem; padding:1rem;
+    }
+    .sr-only {
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+    a { color:var(--yellow); }
+  </style>
+</head>
+<body>
+
+  <header class="border-b" style="border-color:var(--border)">
+    <div class="container mx-auto px-4 py-3.5 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+        <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
+      </a>
+      <a href="index.html" class="text-sm text-gray-400 hover:text-yellow-400 transition">← Back to site</a>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-10 max-w-2xl">
+
+    <!-- ============ FORM ============ -->
+    <div id="formView">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl sm:text-4xl font-black mb-3">How did we do?</h1>
+        <p class="text-gray-400 text-sm max-w-md mx-auto">
+          If Lawie Sounds worked your event, we would genuinely value hearing about it — the good and the things we could do better.
+        </p>
+      </div>
+
+      <form id="reviewForm" novalidate class="space-y-6">
+
+        <!-- Rating -->
+        <fieldset>
+          <legend class="block text-sm font-semibold mb-2">Your rating <span class="text-red-400">*</span></legend>
+          <div class="stars" id="starGroup">
+            <input type="radio" name="rating" id="star5" value="5"><label for="star5" title="5 stars">★</label>
+            <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars">★</label>
+            <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars">★</label>
+            <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars">★</label>
+            <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star">★</label>
+          </div>
+          <p id="ratingLabel" class="text-xs text-gray-500 mt-1 h-4"></p>
+          <p class="field-error" id="err-rating"></p>
+        </fieldset>
+
+        <!-- Comment -->
+        <div>
+          <label for="comment" class="block text-sm font-semibold mb-2">
+            Tell us about it <span class="text-gray-500 font-normal">(optional)</span>
+          </label>
+          <textarea id="comment" name="comment" rows="4" maxlength="1500" class="field"
+            placeholder="What stood out? How was the sound, the timing, the team?"></textarea>
+          <div class="flex justify-between items-start">
+            <p class="field-error" id="err-comment"></p>
+            <p class="text-xs text-gray-600 mt-1 ml-auto"><span id="commentCount">0</span> / 1500</p>
+          </div>
+        </div>
+
+        <!-- Name + how it appears -->
+        <div>
+          <label for="clientName" class="block text-sm font-semibold mb-2">Your name <span class="text-red-400">*</span></label>
+          <input type="text" id="clientName" name="clientName" class="field" maxlength="120" autocomplete="name"
+            placeholder="e.g. Sarah Kamau">
+          <p class="field-error" id="err-clientName"></p>
+
+          <!-- The privacy choice is shown at the moment it matters, with a live
+               preview, rather than buried in a policy page. Minimised is the
+               default; showing more is an active choice. -->
+          <div class="mt-3 rounded-lg p-3" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+            <label class="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" id="showFullName" class="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0">
+              <span class="text-sm text-gray-300">
+                Show my full name publicly
+                <span class="block text-xs text-gray-500 mt-0.5">
+                  Leave this unticked and we will show <strong id="namePreview" class="text-gray-300">just your first name and last initial</strong>.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Event details -->
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label for="eventType" class="block text-sm font-semibold mb-2">Type of event <span class="text-gray-500 font-normal">(optional)</span></label>
+            <select id="eventType" class="field">
+              <option value="">Choose…</option>
+              <option>Wedding</option>
+              <option>Ruracio</option>
+              <option>Corporate</option>
+              <option>Birthday</option>
+              <option>Church event</option>
+              <option>Funeral service</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="eventDate" class="block text-sm font-semibold mb-2">When was it? <span class="text-gray-500 font-normal">(optional)</span></label>
+            <input type="date" id="eventDate" class="field">
+            <p class="field-error" id="err-eventDate"></p>
+          </div>
+        </div>
+
+        <!-- Verification -->
+        <div>
+          <label for="bookingReference" class="block text-sm font-semibold mb-2">
+            Booking reference <span class="text-gray-500 font-normal">(optional)</span>
+          </label>
+          <input type="text" id="bookingReference" class="field" placeholder="LS-2607-A1B2C3" maxlength="20"
+            style="text-transform:uppercase" autocomplete="off">
+          <p class="text-xs text-gray-500 mt-1.5">
+            <i class="fas fa-circle-check text-green-500 mr-1"></i>
+            If you have it, your review gets a <strong class="text-gray-400">Verified client</strong> badge. We never publish the reference itself.
+          </p>
+        </div>
+
+        <!-- Honeypot: hidden from people, irresistible to bots. -->
+        <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px">
+          <label for="website">Website</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <!-- Consent -->
+        <div class="consent-box">
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" id="consentPublish" class="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0">
+            <span class="text-sm">
+              <strong>I agree that Lawie Sounds may publish this review on their website.</strong>
+              <span class="block text-xs text-gray-400 mt-1.5" id="consentNotice">Loading…</span>
+            </span>
+          </label>
+          <p class="field-error" id="err-consentPublish"></p>
+        </div>
+
+        <div id="formError" class="hidden rounded-lg p-3 text-sm" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5"></div>
+
+        <div class="text-center pt-2">
+          <button type="submit" id="submitBtn" class="btn-primary">
+            <i class="fas fa-paper-plane mr-2"></i>Send my review
+          </button>
+          <p class="text-xs text-gray-600 mt-3">A person reads every review before it appears.</p>
+        </div>
+      </form>
+    </div>
+
+    <!-- ============ SUCCESS ============ -->
+    <div id="successView" class="hidden text-center py-8">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background:rgba(34,197,94,0.12)">
+        <i class="fas fa-check text-3xl text-green-400"></i>
+      </div>
+      <h1 class="text-3xl font-black mb-3">Thank you</h1>
+      <p class="text-gray-400 text-sm max-w-md mx-auto mb-2">
+        Your review has been sent to the Lawie Sounds team. Someone reads every review before it goes on the site, so it may take a day or so to appear.
+      </p>
+      <p class="text-gray-400 text-sm max-w-md mx-auto mb-8">
+        It will show publicly as <strong id="successName" class="text-white"></strong><span id="successVerified"></span>.
+      </p>
+
+      <!-- The withdrawal link is shown once and never sent anywhere. Saving it is
+           the reviewer's choice; we deliberately do not collect an email address
+           just to be able to re-send it. -->
+      <div class="max-w-md mx-auto rounded-xl p-5 text-left" style="background:var(--surface);border:1.5px solid rgba(250,204,21,0.25)">
+        <p class="text-sm font-bold text-yellow-400 mb-2"><i class="fas fa-key mr-1.5"></i>Changed your mind later?</p>
+        <p class="text-xs text-gray-400 mb-3">
+          This private link removes your review from the website immediately, no questions asked.
+          <strong class="text-gray-300">Save it now</strong> — for your privacy we do not email it to you, and we cannot show it again.
+        </p>
+        <div class="flex gap-2">
+          <input id="withdrawLink" type="text" readonly class="field text-xs" style="font-family:monospace"
+                 aria-label="Your private link for withdrawing this review">
+          <button type="button" onclick="copyWithdrawLink()" class="flex-none px-3 rounded-lg text-sm font-semibold transition"
+            style="background:rgba(255,255,255,0.08);color:#fff" id="copyBtn">Copy</button>
+        </div>
+      </div>
+
+      <a href="index.html" class="inline-block mt-8 text-sm text-gray-400 hover:text-yellow-400 transition">← Back to the site</a>
+    </div>
+
+    <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
+  </main>
+
+  <footer class="border-t mt-16" style="border-color:var(--border)">
+    <div class="container mx-auto px-4 py-8 text-center text-xs text-gray-600">
+      &copy; 2026 Lawie Sounds · Nairobi, Kenya ·
+      <a href="tel:+254703925826" class="hover:underline">+254 703 925 826</a>
+    </div>
+  </footer>
+
+  <script>
+    const RATING_WORDS = { 1:'Not good', 2:'Below what we aim for', 3:'Fine', 4:'Good', 5:'Excellent' };
+
+    const $ = id => document.getElementById(id);
+    function showError(field, msg) {
+      const el = $('err-' + field);
+      const input = $(field) || document.querySelector(`[name="${field}"]`);
+      if (el) { el.textContent = msg; el.classList.add('show'); }
+      if (input) input.setAttribute('aria-invalid', 'true');
+    }
+    function clearErrors() {
+      document.querySelectorAll('.field-error').forEach(e => { e.textContent = ''; e.classList.remove('show'); });
+      document.querySelectorAll('[aria-invalid]').forEach(e => e.removeAttribute('aria-invalid'));
+      $('formError').classList.add('hidden');
+    }
+
+    // Mirrors the server's toDisplayName so the preview cannot promise something
+    // different from what actually gets stored.
+    function previewName() {
+      const raw  = $('clientName').value.trim().replace(/\s+/g, ' ');
+      const full = $('showFullName').checked;
+      const el   = $('namePreview');
+      if (!raw) { el.textContent = 'just your first name and last initial'; return; }
+      const parts = raw.split(' ');
+      el.textContent = (full || parts.length === 1)
+        ? raw
+        : `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+    }
+
+    $('clientName').addEventListener('input', previewName);
+    $('showFullName').addEventListener('change', previewName);
+
+    $('comment').addEventListener('input', e => { $('commentCount').textContent = e.target.value.length; });
+
+    document.querySelectorAll('input[name="rating"]').forEach(r => {
+      r.addEventListener('change', () => { $('ratingLabel').textContent = RATING_WORDS[r.value] || ''; });
+    });
+
+    // The exact consent wording comes from the API, so the text shown here and
+    // the version recorded against the review are guaranteed to be the same.
+    let consentVersion = null;
+    (async () => {
+      try {
+        const res = await fetch('/api/reviews/consent');
+        const json = await res.json();
+        $('consentNotice').textContent = json.data.notice;
+        consentVersion = json.data.version;
+      } catch {
+        $('consentNotice').textContent =
+          'Your review, rating and chosen display name will be shown publicly. You can withdraw it at any time using the private link we give you.';
+      }
+    })();
+
+    $('reviewForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      clearErrors();
+
+      const rating = document.querySelector('input[name="rating"]:checked')?.value;
+      const payload = {
+        clientName:       $('clientName').value.trim(),
+        rating:           rating ? Number(rating) : null,
+        comment:          $('comment').value.trim(),
+        eventType:        $('eventType').value || null,
+        eventDate:        $('eventDate').value || null,
+        bookingReference: $('bookingReference').value.trim() || null,
+        showFullName:     $('showFullName').checked,
+        consentPublish:   $('consentPublish').checked,
+        consentVersion,
+        website:          $('website').value,   // honeypot
+      };
+
+      // Check locally first so the common mistakes never cost a round trip —
+      // the server re-checks everything regardless.
+      let firstBad = null;
+      if (!payload.rating)              { showError('rating', 'Please choose a star rating.'); firstBad ||= 'starGroup'; }
+      if (payload.clientName.length < 2){ showError('clientName', 'Please tell us your name.'); firstBad ||= 'clientName'; }
+      if (!payload.consentPublish)      { showError('consentPublish', 'We need your permission before we can publish your review.'); firstBad ||= 'consentPublish'; }
+      if (firstBad) { $(firstBad).scrollIntoView({ behavior:'smooth', block:'center' }); $(firstBad).focus?.(); return; }
+
+      const btn = $('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending…';
+
+      try {
+        const res  = await fetch('/api/reviews', {
+          method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          if (json?.fields) {
+            Object.entries(json.fields).forEach(([f, m]) => showError(f, m));
+            const first = Object.keys(json.fields)[0];
+            $(first)?.scrollIntoView({ behavior:'smooth', block:'center' });
+          } else {
+            const box = $('formError');
+            box.textContent = json?.error || 'Something went wrong. Please try again, or call us on +254 703 925 826.';
+            box.classList.remove('hidden');
+          }
+          return;
+        }
+
+        $('formView').classList.add('hidden');
+        $('successView').classList.remove('hidden');
+        $('successName').textContent = json.data.displayName;
+        if (json.data.isVerified) {
+          $('successVerified').innerHTML = ' with a <strong class="text-green-400">Verified client</strong> badge';
+        }
+        $('withdrawLink').value = location.origin + json.data.withdrawalPath;
+        $('srStatus').textContent = 'Review submitted. Save your withdrawal link.';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {
+        const box = $('formError');
+        box.textContent = 'We could not reach the server. Check your connection and try again.';
+        box.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Send my review';
+      }
+    });
+
+    function copyWithdrawLink() {
+      const input = $('withdrawLink');
+      input.select();
+      navigator.clipboard?.writeText(input.value).then(() => {
+        const b = $('copyBtn');
+        b.textContent = 'Copied';
+        setTimeout(() => { b.textContent = 'Copy'; }, 2000);
+      }).catch(() => { document.execCommand('copy'); });
+    }
+    window.copyWithdrawLink = copyWithdrawLink;
+  </script>
+</body>
+</html>

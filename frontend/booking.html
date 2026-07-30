@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta property="og:image" content="https://lawie-sounds-website.vercel.app/IMAGES/LOGO/2.jpg">
+  <meta property="og:url" content="https://lawie-sounds-website.vercel.app/booking.html">
+  <meta property="og:site_name" content="Lawie Sounds">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://lawie-sounds-website.vercel.app/booking.html">
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
   <title>Book Your Event | LAWIE SOUNDS - Professional Entertainment</title>
   <meta name="description" content="Book Lawie Sounds for your wedding, corporate event, or party. Professional DJ, MC, lighting, sound, and photography services in Kenya.">
 
@@ -99,7 +107,7 @@
     <div class="container mx-auto px-4 py-4">
       <div class="flex flex-wrap items-center justify-between">
         <a href="index.html" class="flex items-center gap-3" aria-label="Lawie Sounds home">
-          <img src="/IMAGES/LOGO/2.jpg" alt="" class="h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
+          <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
           <span class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
         </a>
 
@@ -231,6 +239,26 @@
                 <option value="Other">Other</option>
               </select>
             </div>
+          </div>
+
+          <!-- Promo code. Placed at the end of step 1 rather than beside the
+               submit button: a client who has a code wants to enter it early and
+               see it accepted, and one who does not should not meet an empty
+               discount box at the moment they commit. -->
+          <div class="mt-5">
+            <label for="promoCode" class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Promo code <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div class="flex gap-2">
+              <input type="text" id="promoCode" name="promoCode" autocomplete="off" maxlength="40"
+                     class="form-input flex-1 border border-gray-300 rounded-lg px-4 py-3 uppercase tracking-wider"
+                     placeholder="e.g. AUG10" aria-describedby="promoFeedback">
+              <button type="button" id="promoCheckBtn" onclick="checkPromoCode()"
+                      class="flex-none px-5 rounded-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 transition">
+                Apply
+              </button>
+            </div>
+            <p id="promoFeedback" class="text-sm mt-1.5 hidden" role="status" aria-live="polite"></p>
           </div>
         </fieldset>
 
@@ -367,7 +395,7 @@
 
         <!-- Navigation -->
         <div class="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-gray-200">
-          <button type="button" id="prevBtn" class="btn-touch invisible px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition">
+          <button type="button" id="prevBtn" aria-label="Back to the previous step" class="btn-touch invisible px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition">
             <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>Back
           </button>
           <button type="button" id="nextBtn" class="btn-touch px-6 py-2.5 bg-yellow-400 text-black rounded-full font-bold hover:bg-yellow-300 transition shadow">
@@ -432,7 +460,7 @@
   <footer class="bg-gray-900 text-white mt-16">
     <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
       <div>
-        <img src="/IMAGES/LOGO/2.jpg" alt="" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
+        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
         <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
         Site by <a href="https://instagram.com/mahatma_the_deejay" target="_blank" rel="noopener" class="text-yellow-400 hover:text-yellow-300 underline">@mahatma_the_deejay</a></p>
       </div>
@@ -681,8 +709,75 @@
       venue:           $('venue').value.trim(),
       services:        Array.from(form.querySelectorAll('input[name="services"]:checked')).map(c => c.value),
       specialRequests: $('special_requests').value.trim(),
+      // Sent even if the client never pressed Apply. The server re-validates it
+      // regardless, and a mistyped code must not silently lose the enquiry — the
+      // booking saves either way and the response says whether it applied.
+      promoCode:       $('promoCode')?.value.trim().toUpperCase() || null,
     };
   }
+
+  // ── Promo code ─────────────────────────────────────────────
+  // Checking before submit is a courtesy, not a gate: it lets the client fix a
+  // typo while they still care, rather than discovering it after the enquiry is
+  // already sent. The server re-validates on submit regardless.
+  function escBk(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  async function checkPromoCode() {
+    const input = $('promoCode');
+    const out   = $('promoFeedback');
+    const btn   = $('promoCheckBtn');
+    if (!input || !out) return;
+
+    const code = input.value.trim().toUpperCase();
+    out.classList.remove('hidden');
+
+    if (!code) {
+      out.textContent = 'Enter a code first.';
+      out.className = 'text-sm mt-1.5 text-gray-500';
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    out.textContent = 'Checking…';
+    out.className = 'text-sm mt-1.5 text-gray-500';
+
+    try {
+      const services = Array.from(document.querySelectorAll('input[name="services"]:checked')).map(c => c.value);
+      const r = await fetch('/api/offers/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, services }),
+      });
+      const j = await r.json().catch(() => null);
+
+      if (r.ok && j?.success) {
+        input.value = j.data.code;
+        out.innerHTML = '<i class="fas fa-circle-check mr-1"></i>'
+          + escBk(j.data.description || j.data.discountLabel) + ' applied.'
+          + (j.data.endsOn ? ' <span class="text-gray-500">Ends ' + escBk(j.data.endsOn) + '.</span>' : '');
+        out.className = 'text-sm mt-1.5 text-green-700 font-semibold';
+      } else {
+        // The server's reason is specific — expired, not started, fully claimed,
+        // wrong service. A generic "invalid code" for an expired promotion sends
+        // people to the phone convinced the site is broken.
+        out.textContent = j?.error || 'That code could not be applied.';
+        out.className = 'text-sm mt-1.5 text-red-600';
+      }
+    } catch {
+      out.textContent = 'Could not check the code just now — you can still send your enquiry.';
+      out.className = 'text-sm mt-1.5 text-gray-500';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+  window.checkPromoCode = checkPromoCode;
+
+  // Enter inside the code box applies the code rather than submitting the form.
+  $('promoCode')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); checkPromoCode(); }
+  });
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 

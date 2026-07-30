@@ -78,34 +78,146 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS total_seats   INT  DEFAULT 100;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS status        TEXT DEFAULT 'published';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS booking_count INT  DEFAULT 0;
 
+-- Gallery category taxonomy. A table rather than a CHECK constraint or a
+-- hardcoded JS array: the same list used to live in the dashboard and in the
+-- live data, and the two drifted until only one value overlapped. Both the
+-- public page and the dashboard now read this via the API.
+CREATE TABLE IF NOT EXISTS gallery_categories (
+  slug          TEXT PRIMARY KEY,
+  label         TEXT NOT NULL,
+  emoji         TEXT DEFAULT '📸',
+  display_order INT  DEFAULT 0,
+  is_active     BOOLEAN DEFAULT TRUE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+INSERT INTO gallery_categories (slug, label, emoji, display_order) VALUES
+  ('Weddings','Weddings','💍',10), ('Ruracio','Ruracio','🎎',20),
+  ('Corporate','Corporate','🏢',30), ('Parties','Parties','🎉',40),
+  ('Audio','Audio','🎧',50), ('Visual','Visual','📺',60),
+  ('Equipment','Equipment','🎛️',70), ('Effects','Effects','🎆',80),
+  ('Media','Media','🎥',90), ('Behind the Scenes','Behind the Scenes','🎬',100),
+  ('General','General','📸',110)
+ON CONFLICT (slug) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS gallery (
   id            UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
   title         TEXT        NOT NULL,
-  category      TEXT        DEFAULT 'General',
-  type          TEXT        DEFAULT 'image',
-  image_url     TEXT        NOT NULL,
+  category      TEXT        DEFAULT 'General' REFERENCES gallery_categories(slug)
+                            ON UPDATE CASCADE ON DELETE SET DEFAULT,
+  type          TEXT        DEFAULT 'image' CHECK (type IN ('image','video')),
+  image_url     TEXT        NOT NULL,        -- Storage public URL, or a legacy /IMAGES/ path
   service_slug  TEXT,                        -- links image to a specific service (e.g. 'drone-services')
   is_featured   BOOLEAN     DEFAULT FALSE,   -- pinned to top of gallery page
+  is_published  BOOLEAN     DEFAULT TRUE,    -- false = draft, hidden from the public page
   display_order INT         DEFAULT 0,
+  alt_text      TEXT,                        -- accessibility; distinct from title
+  caption       TEXT,
+  width         INT,                         -- intrinsic size — prevents layout shift
+  height        INT,
+  storage_path  TEXT,                        -- key inside the `gallery` bucket; NULL for legacy rows
+  mime_type     TEXT,
+  file_size     INT,
+  thumb_url     TEXT,                        -- poster frame, required for video
+  event_date    DATE,                        -- when the event happened, not when it was uploaded
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
+-- Replayed as ALTER for existing installs: CREATE TABLE IF NOT EXISTS is a
+-- no-op once the table exists, so new columns must be added separately.
+-- Migration history: database/migrations/2026-07-28_gallery_engine.sql
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS alt_text     TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS caption      TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS width        INT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS height       INT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS storage_path TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS mime_type    TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS file_size    INT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS thumb_url    TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS event_date   DATE;
 
+-- Media lives in the `gallery` Storage bucket, NOT in this table. Creating it:
+--   INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+--   VALUES ('gallery','gallery',true,52428800,
+--           ARRAY['image/jpeg','image/png','image/webp','image/gif','image/avif',
+--                 'video/mp4','video/webm','video/quicktime'])
+--   ON CONFLICT (id) DO NOTHING;
+
+-- Reviews hold a real person's words published under their name, so the shape
+-- below is as much a privacy design as a data model.
+--   * client_name is the full name they typed — ADMIN ONLY, never in a public
+--     API response. display_name is what the world sees ("Sarah K." by default).
+--   * consent_publish records that they agreed, consent_version records exactly
+--     what they agreed to, so we can always answer "what were they told?".
+--   * withdrawal_token lets them retract without an account or an email address.
+-- Migration history: database/migrations/2026-07-29_reviews_consent_engine.sql
 CREATE TABLE IF NOT EXISTS reviews (
-  id           UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
-  client_name  TEXT        NOT NULL,
-  rating       INT         DEFAULT 5 CHECK (rating >= 1 AND rating <= 5),
-  comment      TEXT,
-  event_type   TEXT,
-  event_date   DATE,
-  service_id   UUID        REFERENCES services(id) ON DELETE SET NULL,
-  client_image TEXT,
-  is_approved  BOOLEAN     DEFAULT FALSE,
-  is_featured  BOOLEAN     DEFAULT FALSE,
-  admin_reply  TEXT,
-  created_at   TIMESTAMPTZ DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ DEFAULT NOW()
+  id               UUID        DEFAULT uuid_generate_v4() PRIMARY KEY,
+  client_name      TEXT        NOT NULL,               -- admin-only, never published
+  display_name     TEXT,                               -- what the public sees
+  show_full_name   BOOLEAN     DEFAULT FALSE,
+  rating           INT         NOT NULL DEFAULT 5 CHECK (rating BETWEEN 1 AND 5),
+  comment          TEXT,
+  event_type       TEXT,
+  event_date       DATE,
+  service_id       UUID        REFERENCES services(id) ON DELETE SET NULL,
+  client_image     TEXT,
+  status           TEXT        NOT NULL DEFAULT 'pending'
+                               CHECK (status IN ('pending','published','rejected','withdrawn')),
+  is_approved      BOOLEAN     DEFAULT FALSE,          -- mirror of status, kept by trigger
+  is_featured      BOOLEAN     DEFAULT FALSE,
+  admin_reply      TEXT,
+  -- consent
+  consent_publish  BOOLEAN     NOT NULL DEFAULT FALSE,
+  consent_version  TEXT,
+  consented_at     TIMESTAMPTZ,
+  -- withdrawal
+  withdrawal_token TEXT,
+  withdrawn_at     TIMESTAMPTZ,
+  -- verification against a real booking
+  booking_id       UUID        REFERENCES bookings(id) ON DELETE SET NULL,
+  is_verified      BOOLEAN     DEFAULT FALSE,
+  -- moderation audit
+  moderated_at     TIMESTAMPTZ,
+  moderated_by     TEXT,
+  rejection_reason TEXT,
+  -- abuse signals, minimised: a salted hash, never a raw IP
+  submitter_hash   TEXT,
+  user_agent       TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- The guarantee that matters, enforced in the database rather than in
+-- application code that a future path might bypass: nothing becomes public
+-- without a recorded yes.
+ALTER TABLE reviews DROP CONSTRAINT IF EXISTS reviews_consent_required;
+ALTER TABLE reviews ADD  CONSTRAINT reviews_consent_required
+  CHECK (status <> 'published' OR consent_publish = TRUE);
+
+-- status is the single source of truth; is_approved follows it so the
+-- dashboard_stats view and older code keep working without a second opinion.
+CREATE OR REPLACE FUNCTION sync_review_approval()
+RETURNS TRIGGER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  NEW.is_approved := (NEW.status = 'published');
+  IF NEW.status = 'withdrawn' AND NEW.withdrawn_at IS NULL THEN
+    NEW.withdrawn_at := NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_reviews_sync_approval ON reviews;
+CREATE TRIGGER trg_reviews_sync_approval
+  BEFORE INSERT OR UPDATE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION sync_review_approval();
+
+DROP INDEX IF EXISTS idx_reviews_withdrawal_token;
+CREATE UNIQUE INDEX idx_reviews_withdrawal_token
+  ON reviews (withdrawal_token) WHERE withdrawal_token IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS bookings (
   id                UUID          DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -307,6 +419,28 @@ ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service_id   UUID REFERENCES servic
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS client_image TEXT;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_featured  BOOLEAN DEFAULT FALSE;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ DEFAULT NOW();
+-- Consent / privacy / moderation columns (2026-07-29). Replayed as ALTER for
+-- existing installs, since CREATE TABLE IF NOT EXISTS above is a no-op once the
+-- table exists.
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status           TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS display_name     TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS show_full_name   BOOLEAN DEFAULT FALSE;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_publish  BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_version  TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consented_at     TIMESTAMPTZ;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS withdrawal_token TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS withdrawn_at     TIMESTAMPTZ;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS booking_id       UUID REFERENCES bookings(id) ON DELETE SET NULL;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_verified      BOOLEAN DEFAULT FALSE;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS moderated_at     TIMESTAMPTZ;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS moderated_by     TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS submitter_hash   TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_agent       TEXT;
+
+ALTER TABLE reviews DROP CONSTRAINT IF EXISTS reviews_status_check;
+ALTER TABLE reviews ADD  CONSTRAINT reviews_status_check
+  CHECK (status IN ('pending','published','rejected','withdrawn'));
 
 ALTER TABLE settings         ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE settings         ADD COLUMN IF NOT EXISTS updated_at  TIMESTAMPTZ DEFAULT NOW();
@@ -348,12 +482,33 @@ DROP POLICY IF EXISTS "Public can submit reviews"        ON reviews;
 
 CREATE POLICY "Public reads active services"  ON services         FOR SELECT USING (is_active = TRUE);
 CREATE POLICY "Public reads active events"    ON events           FOR SELECT USING (is_active = TRUE);
-CREATE POLICY "Public reads gallery"          ON gallery          FOR SELECT USING (TRUE);
-CREATE POLICY "Public reads approved reviews" ON reviews          FOR SELECT USING (is_approved = TRUE);
-CREATE POLICY "Public reads active banners"   ON marketing_banners FOR SELECT USING (is_active = TRUE);
-CREATE POLICY "Public reads active posters"   ON posters          FOR SELECT USING (is_active = TRUE);
-CREATE POLICY "Public can submit bookings"    ON bookings         FOR INSERT WITH CHECK (TRUE);
-CREATE POLICY "Public can submit reviews"     ON reviews          FOR INSERT WITH CHECK (TRUE);
+-- Published rows only. A blanket USING (TRUE) would leak unpublished drafts the
+-- moment is_published started being used.
+DROP POLICY IF EXISTS "Public reads published gallery" ON gallery;
+CREATE POLICY "Public reads published gallery" ON gallery FOR SELECT USING (is_published = TRUE);
+ALTER TABLE gallery_categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public reads gallery categories" ON gallery_categories;
+CREATE POLICY "Public reads gallery categories" ON gallery_categories FOR SELECT USING (is_active = TRUE);
+DROP POLICY IF EXISTS "Public reads published reviews" ON reviews;
+CREATE POLICY "Public reads published reviews" ON reviews          FOR SELECT USING (status = 'published');
+CREATE POLICY "Public reads active banners"    ON marketing_banners FOR SELECT USING (is_active = TRUE);
+CREATE POLICY "Public reads active posters"    ON posters          FOR SELECT USING (is_active = TRUE);
+
+-- DELIBERATELY NO PUBLIC INSERT POLICIES.
+--
+-- These used to exist on both bookings and reviews as WITH CHECK (TRUE), which
+-- accepts ANY row from the anon role. Verified against the live project on
+-- 2026-07-29: an anonymous insert carrying is_approved = true returned 201 and
+-- the row was immediately public — bypassing the API, the moderation queue and
+-- the admin notification. The same hole on bookings routed around the honeypot,
+-- phone validation and rate limit.
+--
+-- Nothing legitimate needed them: the frontend never talks to PostgREST, it
+-- posts to the Express API, which holds the service key and bypasses RLS. The
+-- API is now the only write path, so validation, rate limiting and moderation
+-- cannot be avoided.
+DROP POLICY IF EXISTS "Public can submit bookings" ON bookings;
+DROP POLICY IF EXISTS "Public can submit reviews"  ON reviews;
 
 -- Service role key (used by our backend) bypasses RLS automatically.
 -- No additional admin policies needed.
@@ -390,6 +545,11 @@ CREATE INDEX IF NOT EXISTS idx_events_date          ON events(date);
 CREATE INDEX IF NOT EXISTS idx_events_is_active     ON events(is_active);
 CREATE INDEX IF NOT EXISTS idx_reviews_is_approved  ON reviews(is_approved);
 CREATE INDEX IF NOT EXISTS idx_reviews_is_featured  ON reviews(is_featured);
+-- Matched to the actual query patterns:
+CREATE INDEX IF NOT EXISTS idx_reviews_public_list     ON reviews (status, is_featured DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_service_status  ON reviews (service_id, status) WHERE service_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_moderation      ON reviews (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_submitter       ON reviews (submitter_hash, created_at DESC) WHERE submitter_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_notifs_is_read       ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifs_created_at    ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posters_order        ON posters(display_order);
@@ -397,6 +557,11 @@ CREATE INDEX IF NOT EXISTS idx_services_order       ON services(display_order);
 CREATE INDEX IF NOT EXISTS idx_gallery_service_slug ON gallery(service_slug);
 CREATE INDEX IF NOT EXISTS idx_gallery_is_featured  ON gallery(is_featured);
 CREATE INDEX IF NOT EXISTS idx_gallery_created_at   ON gallery(created_at DESC);
+-- Matched to the actual query patterns, not added speculatively:
+CREATE INDEX IF NOT EXISTS idx_gallery_public_list   ON gallery (is_published, is_featured DESC, display_order, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gallery_category_pub  ON gallery (category, is_published);
+CREATE INDEX IF NOT EXISTS idx_gallery_service_pub   ON gallery (service_slug, is_published) WHERE service_slug IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_gallery_storage_path  ON gallery (storage_path) WHERE storage_path IS NOT NULL;
 -- Foreign-key covering indexes (Supabase perf lint 0001)
 CREATE INDEX IF NOT EXISTS idx_bookings_event_id    ON bookings(event_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_channel     ON bookings(channel);

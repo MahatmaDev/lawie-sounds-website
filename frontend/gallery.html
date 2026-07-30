@@ -3,9 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="canonical" href="https://lawie-sounds-website.vercel.app/gallery.html">
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
   <title>Gallery | LAWIE SOUNDS — Event Moments</title>
   <meta name="description" content="Browse our portfolio — weddings, corporate events, ruracio ceremonies, and equipment setups. Every event tells a story. See Lawie Sounds in action.">
   <meta property="og:title" content="Gallery | Lawie Sounds">
+  <meta property="og:image" content="https://lawie-sounds-website.vercel.app/IMAGES/LOGO/2.jpg">
+  <meta property="og:url" content="https://lawie-sounds-website.vercel.app/gallery.html">
+  <meta property="og:site_name" content="Lawie Sounds">
+  <meta name="twitter:card" content="summary_large_image">
   <meta property="og:description" content="500+ events captured. Browse our portfolio.">
   <meta property="og:type" content="website">
 
@@ -196,7 +204,7 @@
       <div class="flex items-center justify-between gap-3">
 
         <a href="index.html" class="flex items-center gap-3 flex-shrink-0">
-          <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+          <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
           <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
         </a>
 
@@ -442,11 +450,11 @@
   <footer class="border-t" style="background:#000;border-color:var(--border)">
     <div class="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
       <div>
-        <img src="../IMAGES/LOGO/2.jpg" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
+        <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
         <p class="text-sm text-gray-500 leading-relaxed">
           &copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>
           Professional Event Entertainment · Kenya<br>
-          <a href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
+          <a rel="noopener noreferrer" href="https://instagram.com/mahatma_the_deejay" target="_blank" class="text-yellow-400 hover:underline">@mahatma_the_deejay</a>
         </p>
       </div>
       <div>
@@ -461,10 +469,10 @@
       <div>
         <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Connect</h3>
         <div class="flex gap-4 text-2xl">
-          <a href="https://instagram.com/lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="https://facebook.com/lawie.sounds"     target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a href="https://wa.me/254703925826"            target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-          <a href="https://tiktok.com/@lawie_sounds"      target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+          <a rel="noopener noreferrer" href="https://instagram.com/lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a rel="noopener noreferrer" href="https://facebook.com/lawie.sounds"     target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a rel="noopener noreferrer" href="https://wa.me/254703925826"            target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+          <a rel="noopener noreferrer" href="https://tiktok.com/@lawie_sounds"      target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
         </div>
         <div class="mt-6 text-sm text-gray-500">
           <p><i class="fas fa-phone mr-2 text-yellow-400"></i><a href="tel:+254703925826" class="hover:text-yellow-400 transition">+254 703 925 826</a></p>
@@ -481,7 +489,7 @@
       style="background:#22c55e;color:#fff" aria-label="Call">
       <i class="fas fa-phone-alt"></i>
     </a>
-    <a href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110"
+    <a rel="noopener noreferrer" href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110"
       style="background:#16a34a;color:#fff" aria-label="WhatsApp">
       <i class="fab fa-whatsapp text-lg"></i>
     </a>
@@ -671,6 +679,31 @@
         speed: 380, thumbnail: true, zoom: true, download: false, counter: true,
         mobileSettings: { controls: true, showCloseIcon: true, download: false },
       });
+
+      // lightGallery builds its own thumbnail strip and slide images with no alt
+      // attribute — 24 of them on this page. A missing alt makes a screen reader
+      // read out the file name; an empty alt correctly marks them as decorative
+      // duplicates of images already described in the grid above.
+      //
+      // An observer rather than event hooks: the library injects these nodes on
+      // its own schedule, and hooking lgAfterOpen only fixed them once a visitor
+      // had already opened the lightbox.
+      const markDecorative = (root = document) => {
+        root.querySelectorAll?.('img:not([alt])').forEach(img => img.setAttribute('alt', ''));
+      };
+      markDecorative();
+      if (!window._lgAltObserver) {
+        window._lgAltObserver = new MutationObserver(muts => {
+          for (const m of muts) {
+            for (const node of m.addedNodes) {
+              if (node.nodeType !== 1) continue;
+              if (node.tagName === 'IMG' && !node.hasAttribute('alt')) node.setAttribute('alt', '');
+              else markDecorative(node);
+            }
+          }
+        });
+        window._lgAltObserver.observe(document.body, { childList: true, subtree: true });
+      }
     }
 
     function destroyLightGallery() {

@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#facc15">
   <title>Leave a Review | LAWIE SOUNDS</title>
   <meta name="description" content="Tell us how your event went. Your review helps other people in Kenya choose the right team for their day.">
   <meta name="robots" content="noindex">
@@ -68,7 +71,7 @@
   <header class="border-b" style="border-color:var(--border)">
     <div class="container mx-auto px-4 py-3.5 flex items-center justify-between">
       <a href="index.html" class="flex items-center gap-3">
-        <img src="/IMAGES/LOGO/2.jpg" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
+        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
         <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
       </a>
       <a href="index.html" class="text-sm text-gray-400 hover:text-yellow-400 transition">← Back to site</a>
@@ -225,7 +228,8 @@
           <strong class="text-gray-300">Save it now</strong> — for your privacy we do not email it to you, and we cannot show it again.
         </p>
         <div class="flex gap-2">
-          <input id="withdrawLink" type="text" readonly class="field text-xs" style="font-family:monospace">
+          <input id="withdrawLink" type="text" readonly class="field text-xs" style="font-family:monospace"
+                 aria-label="Your private link for withdrawing this review">
           <button type="button" onclick="copyWithdrawLink()" class="flex-none px-3 rounded-lg text-sm font-semibold transition"
             style="background:rgba(255,255,255,0.08);color:#fff" id="copyBtn">Copy</button>
         </div>

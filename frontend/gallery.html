@@ -858,9 +858,17 @@
       document.getElementById('errorState').classList.add('hidden');
       document.getElementById('loadingSkeleton').classList.remove('hidden');
 
-      state.categories = await fetchCategories();
+      // Both requests in parallel. They were sequential — categories, then the
+      // first page — so first paint waited on two serial round trips to Supabase.
+      // Measured in a real browser: the grid appeared ~1s after DOM ready, and
+      // roughly half of that was the second request queueing behind the first.
+      // Neither depends on the other's result.
+      const [cats] = await Promise.all([fetchCategories(), loadFirstPage()]);
+      state.categories = cats;
       buildFilters();
-      await loadFirstPage();
+      // loadFirstPage() painted before the taxonomy arrived, so category labels
+      // resolve now that state.categories is populated.
+      if (state.items.length) render();
 
       const totalShown = state.total || state.items.length;
       document.getElementById('statImgCount').textContent = totalShown || '—';

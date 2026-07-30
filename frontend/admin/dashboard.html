@@ -413,7 +413,16 @@
       const container = document.getElementById('sectionContent');
       const recentBookings = store.bookings.slice(0, 5);
       const pendingReviews = store.reviews.filter(r => !r.isApproved);
-      const totalEstimatedValue = store.bookings.reduce((sum, b) => { const budgets = { '10k-30k': 20000, '30k-50k': 40000, '50k-100k': 75000, '100k-200k': 150000, '200k+': 250000 }; return sum + (budgets[b.budget] || 0); }, 0);
+      // Real agreed prices on work actually won — not budget-bracket midpoints.
+      //
+      // This previously read: budgets = {'10k-30k': 20000, ...} mapped from the
+      // client's self-declared bracket and summed across EVERY booking including
+      // cancelled ones. That printed a fabricated "KES 20,000 Total Pipeline" off
+      // a single enquiry nobody had quoted yet. The analytics tab was rebuilt to
+      // stop doing this; the same invented figure was still on this screen.
+      const wonBookings = store.bookings.filter(b => ['confirmed','completed'].includes(b.status));
+      const bookedValue = wonBookings.reduce((s, b) => s + (Number(b.agreedAmount) || 0), 0);
+      const unpricedWon = wonBookings.filter(b => b.agreedAmount === null || b.agreedAmount === undefined).length;
       const confirmedBookings = store.bookings.filter(b => ['confirmed','completed'].includes(b.status)).length;
       const convRate = store.bookings.length > 0 ? Math.round((confirmedBookings / store.bookings.length) * 100) : 0;
       const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome'; const emoji = sessionStorage.getItem('adminEmoji') || '👋'; const adminName = sessionStorage.getItem('adminName') || 'Administrator';
@@ -479,7 +488,10 @@
       // Revenue metrics
       const thisMonth = new Date(); const tm = thisMonth.getMonth(); const ty = thisMonth.getFullYear();
       const monthBookings = store.bookings.filter(b => { const d = new Date(b.createdAt || b.eventDate); return d.getMonth() === tm && d.getFullYear() === ty; });
-      const monthRevEst = monthBookings.reduce((s, b) => { const m = {'10k-30k':20000,'30k-50k':40000,'50k-100k':75000,'100k-200k':150000,'200k+':250000}; return s + (m[b.budget]||0); }, 0);
+      // monthRevEst removed: it was the same budget-bracket midpoint fabrication
+      // as totalEstimatedValue, presented as "This Month Est." revenue. The tile
+      // now shows jobs won, which is a fact. Real monthly revenue lives on the
+      // Analytics tab, where it is computed from agreed prices and payments.
       const activeServices = store.services.filter(s => s.isActive).length;
 
       container.innerHTML = `
@@ -492,12 +504,12 @@
           </div>
           <div class="flex gap-3">
             <div class="bg-purple-600/20 rounded-xl px-4 py-2.5 text-center border border-purple-700/30">
-              <p class="text-lg font-black text-purple-400">KES ${totalEstimatedValue.toLocaleString()}</p>
-              <p class="text-xs text-gray-400">Total Pipeline</p>
+              <p class="text-lg font-black text-purple-400">KES ${bookedValue.toLocaleString()}</p>
+              <p class="text-xs text-gray-400">Booked${unpricedWon ? ` <span class="text-yellow-400" title="${unpricedWon} won job${unpricedWon===1?'':'s'} still need a price">·&nbsp;${unpricedWon} unpriced</span>` : ''}</p>
             </div>
             <div class="bg-green-600/20 rounded-xl px-4 py-2.5 text-center border border-green-700/30">
-              <p class="text-lg font-black text-green-400">KES ${monthRevEst.toLocaleString()}</p>
-              <p class="text-xs text-gray-400">This Month Est.</p>
+              <p class="text-lg font-black text-green-400">${wonBookings.length}</p>
+              <p class="text-xs text-gray-400">Jobs won</p>
             </div>
           </div>
         </div>

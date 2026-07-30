@@ -26,11 +26,19 @@ const ALLOWED_ORIGINS = [
   'https://127.0.0.1:5500',
 ].filter(Boolean);
 
+// Rejecting by passing an Error to the callback makes the request fall through
+// to the generic error handler, which answers 500 "Internal server error". That
+// is actively misleading: a disallowed origin is a configuration problem, not a
+// server fault, and the opaque 500 gives whoever deployed to a new domain
+// without setting FRONTEND_URL nothing to go on. Refuse the CORS headers and
+// let the route run — the browser still blocks the response, and a same-origin
+// or server-to-server caller is unaffected.
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // server-to-server / same-origin
+    if (!origin) return cb(null, true);                     // same-origin / server-to-server
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error('Not allowed by CORS'));
+    console.warn(`[CORS] refused origin ${origin}. Add it to FRONTEND_URL if this is expected.`);
+    cb(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -96,7 +104,15 @@ const map = {
   // expose it, instead of leaking by default. Note what is NOT here —
   // client_name, booking_id, submitter_hash, user_agent, withdrawal_token.
   publicReview: (r) => r && ({ id: r.id, name: r.display_name, rating: r.rating, comment: r.comment, eventType: r.event_type, eventDate: r.event_date, serviceId: r.service_id, isFeatured: r.is_featured, isVerified: r.is_verified, adminReply: r.admin_reply, createdAt: r.created_at }),
-  banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, views: r.views, clicks: r.clicks, ctr: r.ctr, createdAt: r.created_at }),
+  // ADMIN view — includes the performance counters.
+  banner: (r) => r && ({ id: r.id, type: r.type, name: r.name, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, priority: r.priority, style: r.style, offerId: r.offer_id, views: r.views ?? 0, clicks: r.clicks ?? 0, ctr: r.ctr === null || r.ctr === undefined ? 0 : Number(r.ctr), createdAt: r.created_at }),
+
+  // PUBLIC view. views/clicks/ctr are our own performance data and were being
+  // shipped to every visitor through /api/banners. Allow-list, so a column
+  // added later is not exposed by default.
+  publicBanner: (r) => r && ({ id: r.id, type: r.type, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, style: r.style, priority: r.priority }),
+
+  offer: (r) => r && ({ id: r.id, code: r.code, label: r.label, description: r.description, discountType: r.discount_type, discountValue: Number(r.discount_value), minAmount: r.min_amount === null ? null : Number(r.min_amount), appliesTo: r.applies_to || [], startsOn: r.starts_on, endsOn: r.ends_on, maxRedemptions: r.max_redemptions, timesRedeemed: r.times_redeemed, isActive: r.is_active, notes: r.notes, createdBy: r.created_by, createdAt: r.created_at }),
   booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
@@ -155,7 +171,14 @@ function toGalleryDB(b, isUpdate = false) {
 // performance history every time someone fixed a typo.
 function toBannerDB(b, isUpdate = false) {
   const row = { type: b.type || 'banner', name: b.name, message: b.message, cta_text: b.ctaText, cta_link: b.ctaLink, is_active: b.isActive !== false, start_date: b.startDate || null, end_date: b.endDate || null, priority: b.priority || 0 };
-  if (!isUpdate) { row.views = 0; row.clicks = 0; row.ctr = 0; }
+  // views/clicks are seeded to 0 on create only, so an edit cannot wipe a
+  // banner's accumulated performance history.
+  //
+  // ctr is NOT set here any more: as of the 2026-07-31 migration it is a
+  // GENERATED ALWAYS column derived from views and clicks, and Postgres rejects
+  // any attempt to write one ("cannot insert a non-DEFAULT value into column").
+  // Leaving it in this payload broke every banner create.
+  if (!isUpdate) { row.views = 0; row.clicks = 0; }
   return row;
 }
 function toEmployeeDB(b) {
@@ -230,6 +253,94 @@ const insertBooking = (row) =>
 
 const updateBooking = (id, patch) =>
   resilientBookingWrite(b => supabase.from('bookings').update(b).eq('id', id).select().single(), patch);
+
+// ==================== MARKETING ====================
+
+// Anything that lands in an href. cta_link was assigned straight to
+// element.href on the homepage with no validation, so a javascript: URL would
+// have executed on click. Enforced here AND by a CHECK constraint, because the
+// database is the one place every write path has to pass through.
+const UNSAFE_URL_SCHEME = /^\s*(javascript|data|vbscript|file):/i;
+
+function isSafeCtaLink(url) {
+  if (!url) return true;                                  // empty falls back to /booking.html
+  if (UNSAFE_URL_SCHEME.test(url)) return false;
+  // Allow site-relative paths, anchors, and explicit http(s)/tel/mailto.
+  return /^(\/|#|https?:\/\/|tel:|mailto:)/i.test(url.trim());
+}
+
+// Impression and click reporting is public and unauthenticated, so it is the
+// easiest thing on the site to inflate. A per-IP ceiling keeps a bored visitor
+// (or a broken retry loop) from turning CTR into fiction. It cannot stop a
+// determined attacker — but the number is for the marketer's own decisions, not
+// for billing, so cheap mitigation is the right trade.
+const bannerMetricLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 30,
+  message: { error: 'Too many requests.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+// Code entry is a guessing surface: without a limit, someone could brute-force
+// short codes to find an unpublished discount.
+const offerCheckLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, max: 20,
+  message: { error: 'Too many code attempts. Please try again shortly.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+function normaliseCode(code) {
+  return String(code || '').trim().toUpperCase().slice(0, 40);
+}
+
+// Resolve a code to a usable offer, or to a reason it cannot be used.
+//
+// Every rejection says which rule failed, because "invalid code" for an expired
+// promotion sends the client to the phone convinced the site is broken.
+async function resolveOffer(rawCode, { amount, services } = {}) {
+  const code = normaliseCode(rawCode);
+  if (!code) return { ok: false, reason: 'Enter a promo code.' };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Matched case-insensitively, same as the unique index, so "aug10" finds
+  // "AUG10". ilike with no wildcards is an equality match.
+  const { data: offer } = await supabase.from('offers')
+    .select('*').ilike('code', code).maybeSingle();
+
+  if (!offer)            return { ok: false, reason: 'That code is not recognised.' };
+  if (!offer.is_active)  return { ok: false, reason: 'That offer is no longer running.' };
+  if (offer.starts_on > today) {
+    return { ok: false, reason: `That offer starts on ${offer.starts_on}.` };
+  }
+  if (offer.ends_on && offer.ends_on < today) {
+    return { ok: false, reason: 'That offer has expired.' };
+  }
+  if (offer.max_redemptions !== null && offer.times_redeemed >= offer.max_redemptions) {
+    return { ok: false, reason: 'That offer has been fully claimed.' };
+  }
+  if (offer.min_amount !== null && amount !== undefined && amount !== null && Number(amount) < Number(offer.min_amount)) {
+    return { ok: false, reason: `That code applies to bookings from KES ${Number(offer.min_amount).toLocaleString('en-KE')}.` };
+  }
+  if (Array.isArray(offer.applies_to) && offer.applies_to.length && Array.isArray(services) && services.length) {
+    const overlap = offer.applies_to.some(s => services.includes(s));
+    if (!overlap) return { ok: false, reason: 'That code does not apply to the services selected.' };
+  }
+  return { ok: true, offer };
+}
+
+// What the discount is worth. Returned to the client so the form can show it,
+// and snapshotted onto the redemption row so later edits to the offer cannot
+// rewrite history.
+function describeDiscount(offer, amount) {
+  const value = Number(offer.discount_value);
+  if (offer.discount_type === 'percent') {
+    return {
+      label: `${value}% off`,
+      amountOff: amount ? Math.round((Number(amount) * value) / 100) : null,
+    };
+  }
+  return { label: `KES ${value.toLocaleString('en-KE')} off`, amountOff: value };
+}
 
 // ==================== REVIEWS ====================
 const crypto = require('crypto');
@@ -601,7 +712,61 @@ app.get('/api/banners', async (req, res) => {
   const { data, error } = await supabase.from('marketing_banners').select('*').eq('is_active', true).order('priority', { ascending: false });
   if (error) return handleError(res, error);
   const active = data.filter(b => (!b.start_date || b.start_date <= today) && (!b.end_date || b.end_date >= today));
-  res.json({ success: true, data: active.map(map.banner) });
+  // publicBanner, not banner: our own view/click counts are not the visitor's
+  // business and were previously in this payload.
+  res.json({ success: true, data: active.map(map.publicBanner) });
+});
+
+// Aggregate impression / click counters.
+//
+// No cookie, no IP, no visitor identity — just an increment on the banner row.
+// That keeps the marketer's CTR real while staying consistent with the data
+// minimisation applied to reviews, and means there is nothing here to leak.
+//
+// The increment runs as a single atomic UPDATE inside bump_banner_metric().
+// Read-then-write in this handler would drop counts under concurrent traffic,
+// which is exactly when the number matters.
+// Two explicit routes rather than one `:metric(view|click)` pattern — Express 5
+// runs path-to-regexp v8, which removed inline regex in path parameters and
+// throws at registration time on that syntax.
+async function bumpBannerMetric(req, res, metric) {
+  const { id } = req.params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'Invalid banner id' });
+
+  const { error } = await supabase.rpc('bump_banner_metric', { p_id: id, p_metric: metric });
+  // Deliberately 204 even on failure: this is fire-and-forget telemetry called
+  // during a page render. A visitor must never see an error from it, and the
+  // page must never wait on it.
+  if (error) console.error('[MARKETING] metric bump failed:', error.message);
+  res.status(204).end();
+}
+
+app.post('/api/banners/:id/view',  bannerMetricLimiter, (req, res) => bumpBannerMetric(req, res, 'view'));
+app.post('/api/banners/:id/click', bannerMetricLimiter, (req, res) => bumpBannerMetric(req, res, 'click'));
+
+// Check a promo code before the client commits to filling in the whole form.
+app.post('/api/offers/validate', offerCheckLimiter, async (req, res) => {
+  const result = await resolveOffer(req.body.code, {
+    amount:   req.body.amount,
+    services: Array.isArray(req.body.services) ? req.body.services : undefined,
+  });
+
+  if (!result.ok) return res.status(404).json({ success: false, error: result.reason });
+
+  const o = result.offer;
+  const discount = describeDiscount(o, req.body.amount);
+  // Only what the client needs to see it worked. Not the cap, not the redemption
+  // count, not the internal label — those would leak how the promotion is doing.
+  res.json({
+    success: true,
+    data: {
+      code: o.code.trim().toUpperCase(),
+      description: o.description || discount.label,
+      discountLabel: discount.label,
+      amountOff: discount.amountOff,
+      endsOn: o.ends_on,
+    },
+  });
 });
 
 // Posters (active, within date range)
@@ -610,7 +775,9 @@ app.get('/api/posters', async (req, res) => {
   const { data, error } = await supabase.from('posters').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
   const active = data.filter(p => (!p.start_date || p.start_date <= today) && (!p.end_date || p.end_date >= today));
-  res.json({ success: true, data: active });
+  // This was the one public endpoint returning raw snake_case rows, so posters
+  // had a different shape from every other resource on the API.
+  res.json({ success: true, data: active.map(map.poster) });
 });
 
 // Submit booking / enquiry (public)
@@ -694,6 +861,32 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
   const { data, error } = await insertBooking(row);
   if (error) return handleError(res, error);
 
+  // Record the promo redemption, if any. Deliberately AFTER the booking insert
+  // and deliberately non-fatal: an enquiry is revenue, and losing one because a
+  // discount code could not be attributed would be a far worse outcome than an
+  // unattributed campaign. The client is told whether it applied.
+  let appliedOffer = null;
+  if (req.body.promoCode) {
+    const resolved = await resolveOffer(req.body.promoCode, { services: row.services || undefined });
+    if (resolved.ok) {
+      const o = resolved.offer;
+      const { error: redErr } = await supabase.from('offer_redemptions').insert({
+        offer_id: o.id, booking_id: data.id,
+        code_used: normaliseCode(req.body.promoCode),
+        discount_type: o.discount_type, discount_value: o.discount_value,
+      });
+      if (redErr) {
+        console.error('[MARKETING] redemption not recorded:', redErr.message);
+      } else {
+        appliedOffer = { code: o.code.trim().toUpperCase(), ...describeDiscount(o, null) };
+      }
+    } else {
+      // Surface it without failing: the enquiry is saved either way, and the
+      // manager can honour a mistyped code by hand.
+      appliedOffer = { rejected: true, reason: resolved.reason };
+    }
+  }
+
   const ref = data.booking_reference || data.id;
   const serviceList = (row.services || []).join(', ') || 'N/A';
 
@@ -704,7 +897,7 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
     createNotification('booking', 'New Enquiry', `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}`, data.id, 'bookings'),
   ]);
 
-  res.status(201).json({ success: true, data: map.booking(data) });
+  res.status(201).json({ success: true, data: { ...map.booking(data), offer: appliedOffer } });
 });
 
 // Submit a review (public). Always lands as 'pending' — a person reads it
@@ -1261,25 +1454,228 @@ app.delete('/api/admin/reviews/:id', adminAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// ==================== ADMIN — OFFERS ====================
+//
+// Offers are the discount model the section was missing. A banner could always
+// say "10% off" as free text, but nothing recorded that an offer existed, who
+// used it, or what it cost — so no campaign could be evaluated and discount
+// guidance had nothing to stand on.
+
+async function validateOffer(body, { isUpdate = false } = {}) {
+  const errors = {};
+  const code  = normaliseCode(body.code);
+  const label = String(body.label || '').trim();
+  const type  = body.discountType === 'fixed' ? 'fixed' : 'percent';
+  const value = Number(body.discountValue);
+
+  if (!isUpdate || body.code !== undefined) {
+    if (code.length < 3)  errors.code = 'Give the code at least 3 characters.';
+    // Clients type these from a poster or a WhatsApp message. Punctuation and
+    // spaces get mistyped and mis-transcribed, so restrict to what survives.
+    else if (!/^[A-Z0-9]+$/.test(code)) errors.code = 'Use letters and numbers only — no spaces or punctuation.';
+  }
+  if (!isUpdate || body.label !== undefined) {
+    if (label.length < 2) errors.label = 'Give this offer a name you will recognise later.';
+  }
+  if (!isUpdate || body.discountValue !== undefined) {
+    if (!Number.isFinite(value) || value <= 0) errors.discountValue = 'Enter a discount greater than zero.';
+    else if (type === 'percent' && value > 100) errors.discountValue = 'A percentage cannot exceed 100.';
+    else if (type === 'percent' && value > 50)  errors.discountValue = `${value}% is a very large discount — enter 50 or less, or use a fixed amount if you really mean it.`;
+  }
+  if (body.startsOn && !/^\d{4}-\d{2}-\d{2}$/.test(body.startsOn)) errors.startsOn = 'Invalid date.';
+  if (body.endsOn   && !/^\d{4}-\d{2}-\d{2}$/.test(body.endsOn))   errors.endsOn   = 'Invalid date.';
+  if (body.startsOn && body.endsOn && body.endsOn < body.startsOn) {
+    errors.endsOn = 'The end date must be on or after the start date.';
+  }
+  if (body.maxRedemptions !== undefined && body.maxRedemptions !== null && body.maxRedemptions !== '') {
+    const cap = Number(body.maxRedemptions);
+    if (!Number.isInteger(cap) || cap < 1) errors.maxRedemptions = 'A cap must be a whole number of 1 or more.';
+  }
+  return errors;
+}
+
+function toOfferDB(b, isUpdate = false) {
+  const row = {};
+  if (b.code  !== undefined) row.code  = normaliseCode(b.code);
+  if (b.label !== undefined) row.label = String(b.label).trim();
+  if (b.description !== undefined) row.description = b.description?.trim() || null;
+  if (b.discountType  !== undefined) row.discount_type  = b.discountType === 'fixed' ? 'fixed' : 'percent';
+  if (b.discountValue !== undefined) row.discount_value = Number(b.discountValue);
+  if (b.minAmount !== undefined) row.min_amount = b.minAmount === '' || b.minAmount === null ? null : Number(b.minAmount);
+  if (b.appliesTo !== undefined) row.applies_to = Array.isArray(b.appliesTo) && b.appliesTo.length ? b.appliesTo : null;
+  if (b.startsOn !== undefined) row.starts_on = b.startsOn || new Date().toISOString().split('T')[0];
+  if (b.endsOn   !== undefined) row.ends_on   = b.endsOn || null;
+  if (b.maxRedemptions !== undefined) {
+    row.max_redemptions = b.maxRedemptions === '' || b.maxRedemptions === null ? null : Number(b.maxRedemptions);
+  }
+  if (b.isActive !== undefined) row.is_active = b.isActive !== false;
+  if (b.notes    !== undefined) row.notes = b.notes?.trim() || null;
+  // times_redeemed is never written from a payload — the redemption trigger owns
+  // it. Including it here would let an edit reset a campaign's history, the same
+  // bug that used to zero events.booking_count.
+  return row;
+}
+
+app.get('/api/admin/offers', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('offers').select('*').order('created_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.offer) });
+});
+
+app.post('/api/admin/offers', adminAuth, async (req, res) => {
+  const errors = await validateOffer(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const row = toOfferDB(req.body);
+  row.created_by = req.admin?.username || req.admin?.role || null;
+
+  const { data, error } = await supabase.from('offers').insert(row).select().single();
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'That code is already in use.', fields: { code: 'Already in use.' } });
+    }
+    return handleError(res, error);
+  }
+  res.status(201).json({ success: true, data: map.offer(data) });
+});
+
+app.put('/api/admin/offers/:id', adminAuth, async (req, res) => {
+  const errors = await validateOffer(req.body, { isUpdate: true });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const { data, error } = await supabase.from('offers')
+    .update(toOfferDB(req.body, true)).eq('id', req.params.id).select().maybeSingle();
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'That code is already in use.', fields: { code: 'Already in use.' } });
+    }
+    return handleError(res, error);
+  }
+  if (!data) return res.status(404).json({ error: 'Offer not found' });
+  res.json({ success: true, data: map.offer(data) });
+});
+
+app.patch('/api/admin/offers/:id/toggle', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('offers').select('is_active').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Offer not found' });
+  const { data, error } = await supabase.from('offers')
+    .update({ is_active: !cur.is_active }).eq('id', req.params.id).select().single();
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: map.offer(data) });
+});
+
+app.get('/api/admin/offers/:id/redemptions', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('offer_redemptions')
+    .select('id, booking_id, code_used, discount_type, discount_value, redeemed_at, bookings(name, booking_reference, status, agreed_amount)')
+    .eq('offer_id', req.params.id).order('redeemed_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({
+    success: true,
+    data: (data || []).map(r => ({
+      id: r.id, bookingId: r.booking_id, codeUsed: r.code_used,
+      discountType: r.discount_type, discountValue: Number(r.discount_value),
+      redeemedAt: r.redeemed_at,
+      client: r.bookings?.name || null,
+      bookingReference: r.bookings?.booking_reference || null,
+      bookingStatus: r.bookings?.status || null,
+      agreedAmount: r.bookings?.agreed_amount === null || r.bookings?.agreed_amount === undefined
+        ? null : Number(r.bookings.agreed_amount),
+    })),
+  });
+});
+
+app.delete('/api/admin/offers/:id', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('offers')
+    .select('times_redeemed').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Offer not found' });
+
+  // Deleting cascades the redemption rows, which erases the record of which
+  // bookings came from this campaign. Deactivating keeps the history.
+  if (cur.times_redeemed > 0 && req.query.force !== 'true') {
+    return res.status(409).json({
+      error: `This offer has ${cur.times_redeemed} redemption${cur.times_redeemed === 1 ? '' : 's'}. Deactivate it instead to keep the record of which bookings used it.`,
+    });
+  }
+  const { error } = await supabase.from('offers').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+// Discount guidance. adminOnly: the signals behind it are revenue, outstanding
+// balances and margins — the same line already drawn around payroll and analytics.
+app.get('/api/admin/marketing/guidance', adminAuth, adminOnly, async (req, res) => {
+  const { data, error } = await supabase.rpc('marketing_guidance');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+
 // ==================== ADMIN — MARKETING BANNERS ====================
 app.get('/api/admin/banners', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('marketing_banners').select('*').order('created_at', { ascending: false });
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.banner) });
 });
+// Banner create/update had no validation at all. The message is what every
+// visitor reads, and cta_link goes straight into an href on the homepage.
+function validateBanner(body, { isUpdate = false } = {}) {
+  const errors = {};
+  const message = String(body.message ?? '').trim();
+
+  if (!isUpdate || body.message !== undefined) {
+    if (message.length < 4)   errors.message = 'Write the message visitors will see.';
+    // The bar is one line on a phone. Longer text truncates or wraps badly, so
+    // this is a design constraint rather than an arbitrary limit.
+    if (message.length > 160) errors.message = `Keep it under 160 characters for the banner bar (currently ${message.length}).`;
+  }
+  if (body.ctaLink !== undefined && !isSafeCtaLink(body.ctaLink)) {
+    errors.ctaLink = 'Use a page on this site (like /booking.html) or a full https:// address.';
+  }
+  if (body.startDate && !/^\d{4}-\d{2}-\d{2}$/.test(body.startDate)) errors.startDate = 'Invalid date.';
+  if (body.endDate   && !/^\d{4}-\d{2}-\d{2}$/.test(body.endDate))   errors.endDate   = 'Invalid date.';
+  if (body.startDate && body.endDate && body.endDate < body.startDate) {
+    errors.endDate = 'The end date must be on or after the start date.';
+  }
+  return errors;
+}
+
 app.post('/api/admin/banners', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('marketing_banners').insert(toBannerDB(req.body)).select().single();
+  const errors = validateBanner(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const row = toBannerDB(req.body);
+  if (req.body.offerId !== undefined) row.offer_id = req.body.offerId || null;
+  if (req.body.style   !== undefined) row.style    = req.body.style || 'bar';
+
+  const { data, error } = await supabase.from('marketing_banners').insert(row).select().single();
   if (error) return handleError(res, error);
   res.status(201).json({ success: true, data: map.banner(data) });
 });
+
 app.put('/api/admin/banners/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('marketing_banners').update(toBannerDB(req.body, true)).eq('id', req.params.id).select().single();
+  const errors = validateBanner(req.body, { isUpdate: true });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const row = toBannerDB(req.body, true);
+  if (req.body.offerId !== undefined) row.offer_id = req.body.offerId || null;
+  if (req.body.style   !== undefined) row.style    = req.body.style || 'bar';
+
+  const { data, error } = await supabase.from('marketing_banners')
+    .update(row).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Banner not found' });
   res.json({ success: true, data: map.banner(data) });
 });
+
 app.patch('/api/admin/banners/:id/toggle', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('marketing_banners').select('is_active').eq('id', req.params.id).single();
-  const { data, error } = await supabase.from('marketing_banners').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
+  const { data: cur } = await supabase.from('marketing_banners')
+    .select('is_active').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Banner not found' });
+  const { data, error } = await supabase.from('marketing_banners')
+    .update({ is_active: !cur.is_active }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.banner(data) });
 });

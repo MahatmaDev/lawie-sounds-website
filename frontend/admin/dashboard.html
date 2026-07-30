@@ -144,7 +144,10 @@
       <button data-tab="gallery" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🖼️ Gallery</button>
       <button data-tab="reviews" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">⭐ Reviews</button>
       <button data-tab="marketing" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📢 Marketing</button>
-      <button data-tab="posters" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🖼️ Posters</button>
+      <!-- Posters tab removed: folded into Marketing as a sub-view. Banners and
+           posters do the same job — putting a message in front of a visitor —
+           so managing them on two screens made "what is running?" a two-screen
+           question. 14 tabs down to 13. -->
       <button data-tab="bookings" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📥 Enquiries</button>
       <button data-tab="employees" id="tabEmployees" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">👥 Employees</button>
       <button data-tab="payroll" id="tabPayroll" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">💰 Payroll</button>
@@ -183,7 +186,10 @@
       employees: [],
       services: [],
       payroll: [],
-      posters: []
+      posters: [],
+      // null (not []) so renderMarketing can tell "not loaded yet" from "loaded
+      // and empty" and only fetch once.
+      offers: null
     };
 
     let currentTab = 'dashboard';
@@ -3129,85 +3135,764 @@ async function saveGalleryEdit() {
         : `${ids.length} review${ids.length !== 1 ? 's' : ''} updated`, 'success');
     }
 
-// ==================== FIXED MARKETING MANAGEMENT ====================
-let marketingViewMode = 'active';
+// ==================== MARKETING ====================
+//
+// One tab, three things that were previously two tabs and a blind spot.
+//
+// The section exists so a marketer can decide what to promote and when to
+// discount. It could not support either decision before: views/clicks/ctr were
+// never incremented by anything, so every campaign read as zero engagement, and
+// there was no discount model at all — a banner could say "10% off" as text
+// while nothing recorded that an offer existed or who used it.
+//
+// Layout follows the order the work actually happens in:
+//   1. What is live right now        (so nothing runs unnoticed or expired)
+//   2. What the numbers suggest      (guidance, from real trading data)
+//   3. Offers / Banners / Posters    (the things you create and edit)
+//
+// Posters used to be a separate top-level tab. Same job — put a message in
+// front of a visitor — so keeping them apart made "what is running?" a
+// two-screen question.
 
-function renderMarketing() {
-    const container = document.getElementById('sectionContent');
-    if (!container) return;
-    
-    const now = new Date().toISOString().split('T')[0];
-    let filtered = store.marketingBanners || [];
-    
-    if (marketingViewMode === 'active') {
-        filtered = store.marketingBanners.filter(b => b.isActive === true && (!b.endDate || b.endDate >= now));
-    } else if (marketingViewMode === 'expired') {
-        filtered = store.marketingBanners.filter(b => b.endDate && b.endDate < now);
-    }
-    
-    // Filtered view
-    
-    container.innerHTML = `
-        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <div class="flex gap-2">
-                <button onclick="setMarketingView('active')" class="px-4 py-2 rounded-lg text-sm ${marketingViewMode === 'active' ? 'bg-purple-600 text-white' : 'bg-gray-800'}">✅ Active</button>
-                <button onclick="setMarketingView('all')" class="px-4 py-2 rounded-lg text-sm ${marketingViewMode === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-800'}">📋 All</button>
-                <button onclick="setMarketingView('expired')" class="px-4 py-2 rounded-lg text-sm ${marketingViewMode === 'expired' ? 'bg-purple-600 text-white' : 'bg-gray-800'}">⏰ Expired</button>
-            </div>
-            <button onclick="openMarketingForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Create Banner</button>
-        </div>
-        
-        ${filtered.length === 0 ? `
-            <div class="bg-gray-900 rounded-xl p-12 text-center border border-gray-800">
-                <i class="fas fa-megaphone text-5xl text-gray-600 mb-4"></i>
-                <p class="text-gray-400">No marketing banners found</p>
-                <button onclick="openMarketingForm()" class="mt-4 text-purple-400 hover:underline">Create your first banner →</button>
-            </div>
-        ` : `
-            <div class="space-y-3">
-                ${filtered.map(banner => `
-                    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-purple-500 transition">
-                        <div class="flex justify-between items-start flex-wrap gap-3">
-                            <div class="flex-1">
-                                <div class="flex gap-2 mb-2 flex-wrap">
-                                    <span class="px-2 py-1 rounded-full text-xs ${banner.isActive ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">
-                                        ${banner.isActive ? '🟢 Active' : '⚫ Inactive'}
-                                    </span>
-                                    ${banner.endDate && banner.endDate < now ? '<span class="px-2 py-1 rounded-full text-xs bg-gray-600/20 text-gray-400">⏰ Expired</span>' : ''}
-                                    <span class="text-xs text-gray-500">📢 ${banner.type || 'banner'}</span>
-                                </div>
-                                <p class="font-medium text-lg">${escapeHtml(banner.message)}</p>
-                                <div class="flex gap-3 mt-2 flex-wrap">
-                                    <span class="text-xs text-gray-500"><i class="fas fa-hand-pointer mr-1"></i> CTA: ${escapeHtml(banner.ctaText)} → ${escapeHtml(banner.ctaLink)}</span>
-                                    <span class="text-xs text-gray-500"><i class="far fa-calendar-alt mr-1"></i> ${banner.startDate || 'Start now'} → ${banner.endDate || 'No expiry'}</span>
-                                </div>
-                                ${banner.views > 0 ? `<div class="mt-2 text-xs text-gray-500"><i class="fas fa-chart-line mr-1"></i> Views: ${banner.views} | Clicks: ${banner.clicks || 0} | CTR: ${banner.ctr || 0}%</div>` : ''}
-                            </div>
-                            <div class="flex gap-2 flex-wrap">
-                                <button onclick="toggleMarketingBanner('${banner.id}')" class="px-3 py-1 ${banner.isActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} rounded-lg text-sm transition">
-                                    ${banner.isActive ? 'Deactivate' : 'Activate'}
-                                </button>
-                                <button onclick="openMarketingForm('${banner.id}')" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition">
-                                    <i class="fas fa-edit mr-1"></i>Edit
-                                </button>
-                                <button onclick="duplicateMarketingBanner('${banner.id}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition">
-                                    <i class="fas fa-copy mr-1"></i>Duplicate
-                                </button>
-                                <button onclick="deleteMarketingBanner('${banner.id}')" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `}
-    `;
+const marketingUI = {
+  view: 'overview',        // overview | offers | banners | posters
+  bannerFilter: 'live',    // live | all | expired
+  guidance: null,
+  guidanceError: null,
+};
+
+const OFFER_MAX_PERCENT_HINT = 50;
+
+function mktToday() { return new Date().toISOString().split('T')[0]; }
+
+function isLiveBanner(b) {
+  const t = mktToday();
+  return b.isActive === true && (!b.startDate || b.startDate <= t) && (!b.endDate || b.endDate >= t);
+}
+function isLivePoster(p) {
+  const t = mktToday();
+  return p.isActive !== false && (!p.startDate || p.startDate <= t) && (!p.endDate || p.endDate >= t);
+}
+function isLiveOffer(o) {
+  const t = mktToday();
+  if (!o.isActive) return false;
+  if (o.startsOn > t) return false;
+  if (o.endsOn && o.endsOn < t) return false;
+  if (o.maxRedemptions !== null && o.timesRedeemed >= o.maxRedemptions) return false;
+  return true;
 }
 
-function setMarketingView(mode) {
-    marketingViewMode = mode;
-    renderMarketing();
+function offerStatus(o) {
+  const t = mktToday();
+  if (!o.isActive)                                              return { label: 'Paused',          cls: 'bg-gray-700/50 text-gray-400' };
+  if (o.startsOn > t)                                           return { label: 'Scheduled',       cls: 'bg-blue-600/20 text-blue-400' };
+  if (o.endsOn && o.endsOn < t)                                  return { label: 'Ended',           cls: 'bg-gray-700/50 text-gray-500' };
+  if (o.maxRedemptions !== null && o.timesRedeemed >= o.maxRedemptions)
+                                                                 return { label: 'Fully claimed',   cls: 'bg-yellow-600/20 text-yellow-400' };
+  return { label: 'Live', cls: 'bg-green-600/20 text-green-400' };
+}
+
+function discountText(o) {
+  return o.discountType === 'percent'
+    ? `${o.discountValue}% off`
+    : `KES ${Number(o.discountValue).toLocaleString('en-KE')} off`;
+}
+
+// ── Data ───────────────────────────────────────────────────────
+async function loadOffers() {
+  const res = await apiRequest('GET', '/api/admin/offers');
+  store.offers = res?._error ? (store.offers || []) : (res.data || []);
+  return res;
+}
+
+async function loadGuidance() {
+  const res = await apiRequest('GET', '/api/admin/marketing/guidance');
+  if (res?._error) {
+    marketingUI.guidance = null;
+    // 403 is the manager role hitting an admin-only endpoint, which is a
+    // different message from a genuine failure.
+    marketingUI.guidanceError = res.status === 403 ? 'admin-only' : (res.message || 'unavailable');
+    return;
+  }
+  marketingUI.guidance = res.data;
+  marketingUI.guidanceError = null;
+}
+
+// ── Render ─────────────────────────────────────────────────────
+async function renderMarketing() {
+  const container = document.getElementById('sectionContent');
+  if (!container) return;
+
+  if (!store.offers) {
+    container.innerHTML = `<div class="flex justify-center py-16"><div class="spinner"></div></div>`;
+    await Promise.all([loadOffers(), loadGuidance()]);
+  }
+
+  const offers  = store.offers || [];
+  const banners = store.marketingBanners || [];
+  const posters = store.posters || [];
+
+  const liveOffers  = offers.filter(isLiveOffer);
+  const liveBanners = banners.filter(isLiveBanner);
+  const livePosters = posters.filter(isLivePoster);
+
+  const tab = (key, label, count) => `
+    <button onclick="setMarketingView('${key}')"
+      class="px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition border ${
+        marketingUI.view === key
+          ? 'bg-purple-600 border-purple-500 text-white'
+          : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">
+      ${label}${count !== null ? ` <span class="opacity-60">${count}</span>` : ''}
+    </button>`;
+
+  const header = `
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-xl font-bold text-white">Marketing</h2>
+        <p class="text-sm text-gray-500 mt-0.5">
+          ${liveOffers.length + liveBanners.length + livePosters.length === 0
+            ? 'Nothing is currently promoted on your website.'
+            : `${liveBanners.length} banner${liveBanners.length === 1 ? '' : 's'}, ${livePosters.length} poster${livePosters.length === 1 ? '' : 's'} and ${liveOffers.length} offer${liveOffers.length === 1 ? '' : 's'} live right now.`}
+        </p>
+      </div>
+      <a href="/index.html" target="_blank" rel="noopener"
+        class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center gap-2">
+        <i class="fas fa-external-link-alt text-xs"></i> See the live homepage
+      </a>
+    </div>
+
+    <div class="flex gap-1.5 flex-wrap mb-5">
+      ${tab('overview', '📊 Overview', null)}
+      ${tab('offers',   '🎟️ Offers',   offers.length)}
+      ${tab('banners',  '📢 Banners',  banners.length)}
+      ${tab('posters',  '🖼️ Posters',  posters.length)}
+    </div>`;
+
+  let body = '';
+  if (marketingUI.view === 'overview')      body = marketingOverview(liveOffers, liveBanners, livePosters);
+  else if (marketingUI.view === 'offers')   body = marketingOffers(offers);
+  else if (marketingUI.view === 'banners')  body = marketingBanners(banners);
+  else if (marketingUI.view === 'posters')  body = marketingPosters(posters);
+
+  container.innerHTML = header + body;
+}
+
+// ── Overview: what is live, and what to do about it ────────────
+function marketingOverview(liveOffers, liveBanners, livePosters) {
+  const g = marketingUI.guidance;
+
+  const liveCard = (icon, kind, items, describe, goTo) => `
+    <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-gray-400 uppercase tracking-wide">${kind}</p>
+        <span class="text-xs font-bold ${items.length ? 'text-green-400' : 'text-gray-600'}">${items.length} live</span>
+      </div>
+      ${items.length
+        ? `<ul class="space-y-1.5">${items.slice(0, 3).map(i =>
+            `<li class="text-sm text-gray-300 truncate">${icon} ${escapeHtml(describe(i))}</li>`).join('')}
+           ${items.length > 3 ? `<li class="text-xs text-gray-600">+${items.length - 3} more</li>` : ''}</ul>`
+        : `<p class="text-sm text-gray-600">Nothing live.</p>`}
+      <button onclick="setMarketingView('${goTo}')" class="text-xs text-purple-400 hover:underline mt-3">Manage →</button>
+    </div>`;
+
+  // Guidance. The point of this panel is that it is derived from real trading
+  // data, and says so — including when the data is too thin to advise on.
+  let guidancePanel;
+  if (marketingUI.guidanceError === 'admin-only') {
+    guidancePanel = `
+      <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5 mb-5">
+        <i class="fas fa-lock text-gray-600 mr-2"></i>
+        <span class="text-sm text-gray-500">Discount guidance is visible to the business owner only — it is based on revenue and outstanding balances.</span>
+      </div>`;
+  } else if (!g) {
+    guidancePanel = `
+      <div class="bg-gray-900 rounded-2xl border border-red-900/40 p-5 mb-5">
+        <p class="text-sm text-gray-400"><i class="fas fa-triangle-exclamation text-red-400 mr-2"></i>
+          Could not load guidance${marketingUI.guidanceError ? `: ${escapeHtml(marketingUI.guidanceError)}` : ''}.
+          <button onclick="reloadMarketingGuidance()" class="text-purple-400 hover:underline ml-1">Try again</button>
+        </p>
+      </div>`;
+  } else {
+    const TONE = {
+      opportunity: { border: 'border-green-600/40',  bg: 'bg-green-900/10',  icon: 'fa-lightbulb',            color: 'text-green-400'  },
+      warning:     { border: 'border-red-600/40',    bg: 'bg-red-900/10',    icon: 'fa-triangle-exclamation', color: 'text-red-400'    },
+      caution:     { border: 'border-yellow-600/40', bg: 'bg-yellow-900/10', icon: 'fa-hand',                 color: 'text-yellow-400' },
+      neutral:     { border: 'border-gray-700',      bg: 'bg-gray-800/40',   icon: 'fa-circle-info',          color: 'text-blue-400'   },
+    };
+    const CONF = { high: 'Strong signal', medium: 'Reasonable signal', low: 'Weak signal — treat as a hint' };
+
+    guidancePanel = `
+      <div class="mb-5">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="font-semibold text-white">What the numbers suggest</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Worked out from your enquiries, bookings, payments and reviews — not generic advice.</p>
+          </div>
+          <button onclick="reloadMarketingGuidance()" class="text-xs text-gray-500 hover:text-gray-300 transition">
+            <i class="fas fa-rotate-right mr-1"></i>Refresh
+          </button>
+        </div>
+
+        ${g.recommendations.length === 0
+          ? `<div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+               <i class="fas fa-circle-check text-2xl text-green-400 mb-2"></i>
+               <p class="text-sm text-gray-400">Nothing to flag. Your promotions and pricing look reasonable for the current data.</p>
+             </div>`
+          : `<div class="space-y-3">${g.recommendations.map(r => {
+              const t = TONE[r.tone] || TONE.neutral;
+              return `
+                <div class="rounded-2xl border ${t.border} ${t.bg} p-4">
+                  <div class="flex items-start gap-3">
+                    <i class="fas ${t.icon} ${t.color} mt-0.5 flex-shrink-0"></i>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-semibold text-white">${escapeHtml(r.title)}</p>
+                      <p class="text-xs text-gray-500 mt-1"><strong class="text-gray-400">What we see:</strong> ${escapeHtml(r.signal)}</p>
+                      <p class="text-sm text-gray-300 mt-2"><strong class="${t.color}">Do this:</strong> ${escapeHtml(r.action)}</p>
+                      <p class="text-xs text-gray-500 mt-1.5">${escapeHtml(r.why)}</p>
+                      <div class="flex items-center gap-2 mt-2.5">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">${CONF[r.confidence] || r.confidence}</span>
+                        ${r.id === 'quiet-weeks-ahead'
+                          ? `<button onclick="createOfferForQuietWeeks()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-500 transition">Create a dated offer</button>`
+                          : ''}
+                        ${r.id === 'nothing-running'
+                          ? `<button onclick="setMarketingView('banners'); openMarketingForm()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 transition">Write a banner</button>`
+                          : ''}
+                        ${r.id === 'stale-offers'
+                          ? `<button onclick="setMarketingView('offers')" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 transition">Review offers</button>`
+                          : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('')}</div>`}
+
+        ${g.slowServices?.length
+          ? `<div class="mt-3 bg-gray-900 border border-gray-800 rounded-2xl p-4">
+               <p class="text-sm text-gray-300"><i class="fas fa-arrow-trend-down text-yellow-400 mr-2"></i>
+                 No enquiries in 90 days for:
+                 <strong>${g.slowServices.map(s => escapeHtml(s.name)).join(', ')}</strong></p>
+               <p class="text-xs text-gray-500 mt-1.5">A service-specific offer is cheaper than discounting everything, and tells you whether the problem is price or visibility.</p>
+             </div>`
+          : ''}
+      </div>`;
+  }
+
+  return `
+    <div class="grid sm:grid-cols-3 gap-4 mb-5">
+      ${liveCard('🎟️', 'Offers',  liveOffers,  o => `${o.code.trim()} — ${discountText(o)}`, 'offers')}
+      ${liveCard('📢', 'Banners', liveBanners, b => b.message, 'banners')}
+      ${liveCard('🖼️', 'Posters', livePosters, p => p.title, 'posters')}
+    </div>
+    ${guidancePanel}`;
+}
+
+// ── Offers ─────────────────────────────────────────────────────
+function marketingOffers(offers) {
+  const head = `
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <p class="text-sm text-gray-500">
+        A code a client types when booking. Every use is recorded, so you can see what a campaign actually brought in.
+      </p>
+      <button onclick="openOfferForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+        <i class="fas fa-plus"></i> New offer
+      </button>
+    </div>`;
+
+  if (!offers.length) {
+    return head + `
+      <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-14 text-center">
+        <div class="w-16 h-16 bg-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-ticket text-2xl text-purple-400"></i>
+        </div>
+        <h3 class="font-bold text-white mb-2">No offers yet</h3>
+        <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">
+          Start with something small and dated — 10% off for a specific quiet week. A capped, time-limited offer
+          tells you whether price is the obstacle without permanently lowering what you charge.
+        </p>
+        <button onclick="openOfferForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">
+          Create your first offer
+        </button>
+      </div>`;
+  }
+
+  return head + `<div class="space-y-3">${offers.map(o => {
+    const st = offerStatus(o);
+    const capPct = o.maxRedemptions ? Math.min(100, Math.round(o.timesRedeemed / o.maxRedemptions * 100)) : null;
+    return `
+      <div class="bg-gray-900 rounded-2xl border ${isLiveOffer(o) ? 'border-green-700/30' : 'border-gray-800'} p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <code class="px-2 py-0.5 rounded bg-gray-800 text-yellow-400 font-bold tracking-wider">${escapeHtml(o.code.trim())}</code>
+              <span class="text-sm font-semibold text-white">${discountText(o)}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full ${st.cls}">${st.label}</span>
+            </div>
+            <p class="text-sm text-gray-300">${escapeHtml(o.label)}</p>
+            <p class="text-xs text-gray-500 mt-1">
+              ${o.startsOn}${o.endsOn ? ` → ${o.endsOn}` : ' → no end date'}
+              ${o.minAmount ? ` · from KES ${Number(o.minAmount).toLocaleString('en-KE')}` : ''}
+              ${o.appliesTo?.length ? ` · ${o.appliesTo.length} service${o.appliesTo.length === 1 ? '' : 's'} only` : ''}
+            </p>
+
+            <div class="mt-2.5 flex items-center gap-3">
+              <span class="text-xs text-gray-400">
+                <strong class="${o.timesRedeemed ? 'text-green-400' : 'text-gray-500'}">${o.timesRedeemed}</strong>
+                used${o.maxRedemptions ? ` of ${o.maxRedemptions}` : ''}
+              </span>
+              ${capPct !== null ? `
+                <div class="h-1.5 w-28 bg-gray-800 rounded-full overflow-hidden">
+                  <div class="h-1.5 rounded-full ${capPct >= 100 ? 'bg-yellow-500' : 'bg-green-500'}" style="width:${capPct}%"></div>
+                </div>` : ''}
+              ${o.timesRedeemed > 0
+                ? `<button onclick="viewOfferRedemptions('${o.id}')" class="text-xs text-purple-400 hover:underline">Who used it →</button>`
+                : ''}
+            </div>
+          </div>
+
+          <div class="flex gap-1.5 flex-wrap flex-shrink-0">
+            <button onclick="toggleOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${o.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+              ${o.isActive ? 'Pause' : 'Resume'}
+            </button>
+            <button onclick="openOfferForm('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+              <i class="fas fa-pen mr-1"></i>Edit
+            </button>
+            <button onclick="deleteOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Banners ────────────────────────────────────────────────────
+function marketingBanners(banners) {
+  const t = mktToday();
+  let shown = banners;
+  if (marketingUI.bannerFilter === 'live')    shown = banners.filter(isLiveBanner);
+  if (marketingUI.bannerFilter === 'expired') shown = banners.filter(b => b.endDate && b.endDate < t);
+
+  const chip = (k, l, n) => `
+    <button onclick="setBannerFilter('${k}')"
+      class="px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+        marketingUI.bannerFilter === k
+          ? 'bg-purple-600 border-purple-500 text-white'
+          : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">${l} <span class="opacity-60">${n}</span></button>`;
+
+  const head = `
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex gap-1.5 flex-wrap">
+        ${chip('live', '🟢 Live', banners.filter(isLiveBanner).length)}
+        ${chip('all', 'All', banners.length)}
+        ${chip('expired', '⏰ Expired', banners.filter(b => b.endDate && b.endDate < t).length)}
+      </div>
+      <button onclick="openMarketingForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+        <i class="fas fa-plus"></i> New banner
+      </button>
+    </div>
+    <p class="text-xs text-gray-500 mb-4">
+      <i class="fas fa-circle-info mr-1"></i>
+      The banner is the strip across the top of your homepage. Only the highest-priority live one is shown, so a visitor never sees two at once.
+    </p>`;
+
+  if (!shown.length) {
+    return head + `
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+        <i class="fas fa-bullhorn text-3xl text-gray-600 mb-3"></i>
+        <p class="text-gray-400 text-sm mb-4">${banners.length ? 'No banners in this view.' : 'No banners yet.'}</p>
+        <button onclick="openMarketingForm()" class="text-purple-400 hover:underline text-sm">Create one →</button>
+      </div>`;
+  }
+
+  return head + `<div class="space-y-3">${shown.map(b => {
+    const live = isLiveBanner(b);
+    const expired = b.endDate && b.endDate < t;
+    // Now that views are actually counted, CTR is real. It used to be hidden
+    // behind `views > 0`, which never happened, so the marketer saw nothing.
+    const hasData = (b.views || 0) > 0;
+    return `
+      <div class="bg-gray-900 rounded-2xl border ${live ? 'border-green-700/30' : 'border-gray-800'} p-4">
+        <div class="flex flex-wrap justify-between items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex gap-2 mb-2 flex-wrap items-center">
+              <span class="px-2 py-0.5 rounded-full text-xs ${live ? 'bg-green-600/20 text-green-400' : 'bg-gray-700/50 text-gray-400'}">
+                ${live ? '🟢 Live now' : b.isActive ? '⏸ Not showing' : '⚫ Paused'}
+              </span>
+              ${expired ? '<span class="px-2 py-0.5 rounded-full text-xs bg-gray-700/50 text-gray-500">⏰ Expired</span>' : ''}
+              ${b.priority ? `<span class="text-xs text-gray-600">priority ${b.priority}</span>` : ''}
+            </div>
+
+            <!-- Shown as it appears on the site, so the marketer judges the real
+                 thing rather than a field value in a list. -->
+            <div class="rounded-lg px-3 py-2 mb-2" style="background:linear-gradient(90deg,#facc15,#f59e0b)">
+              <p class="text-sm font-bold text-black truncate">${escapeHtml(b.message)}</p>
+            </div>
+
+            <p class="text-xs text-gray-500">
+              <i class="fas fa-hand-pointer mr-1"></i>${escapeHtml(b.ctaText || 'Learn more')} → ${escapeHtml(b.ctaLink || '/booking.html')}
+              · <i class="far fa-calendar-alt ml-1 mr-1"></i>${b.startDate || 'now'} → ${b.endDate || 'no end'}
+            </p>
+
+            <div class="mt-2 text-xs ${hasData ? 'text-gray-400' : 'text-gray-600'}">
+              <i class="fas fa-chart-line mr-1"></i>
+              ${hasData
+                ? `${b.views.toLocaleString()} views · ${b.clicks.toLocaleString()} clicks · <strong class="${b.ctr >= 2 ? 'text-green-400' : b.ctr >= 1 ? 'text-yellow-400' : 'text-red-400'}">${b.ctr}% clicked</strong>`
+                : 'No views recorded yet — figures appear once visitors see it.'}
+            </div>
+          </div>
+
+          <div class="flex gap-1.5 flex-wrap flex-shrink-0">
+            <button onclick="toggleMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${b.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+              ${b.isActive ? 'Pause' : 'Activate'}
+            </button>
+            <button onclick="openMarketingForm('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>
+            <button onclick="duplicateMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-copy"></i></button>
+            <button onclick="deleteMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Posters ────────────────────────────────────────────────────
+function marketingPosters(posters) {
+  const head = `
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <p class="text-sm text-gray-500">Image announcements that rotate on the homepage — seasonal greetings, offers, upcoming events.</p>
+      <button onclick="openPosterForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+        <i class="fas fa-plus"></i> New poster
+      </button>
+    </div>`;
+
+  if (!posters.length) {
+    return head + `
+      <div class="bg-gray-900 border-2 border-dashed border-gray-700 rounded-2xl p-14 text-center">
+        <div class="w-16 h-16 bg-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-image text-2xl text-purple-400"></i>
+        </div>
+        <h3 class="font-bold text-white mb-2">No posters yet</h3>
+        <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">A poster carries more than a banner line — good for a Christmas greeting or a photo-led offer.</p>
+        <button onclick="openPosterForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Create your first poster</button>
+      </div>`;
+  }
+
+  return head + `
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${posters.map(p => {
+        const live = isLivePoster(p);
+        return `
+          <div class="bg-gray-900 rounded-2xl border ${live ? 'border-green-700/30' : 'border-gray-800'} overflow-hidden flex flex-col">
+            <div class="relative h-40 bg-gray-800">
+              <img src="${escapeHtml(p.imageUrl || '')}" alt="${escapeHtml(p.title || '')}" loading="lazy" decoding="async"
+                class="w-full h-full object-cover"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+              <div style="display:none" class="w-full h-full flex-col items-center justify-center text-gray-500">
+                <i class="fas fa-image-slash text-xl mb-1"></i><p class="text-xs">Image missing</p>
+              </div>
+              <span class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full ${live ? 'bg-green-600/85 text-white' : 'bg-gray-900/80 text-gray-400'}">
+                ${live ? '🟢 Live' : p.isActive === false ? '⚫ Paused' : '⏸ Not showing'}
+              </span>
+            </div>
+            <div class="p-3 flex-1 flex flex-col">
+              <p class="font-semibold text-sm text-white truncate">${escapeHtml(p.title || 'Untitled')}</p>
+              ${p.caption ? `<p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${escapeHtml(p.caption)}</p>` : ''}
+              <p class="text-xs text-gray-600 mt-1">${p.startDate || 'now'} → ${p.endDate || 'no end'} · order ${p.displayOrder ?? 0}</p>
+              <div class="flex gap-1.5 mt-auto pt-3">
+                <button onclick="togglePoster('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs transition ${p.isActive !== false ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+                  ${p.isActive !== false ? 'Pause' : 'Activate'}
+                </button>
+                <button onclick="openPosterForm('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">Edit</button>
+                <button onclick="deletePoster('${p.id}')" class="flex-none px-2.5 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── Interactions ───────────────────────────────────────────────
+function setMarketingView(v) { marketingUI.view = v; renderMarketing(); }
+function setBannerFilter(f)  { marketingUI.bannerFilter = f; renderMarketing(); }
+
+async function reloadMarketingGuidance() {
+  await loadGuidance();
+  renderMarketing();
+}
+
+// Kept for the old call sites that expected the previous filter API.
+function setMarketingView_legacy(mode) { setBannerFilter(mode); }
+
+async function toggleOffer(id) {
+  const res = await apiRequest('PATCH', `/api/admin/offers/${id}/toggle`);
+  if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not change', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+  store.offers = store.offers.map(o => o.id === id ? res.data : o);
+  renderMarketing();
+  showToast(res.data.isActive ? 'Offer resumed' : 'Offer paused', 'success');
+}
+
+async function deleteOffer(id) {
+  const o = (store.offers || []).find(x => x.id === id);
+  const used = o?.timesRedeemed || 0;
+
+  const first = await Swal.fire({
+    title: used ? 'This offer has been used' : 'Delete this offer?',
+    html: used
+      ? `<p style="color:#9ca3af">${used} booking${used === 1 ? '' : 's'} used <strong style="color:#fff">${escapeHtml(o.code.trim())}</strong>. Deleting erases the record of which bookings came from this campaign.</p>
+         <p style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Pausing keeps the history and stops new uses.</p>`
+      : `<p style="color:#9ca3af">Nobody has used this code, so nothing is lost.</p>`,
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: used ? 'Delete anyway' : 'Delete',
+    denyButtonText: 'Pause instead', showDenyButton: !!used,
+    confirmButtonColor: '#ef4444', background: '#1e1e2a', color: '#fff',
+  });
+
+  if (first.isDenied) { await toggleOffer(id); return; }
+  if (!first.isConfirmed) return;
+
+  const res = await apiRequest('DELETE', `/api/admin/offers/${id}${used ? '?force=true' : ''}`);
+  if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not delete', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+  store.offers = store.offers.filter(o2 => o2.id !== id);
+  renderMarketing();
+  showToast('Offer deleted', 'success');
+}
+
+async function viewOfferRedemptions(id) {
+  const res = await apiRequest('GET', `/api/admin/offers/${id}/redemptions`);
+  if (res?._error) { Swal.fire({ icon: 'error', title: 'Could not load', text: res.message, background: '#1e1e2a', color: '#fff' }); return; }
+  const rows = res.data || [];
+  Swal.fire({
+    title: 'Who used this code',
+    html: rows.length
+      ? `<div style="text-align:left;max-height:50vh;overflow:auto">${rows.map(r => `
+          <div style="padding:.5rem 0;border-bottom:1px solid #2a2a3a">
+            <div style="color:#fff;font-weight:600">${escapeHtml(r.client || 'Unknown')}</div>
+            <div style="color:#9ca3af;font-size:.8rem">
+              ${escapeHtml(r.bookingReference || '')} · ${escapeHtml(r.bookingStatus || '')}
+              ${r.agreedAmount ? ` · KES ${r.agreedAmount.toLocaleString('en-KE')}` : ' · no price recorded'}
+            </div>
+            <div style="color:#6b7280;font-size:.75rem">${new Date(r.redeemedAt).toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' })}</div>
+          </div>`).join('')}</div>`
+      : '<p style="color:#9ca3af">No redemptions yet.</p>',
+    width: 520, background: '#1e1e2a', color: '#fff', confirmButtonColor: '#7c3aed',
+  });
+}
+
+// Pre-fills a dated offer for the specific empty weeks the guidance found.
+// The whole value of naming those dates is lost if the marketer then has to
+// re-enter them by hand.
+function createOfferForQuietWeeks() {
+  const weeks = (marketingUI.guidance?.recommendations || [])
+    .find(r => r.id === 'quiet-weeks-ahead')?.weeks || [];
+  if (!weeks.length) { openOfferForm(); return; }
+
+  const first = weeks[0].weekStart;
+  const last  = weeks[weeks.length - 1].weekStart;
+  const end   = new Date(last); end.setDate(end.getDate() + 6);
+
+  marketingUI.view = 'offers';
+  renderMarketing();
+  openOfferForm(null, {
+    label: `Quiet weeks push (${first} to ${end.toISOString().split('T')[0]})`,
+    description: 'Discount for selected dates',
+    discountValue: 10,
+    startsOn: mktToday(),
+    endsOn: end.toISOString().split('T')[0],
+    maxRedemptions: Math.max(2, weeks.length),
+    notes: `Auto-suggested for weeks with nothing booked: ${weeks.map(w => w.weekStart).join(', ')}`,
+  });
+}
+
+// ── Offer form ─────────────────────────────────────────────────
+// Deliberately opinionated: the fields are ordered as the decision is made
+// (what discount, for whom, for how long, capped at what), and the cap is
+// pre-filled rather than left blank. An uncapped discount is an open-ended
+// liability, and a blank field invites leaving it that way.
+function openOfferForm(id = null, prefill = {}) {
+  currentEditId = id;
+  const o = id ? (store.offers || []).find(x => x.id === id) : null;
+  const v = (key, fallback = '') => (o ? (o[key] ?? fallback) : (prefill[key] ?? fallback));
+
+  document.getElementById('modalTitle').textContent = o ? 'Edit offer' : 'New offer';
+
+  const serviceOpts = (store.services || []).filter(s => s.slug).map(s => {
+    const on = (o?.appliesTo || prefill.appliesTo || []).includes(s.slug);
+    return `<label class="flex items-center gap-2 py-1 cursor-pointer">
+        <input type="checkbox" class="offerService accent-purple-500" value="${escapeHtml(s.slug)}" ${on ? 'checked' : ''}>
+        <span class="text-sm text-gray-300">${escapeHtml(s.name)}</span>
+      </label>`;
+  }).join('');
+
+  document.getElementById('modalForm').innerHTML = `
+    <div class="pb-3 border-b border-gray-700">
+      <p class="text-sm text-gray-400">Clients type this code when they send an enquiry. Every use is recorded against the booking.</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm mb-1" for="offerCode">Code *</label>
+        <input type="text" id="offerCode" value="${escapeHtml(String(v('code')).trim())}" maxlength="40"
+          placeholder="AUG10" style="text-transform:uppercase;letter-spacing:.05em"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 font-bold">
+        <p class="text-xs text-gray-600 mt-1">Letters and numbers only. Short is better — people mistype.</p>
+        <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="code"></p>
+      </div>
+      <div>
+        <label class="block text-sm mb-1" for="offerLabel">Internal name *</label>
+        <input type="text" id="offerLabel" value="${escapeHtml(v('label'))}" maxlength="120"
+          placeholder="August weddings push"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <p class="text-xs text-gray-600 mt-1">Only you see this.</p>
+        <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="label"></p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div>
+        <label class="block text-sm mb-1" for="offerType">Type</label>
+        <select id="offerType" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+          <option value="percent" ${v('discountType','percent') === 'percent' ? 'selected' : ''}>Percentage</option>
+          <option value="fixed"   ${v('discountType') === 'fixed' ? 'selected' : ''}>Fixed KES</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1" for="offerValue">Amount *</label>
+        <input type="number" id="offerValue" min="1" step="1" value="${v('discountValue', 10)}"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="discountValue"></p>
+      </div>
+      <div>
+        <label class="block text-sm mb-1" for="offerCap">Max uses</label>
+        <input type="number" id="offerCap" min="1" step="1" value="${v('maxRedemptions', 10)}"
+          placeholder="unlimited"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <p class="text-xs text-gray-600 mt-1">Leave blank for no limit.</p>
+        <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="maxRedemptions"></p>
+      </div>
+    </div>
+
+    <div id="offerWarn" class="hidden rounded-lg px-3 py-2 text-xs" style="background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);color:#fde047"></div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm mb-1" for="offerStart">Starts</label>
+        <input type="date" id="offerStart" value="${v('startsOn', new Date().toISOString().split('T')[0])}"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+      </div>
+      <div>
+        <label class="block text-sm mb-1" for="offerEnd">Ends <span class="text-gray-600 font-normal text-xs">(recommended)</span></label>
+        <input type="date" id="offerEnd" value="${v('endsOn')}"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="endsOn"></p>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1" for="offerDesc">What the client sees when the code works</label>
+      <input type="text" id="offerDesc" value="${escapeHtml(v('description'))}" maxlength="160"
+        placeholder="10% off your August booking"
+        class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm mb-1" for="offerMin">Only above this job value <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+        <input type="number" id="offerMin" min="0" step="1000" value="${v('minAmount')}" placeholder="any value"
+          class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Limit to services <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+        <details class="bg-gray-800 rounded-lg border border-gray-700 px-3 py-2">
+          <summary class="text-sm text-gray-400 cursor-pointer select-none">Choose services</summary>
+          <div class="mt-2 max-h-40 overflow-auto">${serviceOpts || '<p class="text-xs text-gray-600">No services found.</p>'}</div>
+        </details>
+        <p class="text-xs text-gray-600 mt-1">None selected = applies to everything.</p>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1" for="offerNotes">Notes <span class="text-gray-600 font-normal text-xs">(internal)</span></label>
+      <textarea id="offerNotes" rows="2" maxlength="500"
+        class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(v('notes'))}</textarea>
+    </div>
+
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" id="offerActive" class="accent-green-500" ${o ? (o.isActive ? 'checked' : '') : 'checked'}>
+      <span class="text-sm">Active — clients can use this code</span>
+    </label>
+
+    ${o && o.timesRedeemed > 0
+      ? `<p class="text-xs text-gray-500 pt-2 border-t border-gray-800">
+           Used ${o.timesRedeemed} time${o.timesRedeemed === 1 ? '' : 's'} already. Changing the discount does not alter bookings that already used it.
+         </p>` : ''}`;
+
+  // Live warning on a discount large enough to be a mistake. Advisory, not a
+  // block — a genuine clearance offer is legitimate; a typo is not.
+  const warn = () => {
+    const box = document.getElementById('offerWarn');
+    const type = document.getElementById('offerType').value;
+    const val  = Number(document.getElementById('offerValue').value);
+    const cap  = document.getElementById('offerCap').value;
+    const msgs = [];
+    if (type === 'percent' && val > 25) msgs.push(`${val}% is a deep discount — check this is what you mean.`);
+    if (!cap) msgs.push('With no maximum uses, this code can be shared and used indefinitely.');
+    if (!document.getElementById('offerEnd').value) msgs.push('With no end date, this offer runs until you remember to stop it.');
+    box.innerHTML = msgs.map(m => `<div>⚠ ${m}</div>`).join('');
+    box.classList.toggle('hidden', msgs.length === 0);
+  };
+  ['offerType','offerValue','offerCap','offerEnd'].forEach(idd =>
+    document.getElementById(idd).addEventListener('input', warn));
+  warn();
+
+  document.getElementById('formModal').classList.remove('hidden');
+}
+
+async function saveOffer() {
+  document.querySelectorAll('#modalForm .field-err').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
+
+  const payload = {
+    code:           document.getElementById('offerCode').value.trim().toUpperCase(),
+    label:          document.getElementById('offerLabel').value.trim(),
+    description:    document.getElementById('offerDesc').value.trim() || null,
+    discountType:   document.getElementById('offerType').value,
+    discountValue:  Number(document.getElementById('offerValue').value),
+    maxRedemptions: document.getElementById('offerCap').value === '' ? null : Number(document.getElementById('offerCap').value),
+    minAmount:      document.getElementById('offerMin').value === '' ? null : Number(document.getElementById('offerMin').value),
+    startsOn:       document.getElementById('offerStart').value || null,
+    endsOn:         document.getElementById('offerEnd').value || null,
+    notes:          document.getElementById('offerNotes').value.trim() || null,
+    isActive:       document.getElementById('offerActive').checked,
+    appliesTo:      [...document.querySelectorAll('.offerService:checked')].map(c => c.value),
+  };
+
+  const btn = document.getElementById('saveModalBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const res = currentEditId
+    ? await apiRequest('PUT', `/api/admin/offers/${currentEditId}`, payload)
+    : await apiRequest('POST', '/api/admin/offers', payload);
+
+  btn.disabled = false; btn.textContent = 'Save';
+
+  if (res?._error) {
+    if (res.fields) {
+      Object.entries(res.fields).forEach(([f, m]) => {
+        const el = document.querySelector(`#modalForm .field-err[data-for="${f}"]`);
+        if (el) { el.textContent = m; el.classList.remove('hidden'); }
+      });
+      return;
+    }
+    Swal.fire({ icon: 'error', title: 'Could not save', text: res.message, background: '#1e1e2a', color: '#fff' });
+    return;
+  }
+
+  store.offers = currentEditId
+    ? (store.offers || []).map(o => o.id === currentEditId ? res.data : o)
+    : [res.data, ...(store.offers || [])];
+
+  closeModal();
+  await loadGuidance();       // a new offer can clear the "nothing running" advice
+  renderMarketing();
+  showToast(currentEditId ? 'Offer updated' : 'Offer created', 'success');
 }
 
 function openMarketingForm(id) {
@@ -4100,57 +4785,14 @@ function duplicateMarketingBanner(id) {
     function makeModalResizable() { const modal = document.getElementById('formModal'); const modalContent = modal?.querySelector('.bg-gray-900'); if (!modalContent) return; const resizeHandle = document.createElement('div'); resizeHandle.className = 'modal-resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-purple-500 rounded-bl-lg'; modalContent.style.position = 'relative'; modalContent.appendChild(resizeHandle); let isResizing = false; let startX, startY, startWidth, startHeight; resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; startX = e.clientX; startY = e.clientY; startWidth = modalContent.offsetWidth; startHeight = modalContent.offsetHeight; e.preventDefault(); }); document.addEventListener('mousemove', (e) => { if (!isResizing) return; const newWidth = Math.max(400, Math.min(startWidth + (e.clientX - startX), window.innerWidth - 100)); const newHeight = Math.max(500, Math.min(startHeight + (e.clientY - startY), window.innerHeight - 100)); modalContent.style.width = newWidth + 'px'; modalContent.style.height = newHeight + 'px'; }); document.addEventListener('mouseup', () => { isResizing = false; }); }
 
     // ==================== POSTERS MANAGEMENT ====================
+    // Posters are now a sub-view of the Marketing tab, so this delegates rather
+    // than rendering its own screen. Kept as a named function because the poster
+    // CRUD handlers (savePoster, togglePoster, deletePoster) all call it, and
+    // having them write to sectionContent directly would wipe the Marketing tab
+    // out from under the user.
     function renderPosters() {
-      const container = document.getElementById('sectionContent');
-      const posters = store.posters || [];
-      container.innerHTML = `
-        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
-          <div>
-            <h2 class="text-xl font-bold">Homepage Posters</h2>
-            <p class="text-sm text-gray-400 mt-1">Visual promotional cards shown in the homepage slideshow</p>
-          </div>
-          <button onclick="openPosterForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
-            <i class="fas fa-plus"></i> Add Poster
-          </button>
-        </div>
-        ${posters.length === 0 ? `
-          <div class="bg-gray-900 rounded-xl p-12 text-center border border-gray-800">
-            <i class="fas fa-image text-5xl text-gray-600 mb-4"></i>
-            <p class="text-gray-400">No posters yet. Add your first poster to display on the homepage!</p>
-            <button onclick="openPosterForm()" class="mt-4 text-purple-400 hover:underline">Create a poster →</button>
-          </div>
-        ` : `
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${posters.map(p => `
-              <div class="bg-gray-900 rounded-xl border ${p.isActive ? 'border-purple-500' : 'border-gray-800'} overflow-hidden hover:border-purple-400 transition">
-                <div class="relative h-48 bg-gray-800">
-                  ${_isVideoUrl(p.imageUrl || '') && _isYouTubeUrl(p.imageUrl || '')
-                    ? `<iframe src="${_ytEmbedUrl(p.imageUrl)}" class="w-full h-full" frameborder="0"></iframe>`
-                    : _isVideoUrl(p.imageUrl || '')
-                    ? `<video src="${escapeHtml(p.imageUrl || '')}" class="w-full h-full object-cover" muted loop autoplay playsinline></video>`
-                    : `<img src="${escapeHtml(p.imageUrl || p.image_url || '')}" class="w-full h-full object-cover" onerror="this.parentElement.style.background='#374151'">`
-                  }
-                  <div class="absolute top-2 right-2 flex gap-1">
-                    ${_isVideoUrl(p.imageUrl || '') ? '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white">🎬 Video</span>' : ''}
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${p.isActive ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'}">${p.isActive ? '🟢 Live' : '⚫ Hidden'}</span>
-                  </div>
-                </div>
-                <div class="p-4">
-                  <h3 class="font-bold text-lg">${escapeHtml(p.title)}</h3>
-                  ${p.caption ? `<p class="text-sm text-gray-400 mt-1">${escapeHtml(p.caption)}</p>` : ''}
-                  <div class="flex flex-wrap gap-2 mt-3">
-                    <button onclick="togglePoster('${p.id}')" class="px-3 py-1 rounded-lg text-sm ${p.isActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} transition">
-                      ${p.isActive ? 'Hide' : 'Show'}
-                    </button>
-                    <button onclick="openPosterForm('${p.id}')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">Edit</button>
-                    <button onclick="deletePoster('${p.id}')" class="px-3 py-1 bg-red-600/30 hover:bg-red-600/50 text-red-400 rounded-lg text-sm transition">Delete</button>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `}
-      `;
+      marketingUI.view = 'posters';
+      return renderMarketing();
     }
 
     // Poster media helpers
@@ -5536,7 +6178,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
 
     // ==================== SWITCH TAB & CLOSE MODAL ====================
-    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') renderPosters(); else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); else if (tab === 'beta') renderBeta(); else if (tab === 'updates') renderUpdates(); }
+    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') { marketingUI.view = 'posters'; currentTab = 'marketing'; renderMarketing(); } else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); else if (tab === 'beta') renderBeta(); else if (tab === 'updates') renderUpdates(); }
     function closeModal() { document.getElementById('formModal').classList.add('hidden'); currentEditId = null; }
     function logout() { localStorage.removeItem('lawie_admin_session'); sessionStorage.removeItem('lawie_admin_session'); window.location.href = 'login.html?logout=1'; }
 
@@ -5578,6 +6220,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
           else if (document.getElementById('eventTitle')) saveEvent();
           else if (document.getElementById('galleryFiles')) saveGalleryItem();
           else if (document.getElementById('galleryEditTitle')) saveGalleryEdit();
+          else if (document.getElementById('offerCode')) saveOffer();
           else if (document.getElementById('bannerMessage')) saveMarketingBanner();
           else if (document.getElementById('empName')) saveEmployee();
           else if (document.getElementById('payrollEmployee')) savePayroll();
@@ -5593,7 +6236,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

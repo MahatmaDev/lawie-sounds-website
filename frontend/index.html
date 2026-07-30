@@ -851,6 +851,17 @@
     function stopLightboxAutoAdvance() { if (lightboxAutoTimer) { clearInterval(lightboxAutoTimer); lightboxAutoTimer = null; } }
 
     // ==================== MARKETING BANNER ====================
+
+    // Fire-and-forget. keepalive so a click that navigates away still reports,
+    // and every failure is swallowed: telemetry must never break the page or
+    // delay the navigation the visitor actually asked for.
+    function trackBanner(id, metric) {
+      if (!id) return;
+      try {
+        fetch(`/api/banners/${id}/${metric}`, { method: 'POST', keepalive: true }).catch(() => {});
+      } catch {}
+    }
+
     async function loadMarketingBanner() {
       try {
         const result = await apiFetch('/api/banners');
@@ -862,8 +873,23 @@
         if (dismissedId === String(activeBanner.id)) return;
         document.getElementById('bannerMessage').textContent = activeBanner.message;
         const ctaLink = document.getElementById('bannerCtaLink');
-        if (ctaLink) ctaLink.href = activeBanner.ctaLink || 'booking.html';
+        if (ctaLink) {
+          // Defence in depth. The API and a CHECK constraint both reject unsafe
+          // schemes now, but this value goes straight into an href, so the last
+          // step before the DOM checks it too rather than trusting the journey.
+          const link = String(activeBanner.ctaLink || '').trim();
+          const safe = link && !/^(javascript|data|vbscript|file):/i.test(link);
+          ctaLink.href = safe ? link : 'booking.html';
+        }
         document.getElementById('marketingBanner').classList.remove('hidden');
+
+        // Aggregate counters only — no cookie, no identifier, nothing per-person.
+        // Until this existed, views/clicks/ctr were columns nothing ever wrote,
+        // so every campaign read as zero engagement and the marketer had no
+        // basis for deciding anything.
+        trackBanner(activeBanner.id, 'view');
+        if (ctaLink) ctaLink.addEventListener('click', () => trackBanner(activeBanner.id, 'click'));
+
         document.getElementById('closeBanner').onclick = () => {
           document.getElementById('marketingBanner').classList.add('hidden');
           localStorage.setItem('lawie_banner_dismissed', String(activeBanner.id));

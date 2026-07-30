@@ -112,6 +112,11 @@ const map = {
   // added later is not exposed by default.
   publicBanner: (r) => r && ({ id: r.id, type: r.type, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, style: r.style, priority: r.priority }),
 
+  // Packages are real rows now, not JSONB array entries addressed by index.
+  // `id` is the point: editing and deleting no longer depend on array position,
+  // which is what made concurrent edits hit the wrong package.
+  servicePackage: (r) => r && ({ id: r.id, serviceId: r.service_id, name: r.name, price: r.price === null || r.price === undefined ? null : Number(r.price), duration: r.duration, features: r.features || [], displayOrder: r.display_order, isActive: r.is_active, isPopular: r.is_popular, createdAt: r.created_at }),
+
   offer: (r) => r && ({ id: r.id, code: r.code, label: r.label, description: r.description, discountType: r.discount_type, discountValue: Number(r.discount_value), minAmount: r.min_amount === null ? null : Number(r.min_amount), appliesTo: r.applies_to || [], startsOn: r.starts_on, endsOn: r.ends_on, maxRedemptions: r.max_redemptions, timesRedeemed: r.times_redeemed, isActive: r.is_active, notes: r.notes, createdBy: r.created_by, createdAt: r.created_at }),
   booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
@@ -549,7 +554,22 @@ app.get('/api/admin/auth/config', (_, res) => res.json({
 app.get('/api/services', async (req, res) => {
   const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
-  res.json({ success: true, data: data.map(map.service) });
+
+  // One query for every service's packages rather than one per service — the
+  // services list page needs the cheapest package to show "Starting from KES X",
+  // and that price is the single most important thing missing from the site.
+  const { data: pkgs } = await supabase.from('service_packages')
+    .select('*').eq('is_active', true).order('display_order');
+
+  const byService = (pkgs || []).reduce((acc, p) => {
+    (acc[p.service_id] ||= []).push(map.servicePackage(p));
+    return acc;
+  }, {});
+
+  res.json({
+    success: true,
+    data: data.map(s => ({ ...map.service(s), packages: byService[s.id] || [] })),
+  });
 });
 
 // Single service by slug or UUID (for service-detail.html)
@@ -578,7 +598,22 @@ app.get('/api/services/:slug', async (req, res) => {
     .order('display_order', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(12);
-  res.json({ success: true, data: { ...map.service(data), reviews: (reviews || []).map(map.publicReview), gallery: (gallery || []).map(map.gallery) } });
+  // Packages come from service_packages now. Served under the same `packages`
+  // key and the same shape the pages already read, so the public frontend needs
+  // no change and the JSONB column can be retired without a flag day.
+  const { data: pkgs } = await supabase.from('service_packages')
+    .select('*').eq('service_id', data.id).eq('is_active', true)
+    .order('display_order').order('price', { ascending: true, nullsFirst: false });
+
+  res.json({
+    success: true,
+    data: {
+      ...map.service(data),
+      packages: (pkgs || []).map(map.servicePackage),
+      reviews: (reviews || []).map(map.publicReview),
+      gallery: (gallery || []).map(map.gallery),
+    },
+  });
 });
 
 // Events (upcoming active)
@@ -861,6 +896,35 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
   const { data, error } = await insertBooking(row);
   if (error) return handleError(res, error);
 
+  // Attribute the enquiry to real service rows.
+  //
+  // bookings.services stays as the text[] the form submits and the dashboard
+  // displays, but it is no longer what analysis reads. It was: a live booking
+  // said "Public Address System" while the service is "Public Address Systems",
+  // so that enquiry was invisible to per-service reporting and the marketing
+  // guidance wrongly called the service dormant. Keys, not strings, from here.
+  //
+  // Non-fatal by design: an enquiry is revenue, and losing one because a service
+  // name did not resolve would be far worse than an unattributed row.
+  if (Array.isArray(row.services) && row.services.length) {
+    try {
+      const { data: allSvcs } = await supabase.from('services').select('id, name');
+      const norm = (s) => String(s || '').trim().toLowerCase().replace(/s$/, '');
+      const links = [];
+      for (const wanted of row.services) {
+        const match = (allSvcs || []).find(s => norm(s.name) === norm(wanted));
+        if (match && !links.some(l => l.service_id === match.id)) {
+          links.push({ booking_id: data.id, service_id: match.id });
+        } else if (!match) {
+          console.warn(`[SERVICES] enquiry ${data.id} named "${wanted}", which matches no service.`);
+        }
+      }
+      if (links.length) await supabase.from('booking_services').insert(links);
+    } catch (e) {
+      console.error('[SERVICES] attribution failed (non-fatal):', e.message);
+    }
+  }
+
   // Record the promo redemption, if any. Deliberately AFTER the booking insert
   // and deliberately non-fatal: an enquiry is revenue, and losing one because a
   // discount code could not be attributed would be a far worse outcome than an
@@ -1098,6 +1162,23 @@ app.put('/api/admin/services/:id', adminAuth, async (req, res) => {
   res.json({ success: true, data: map.service(data) });
 });
 app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('services')
+    .select('id, name').eq('id', req.params.id).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Service not found' });
+
+  // booking_services.service_id is ON DELETE RESTRICT, so a service with history
+  // cannot be deleted — deliberately. Deleting it would erase the record of the
+  // revenue it earned. Catch it here to explain why rather than surfacing a raw
+  // foreign-key violation, and point at the action that is actually wanted.
+  const { count } = await supabase.from('booking_services')
+    .select('id', { count: 'exact', head: true }).eq('service_id', req.params.id);
+
+  if ((count || 0) > 0) {
+    return res.status(409).json({
+      error: `${count} booking${count === 1 ? '' : 's'} reference "${cur.name}". Deactivate it instead — deleting would erase the record of revenue it earned.`,
+    });
+  }
+
   const { error } = await supabase.from('services').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
   res.json({ success: true });
@@ -1452,6 +1533,200 @@ app.delete('/api/admin/reviews/:id', adminAuth, async (req, res) => {
   const { error } = await supabase.from('reviews').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
   res.json({ success: true });
+});
+
+// ==================== ADMIN — SERVICE PACKAGES ====================
+//
+// Packages used to live in a JSONB array on the service and were addressed by
+// array index, so editPackage(2) meant "whatever is third right now". Reordering
+// or a concurrent edit hit the wrong one, and saving a package rewrote the whole
+// service — last write wins, and the other person's package vanished silently.
+//
+// These are rows with stable ids. Editing one package touches one row.
+
+function validatePackage(body, { isUpdate = false } = {}) {
+  const errors = {};
+  const name = String(body.name ?? '').trim();
+
+  if (!isUpdate || body.name !== undefined) {
+    if (name.length < 2)  errors.name = 'Give the package a name clients will understand.';
+    if (name.length > 80) errors.name = 'That name is too long for a package card.';
+  }
+  // Blank price is legitimate — bespoke work is quoted, not listed. It is
+  // distinct from a price of zero, which would read as free.
+  if (body.price !== undefined && body.price !== null && body.price !== '') {
+    const p = Number(body.price);
+    if (!Number.isFinite(p) || p < 0)   errors.price = 'Enter a price in KES, or leave it blank for "contact us".';
+    else if (p > 100000000)             errors.price = 'That price looks wrong — check for an extra digit.';
+  }
+  if (body.features !== undefined && !Array.isArray(body.features) && typeof body.features !== 'string') {
+    errors.features = 'Features must be a list.';
+  }
+  return errors;
+}
+
+function toPackageDB(b) {
+  const row = {};
+  if (b.name !== undefined)     row.name = String(b.name).trim();
+  if (b.duration !== undefined) row.duration = b.duration?.trim() || null;
+  if (b.price !== undefined) {
+    row.price = (b.price === null || b.price === '') ? null : Number(b.price);
+  }
+  if (b.features !== undefined) {
+    const list = Array.isArray(b.features) ? b.features : String(b.features).split('\n');
+    row.features = list.map(f => String(f).trim()).filter(Boolean).slice(0, 40);
+  }
+  if (b.displayOrder !== undefined) row.display_order = Number(b.displayOrder) || 0;
+  if (b.isActive  !== undefined) row.is_active  = b.isActive !== false;
+  if (b.isPopular !== undefined) row.is_popular = b.isPopular === true;
+  return row;
+}
+
+// Who is making the change, carried as a column so it lands in the same
+// statement as the price and the history trigger can read it. A session setting
+// would not survive: PostgREST runs each request in its own transaction.
+function actorOf(req) {
+  return req.admin?.username || req.admin?.role || 'unknown';
+}
+
+app.get('/api/admin/services/:id/packages', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('service_packages')
+    .select('*').eq('service_id', req.params.id).order('display_order');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: data.map(map.servicePackage) });
+});
+
+app.post('/api/admin/services/:id/packages', adminAuth, async (req, res) => {
+  const errors = validatePackage(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const { data: svc } = await supabase.from('services').select('id').eq('id', req.params.id).maybeSingle();
+  if (!svc) return res.status(404).json({ error: 'Service not found' });
+
+  const row = toPackageDB(req.body);
+  row.service_id = req.params.id;
+  if (row.display_order === undefined) {
+    const { data: last } = await supabase.from('service_packages')
+      .select('display_order').eq('service_id', req.params.id)
+      .order('display_order', { ascending: false }).limit(1).maybeSingle();
+    row.display_order = (last?.display_order || 0) + 10;
+  }
+
+  // Only one package per service may be flagged popular; a partial unique index
+  // enforces it, so clear the previous one rather than letting the insert fail.
+  if (row.is_popular) {
+    await supabase.from('service_packages').update({ is_popular: false }).eq('service_id', req.params.id);
+  }
+
+  row.updated_by = actorOf(req);
+  const { data, error } = await supabase.from('service_packages').insert(row).select().single();
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'This service already has a package with that name.', fields: { name: 'Already used.' } });
+    }
+    return handleError(res, error);
+  }
+  res.status(201).json({ success: true, data: map.servicePackage(data) });
+});
+
+app.put('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
+  const errors = validatePackage(req.body, { isUpdate: true });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+  const { data: cur } = await supabase.from('service_packages')
+    .select('id, service_id').eq('id', req.params.pkgId).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Package not found' });
+
+  const row = toPackageDB(req.body);
+  if (row.is_popular) {
+    await supabase.from('service_packages').update({ is_popular: false })
+      .eq('service_id', cur.service_id).neq('id', cur.id);
+  }
+
+  row.updated_by = actorOf(req);
+  const { data, error } = await supabase.from('service_packages')
+    .update(row).eq('id', req.params.pkgId).select().single();
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'This service already has a package with that name.', fields: { name: 'Already used.' } });
+    }
+    return handleError(res, error);
+  }
+  res.json({ success: true, data: map.servicePackage(data) });
+});
+
+app.delete('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('service_packages')
+    .select('id').eq('id', req.params.pkgId).maybeSingle();
+  if (!cur) return res.status(404).json({ error: 'Package not found' });
+
+  // A package a client actually chose is part of the revenue record. Deactivate
+  // keeps it out of the website while preserving what was sold.
+  const { count } = await supabase.from('booking_services')
+    .select('id', { count: 'exact', head: true }).eq('package_id', req.params.pkgId);
+
+  if ((count || 0) > 0 && req.query.force !== 'true') {
+    return res.status(409).json({
+      error: `${count} booking${count === 1 ? '' : 's'} chose this package. Deactivate it instead so the sales record stays intact.`,
+    });
+  }
+  const { error } = await supabase.from('service_packages').delete().eq('id', req.params.pkgId);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+app.patch('/api/admin/services/:id/packages/reorder', adminAuth, async (req, res) => {
+  const items = Array.isArray(req.body.items) ? req.body.items : null;
+  if (!items?.length) return res.status(400).json({ error: 'items array is required' });
+
+  const results = await Promise.allSettled(items.map(it =>
+    supabase.from('service_packages')
+      .update({ display_order: Number(it.displayOrder) || 0 })
+      .eq('id', it.id).eq('service_id', req.params.id)
+  ));
+  const failed = results.filter(r => r.status === 'rejected' || r.value?.error).length;
+  if (failed) return res.status(500).json({ error: `${failed} of ${items.length} packages could not be reordered.` });
+  res.json({ success: true, data: { reordered: items.length } });
+});
+
+// Price history. The reason the trigger exists: "we raised the price in March,
+// did enquiries fall?" is otherwise a matter of memory.
+app.get('/api/admin/packages/:pkgId/price-history', adminAuth, adminOnly, async (req, res) => {
+  const { data, error } = await supabase.from('package_price_history')
+    .select('*').eq('package_id', req.params.pkgId).order('changed_at', { ascending: false });
+  if (error) return handleError(res, error);
+  res.json({
+    success: true,
+    data: (data || []).map(r => ({
+      id: r.id,
+      oldPrice: r.old_price === null ? null : Number(r.old_price),
+      newPrice: r.new_price === null ? null : Number(r.new_price),
+      changedBy: r.changed_by, changedAt: r.changed_at,
+    })),
+  });
+});
+
+// Per-service revenue and demand. adminOnly for the same reason analytics is:
+// these are margins and revenue, not operational data.
+app.get('/api/admin/services/performance', adminAuth, adminOnly, async (req, res) => {
+  const iso = d => d.toISOString().split('T')[0];
+  const today = new Date();
+  const defFrom = new Date(today); defFrom.setDate(defFrom.getDate() - 89);
+
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : iso(defFrom);
+  const to   = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to   || '') ? req.query.to   : iso(today);
+  if (from > to) return res.status(400).json({ error: 'The start date must be on or before the end date.' });
+
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+  if (days > ANALYTICS_MAX_DAYS) {
+    return res.status(400).json({ error: `Choose a range of ${ANALYTICS_MAX_DAYS} days or fewer.` });
+  }
+
+  const { data, error } = await supabase.rpc('service_performance', { p_from: from, p_to: to });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
 });
 
 // ==================== ADMIN — OFFERS ====================

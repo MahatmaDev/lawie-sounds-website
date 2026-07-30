@@ -326,7 +326,12 @@
         if (body) opts.body = JSON.stringify(body);
         const res = await fetch(path, opts);
         const json = await res.json().catch(() => null);
-        if (!res.ok) return { _error: true, status: res.status, message: json?.error || res.statusText };
+        // `fields` must survive. The API returns per-field messages so a form can
+        // mark the input that is actually wrong; dropping them here meant every
+        // caller fell back to a generic "Could not save" popup and the manager
+        // had to guess which field the server objected to. Affects packages,
+        // offers, reviews and gallery alike.
+        if (!res.ok) return { _error: true, status: res.status, message: json?.error || res.statusText, fields: json?.fields || null };
         return json;
       } catch(e) { return { _error: true, status: 0, message: 'Network error — cannot reach API' }; }
     }
@@ -1073,284 +1078,321 @@
       }
     }
 
-    // ==================== REVAMPED SERVICES MANAGEMENT ====================
-    let serviceViewMode = 'active';
-    let editingPackageIndex = null;
-    let editingFeatureIndex = null;
-    let editingFaqIndex = null;
+    // ==================== SERVICES ====================
+    //
+    // This is the engine that generates all revenue, so the tab leads with what
+    // each service actually earns rather than with content editing. An owner
+    // opening it should see, without clicking: which services bring enquiries,
+    // which convert, which earn, and which are dormant.
+    //
+    // Content editing sits behind that because it is the less frequent task —
+    // but readiness is shown on every card, because right now every service is
+    // missing the thing that matters most: a price.
 
-    function _svcDemand(name) {
-      return (store.bookings || []).filter(b => {
-        const s = (Array.isArray(b.services) ? b.services.join(' ') : (b.services || '')).toLowerCase();
-        return s.includes((name || '').toLowerCase().slice(0, 10));
-      }).length;
+    let serviceViewMode = 'performance';   // performance | content | inactive
+    let servicePerf = null;
+    let servicePerfError = null;
+
+    const SERVICE_RANGES = { '30d': 30, '90d': 90, '365d': 365 };
+    let servicePerfRange = '90d';
+
+    async function loadServicePerformance() {
+      const days = SERVICE_RANGES[servicePerfRange] || 90;
+      const to   = new Date();
+      const from = new Date(); from.setDate(from.getDate() - (days - 1));
+      const iso  = d => d.toISOString().split('T')[0];
+
+      const res = await apiRequest('GET', `/api/admin/services/performance?from=${iso(from)}&to=${iso(to)}`);
+      if (res?._error) {
+        servicePerf = null;
+        servicePerfError = res.status === 403 ? 'admin-only' : (res.message || 'unavailable');
+        return;
+      }
+      servicePerf = res.data;
+      servicePerfError = null;
     }
 
-    function _svcPriceRange(svc) {
-      const prices = (svc.packages || []).map(p => parseInt(p.price) || 0).filter(p => p > 0);
-      if (!prices.length) return null;
-      const min = Math.min(...prices), max = Math.max(...prices);
-      const fmt = n => n >= 1000 ? (n / 1000).toFixed(0) + 'K' : n.toString();
-      return min === max ? `KES ${fmt(min)}` : `KES ${fmt(min)} – ${fmt(max)}`;
+    function svcKes(n) {
+      const v = Number(n) || 0;
+      if (Math.abs(v) >= 1000000) return 'KES ' + (v / 1000000).toFixed(1) + 'M';
+      if (Math.abs(v) >= 1000)    return 'KES ' + Math.round(v / 1000) + 'K';
+      return 'KES ' + Math.round(v).toLocaleString('en-KE');
     }
 
-    function _svcCompleteness(svc) {
-      let s = 0;
-      if (svc.mainImage && !svc.mainImage.includes('placehold')) s += 25;
-      if (svc.shortDesc) s += 10;
-      if (svc.longDesc)  s += 10;
-      if ((svc.packages  || []).length) s += 25;
-      if ((svc.features  || []).length) s += 15;
-      if ((svc.faqs      || []).length) s += 15;
-      return s;
+    // Same rule as the analytics tab: no meaningful percentage exists from zero,
+    // so say "new" rather than inventing +100%.
+    function svcDelta(cur, prev, { goodIsUp = true } = {}) {
+      const c = Number(cur) || 0, p = Number(prev) || 0;
+      if (p === 0) return c === 0 ? '' : `<span class="text-xs px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-semibold">new</span>`;
+      const pct = ((c - p) / p) * 100;
+      if (Math.round(Math.abs(pct)) === 0) return `<span class="text-xs text-gray-600">level</span>`;
+      const up = pct > 0, good = up === goodIsUp;
+      return `<span class="text-xs ${good ? 'text-green-400' : 'text-red-400'} font-semibold">
+                <i class="fas fa-arrow-${up ? 'up' : 'down'} text-[10px]"></i>${Math.abs(pct).toFixed(0)}%</span>`;
     }
 
-    function renderServices() {
+    function readinessColour(r) {
+      return r >= 80 ? 'text-green-400' : r >= 50 ? 'text-yellow-400' : 'text-red-400';
+    }
+
+    // What is missing, named. "Readiness 35%" tells the manager nothing about
+    // what to do next; "no price, no full description" does.
+    function missingBits(c) {
+      const gaps = [];
+      if (!c.pricedPackages) gaps.push(c.packages ? 'no price on any package' : 'no packages');
+      if (!c.shortDesc)      gaps.push('no summary');
+      if (!c.longDesc)       gaps.push('no full description');
+      if (!c.photos)         gaps.push('no photos');
+      else if (c.photos < 3) gaps.push('only ' + c.photos + ' photo' + (c.photos === 1 ? '' : 's'));
+      if (!c.image)          gaps.push('no cover image');
+      return gaps;
+    }
+
+    async function renderServices() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
 
-      const activeCount  = store.services.filter(s => s.isActive !== false).length;
-      const totalBookings = (store.bookings || []).length;
-      const approvedReviews = (store.reviews || []).filter(r => r.isApproved);
-      const avgRating = approvedReviews.length
-        ? (approvedReviews.reduce((s, r) => s + (r.rating || 0), 0) / approvedReviews.length).toFixed(1)
-        : null;
+      if (!servicePerf && !servicePerfError) {
+        container.innerHTML = `<div class="flex justify-center py-16"><div class="spinner"></div></div>`;
+        await loadServicePerformance();
+      }
 
-      // Compute demand for each service
-      const withDemand = store.services.map(s => ({ ...s, demand: _svcDemand(s.name) }));
-      const topService  = withDemand.reduce((best, s) => (!best || s.demand > best.demand) ? s : best, null);
+      const services = store.services || [];
+      const perfById = {};
+      (servicePerf?.services || []).forEach(s => { perfById[s.id] = s; });
 
-      let filtered = withDemand;
-      if (serviceViewMode === 'active') filtered = withDemand.filter(s => s.isActive !== false);
-      if (serviceViewMode === 'draft')  filtered = withDemand.filter(s => s.isActive === false);
+      const tab = (k, label) => `
+        <button onclick="setServiceView('${k}')"
+          class="px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition border ${
+            serviceViewMode === k ? 'bg-purple-600 border-purple-500 text-white'
+                                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">${label}</button>`;
 
-      const missingImage = store.services.filter(s => !s.mainImage).length;
-      const missingPkgs  = store.services.filter(s => s.isActive !== false && !(s.packages||[]).length).length;
-
-      container.innerHTML = `
-        <!-- Business Portfolio Banner -->
-        <div class="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 rounded-2xl border border-purple-700/30 p-5 mb-5">
-          <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
-            <div>
-              <h3 class="font-bold text-white text-lg">Your Business Portfolio</h3>
-              <p class="text-xs text-gray-400 mt-0.5">${activeCount} service${activeCount !== 1 ? 's' : ''} live on your website right now</p>
-            </div>
-            <a href="https://lawie-sounds-website.vercel.app/#services" target="_blank"
-              class="flex items-center gap-1.5 text-xs bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 px-3 py-1.5 rounded-lg transition">
-              <i class="fas fa-external-link-alt"></i> View live site
-            </a>
+      const t = servicePerf?.totals;
+      const header = `
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white">Services</h2>
+            <p class="text-sm text-gray-500 mt-0.5">
+              ${t ? `${t.activeServices} of ${t.services} active · ${t.pricedPackages} priced package${t.pricedPackages === 1 ? '' : 's'} · ${t.enquiries} enquir${t.enquiries === 1 ? 'y' : 'ies'} in this period`
+                  : `${services.length} services`}
+            </p>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="bg-gray-900/60 rounded-xl p-3 text-center border border-gray-700/40">
-              <p class="text-2xl font-bold text-purple-400">${store.services.length}</p>
-              <p class="text-xs text-gray-400 mt-0.5">Services</p>
-            </div>
-            <div class="bg-gray-900/60 rounded-xl p-3 text-center border border-gray-700/40">
-              <p class="text-2xl font-bold text-green-400">${activeCount}</p>
-              <p class="text-xs text-gray-400 mt-0.5">Live on Site</p>
-            </div>
-            <div class="bg-gray-900/60 rounded-xl p-3 text-center border border-gray-700/40">
-              <p class="text-2xl font-bold text-yellow-400">${totalBookings}</p>
-              <p class="text-xs text-gray-400 mt-0.5">Total Enquiries</p>
-            </div>
-            <div class="bg-gray-900/60 rounded-xl p-3 text-center border border-gray-700/40">
-              <p class="text-2xl font-bold text-blue-400">${avgRating ? avgRating + ' ⭐' : '—'}</p>
-              <p class="text-xs text-gray-400 mt-0.5">Avg Rating</p>
-            </div>
+          <div class="flex gap-2 flex-wrap">
+            ${Object.keys(SERVICE_RANGES).map(k => `
+              <button onclick="setServicePerfRange('${k}')"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
+                  servicePerfRange === k ? 'bg-purple-600 border-purple-500 text-white'
+                                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">
+                ${k === '365d' ? '12 months' : k.replace('d', ' days')}
+              </button>`).join('')}
+            <button onclick="openServiceForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+              <i class="fas fa-plus"></i> New service
+            </button>
           </div>
-          ${topService && topService.demand > 0 ? `
-          <div class="mt-3 flex items-center gap-2 text-xs text-green-400">
-            <i class="fas fa-fire"></i>
-            <span>Most in-demand: <strong>${escapeHtml(topService.name)}</strong> — ${topService.demand} booking${topService.demand !== 1 ? 's' : ''} so far</span>
-          </div>` : ''}
-          ${missingImage > 0 || missingPkgs > 0 ? `
-          <div class="mt-2 flex flex-wrap gap-2 text-xs">
-            ${missingImage > 0 ? `<span class="text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">⚠ ${missingImage} service${missingImage > 1 ? 's' : ''} missing image</span>` : ''}
-            ${missingPkgs > 0 ? `<span class="text-blue-400 bg-blue-900/20 px-2 py-1 rounded-lg">💡 ${missingPkgs} service${missingPkgs > 1 ? 's' : ''} without packages — clients will see "Contact for pricing"</span>` : ''}
-          </div>` : `
-          <div class="mt-2 text-xs text-green-400"><i class="fas fa-check-circle mr-1"></i>All active services are complete — great job!</div>`}
         </div>
 
-        <!-- Filter + Add -->
-        <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
-          <div class="flex gap-2">
-            <button onclick="setServiceView('active')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${serviceViewMode === 'active' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">
-              <span class="inline-block w-2 h-2 bg-green-400 rounded-full mr-1"></span>Live (${activeCount})
-            </button>
-            <button onclick="setServiceView('draft')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${serviceViewMode === 'draft' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">
-              Draft (${store.services.length - activeCount})
-            </button>
-            <button onclick="setServiceView('all')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${serviceViewMode === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">
-              All
-            </button>
-          </div>
-          <button onclick="openServiceForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 font-medium">
-            <i class="fas fa-plus"></i> Add Service
-          </button>
-        </div>
+        <div class="flex gap-1.5 flex-wrap mb-5">
+          ${tab('performance', '📈 Performance')}
+          ${tab('content', '📝 Content gaps')}
+          ${tab('inactive', '⚫ Inactive')}
+        </div>`;
 
-        <!-- Services Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-          ${filtered.map(s => {
-            const isActive   = s.isActive !== false;
-            const hasImg     = !!(s.mainImage && !s.mainImage.includes('placehold'));
-            const pkgCount   = (s.packages  || []).length;
-            const featCount  = (s.features  || []).length;
-            const faqCount   = (s.faqs      || []).length;
-            const demand     = s.demand;
-            const demandPct  = Math.min(100, demand * 20);
-            const priceRange = _svcPriceRange(s);
-            const complete   = _svcCompleteness(s);
-            const completeColor = complete >= 80 ? 'bg-green-500' : complete >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-            const missingImg = !hasImg;
-            const missingPkg = pkgCount === 0;
-            const hint = missingImg
-              ? '📸 Add a cover image — clients are 3× more likely to enquire.'
-              : missingPkg
-                ? '💰 Add pricing packages — clients want to know costs upfront.'
-                : null;
-            return `
-            <div class="bg-gray-900 rounded-2xl border ${isActive ? 'border-gray-700/60 hover:border-purple-500/70' : 'border-gray-800 hover:border-yellow-600/40'} overflow-hidden transition-all duration-200 group flex flex-col shadow-lg">
+      if (servicePerfError === 'admin-only') {
+        container.innerHTML = header + `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+            <i class="fas fa-lock text-2xl text-gray-600 mb-3"></i>
+            <p class="text-sm text-gray-500">Revenue per service is visible to the business owner only. You can still edit service content below.</p>
+          </div>` + serviceCards(services, perfById, true);
+        return;
+      }
 
-              <!-- Image hero -->
-              <div class="relative h-44 bg-gray-800 overflow-hidden">
-                ${hasImg
-                  ? `<img src="${escapeHtml(s.mainImage)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
-                     <div class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-600 bg-gray-800"><i class='fas fa-image text-3xl mb-1'></i><p class='text-xs'>Image unavailable</p></div>`
-                  : `<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                       <i class="fas fa-${s.icon || 'star'} text-4xl text-gray-600 mb-2"></i>
-                       <p class="text-xs text-gray-600">No cover image</p>
-                     </div>`}
-                <div class="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent pointer-events-none"></div>
+      // How trustworthy the revenue split is. A booking carries one agreed
+      // amount across several services, so unless a per-service price was
+      // recorded the split is even — and the tab says so rather than implying
+      // a precision it does not have.
+      const attributionNote = t && (t.evenlySplit > 0 || t.booked > 0) ? `
+        <p class="text-xs text-gray-600 mb-4">
+          <i class="fas fa-circle-info mr-1"></i>
+          Revenue is split evenly between the services on each booking${t.exactlyAttributed ? `, except ${t.exactlyAttributed} with a recorded per-service price` : ''}.
+          Record a price per service on a booking to make this exact.
+        </p>` : '';
 
-                <!-- Live / Draft badge -->
-                <div class="absolute top-3 left-3">
-                  ${isActive
-                    ? `<span class="flex items-center gap-1.5 bg-green-600/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>LIVE</span>`
-                    : `<span class="bg-yellow-600/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">DRAFT</span>`}
+      let body = '';
+      if (serviceViewMode === 'performance')   body = attributionNote + serviceCards(services.filter(s => s.isActive), perfById);
+      else if (serviceViewMode === 'content')  body = serviceContentView(services, perfById);
+      else                                     body = serviceCards(services.filter(s => !s.isActive), perfById);
+
+      container.innerHTML = header + body;
+    }
+
+    function serviceCards(list, perfById, hidePerf = false) {
+      if (!list.length) {
+        return `<div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+            <i class="fas fa-headphones text-3xl text-gray-600 mb-3"></i>
+            <p class="text-gray-400 text-sm mb-4">${serviceViewMode === 'inactive' ? 'No inactive services.' : 'No services yet.'}</p>
+            <button onclick="openServiceForm()" class="text-purple-400 hover:underline text-sm">Add one →</button>
+          </div>`;
+      }
+
+      // Ordered by what they earn, then by demand — the question an owner opens
+      // this tab to answer. Falls back to the manual display order only when
+      // there is nothing to rank by.
+      const ordered = [...list].sort((a, b) => {
+        const pa = perfById[a.id] || {}, pb = perfById[b.id] || {};
+        return (pb.booked || 0) - (pa.booked || 0)
+            || (pb.enquiries || 0) - (pa.enquiries || 0)
+            || (a.displayOrder || 0) - (b.displayOrder || 0);
+      });
+
+      return `<div class="space-y-3">${ordered.map(s => {
+        const p = perfById[s.id];
+        const c = p?.content;
+        const gaps = c ? missingBits(c) : [];
+
+        return `
+          <div class="bg-gray-900 rounded-2xl border ${s.isActive ? 'border-gray-800' : 'border-gray-800 opacity-70'} p-4">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <i class="fas ${escapeHtml(s.icon || 'fa-star')} text-purple-400"></i>
+                  <h3 class="font-bold text-white">${escapeHtml(s.name)}</h3>
+                  ${!s.isActive ? '<span class="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-400">Hidden from site</span>' : ''}
+                  ${p?.fromPrice != null
+                    ? `<span class="text-xs px-2 py-0.5 rounded-full bg-green-600/15 text-green-400">from ${svcKes(p.fromPrice)}</span>`
+                    : `<span class="text-xs px-2 py-0.5 rounded-full bg-red-600/15 text-red-400">no price</span>`}
                 </div>
+                <p class="text-xs text-gray-500">${escapeHtml(s.shortDesc || 'No summary written yet.')}</p>
 
-                <!-- Category + Icon -->
-                <div class="absolute top-3 right-3">
-                  <span class="bg-black/60 backdrop-blur-sm text-gray-300 text-xs px-2.5 py-1 rounded-full">
-                    <i class="fas ${escapeHtml(s.icon || 'fa-star')} mr-1 text-purple-400"></i>${escapeHtml(s.category || 'General')}
-                  </span>
-                </div>
-
-                <!-- Demand badge (bottom right) -->
-                ${demand > 0 ? `<div class="absolute bottom-3 right-3"><span class="bg-orange-500/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">🔥 ${demand} booking${demand !== 1 ? 's' : ''}</span></div>` : ''}
-
-                <!-- Completeness bar (bottom) -->
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-800/60">
-                  <div class="h-full ${completeColor} transition-all" style="width:${complete}%" title="${complete}% complete"></div>
-                </div>
+                ${gaps.length ? `
+                  <p class="text-xs text-yellow-500/90 mt-2">
+                    <i class="fas fa-triangle-exclamation mr-1"></i>${gaps.join(' · ')}
+                  </p>` : `
+                  <p class="text-xs text-green-500/80 mt-2"><i class="fas fa-circle-check mr-1"></i>Fully set up</p>`}
               </div>
 
-              <!-- Body -->
-              <div class="flex-1 flex flex-col p-4 gap-3">
-
-                <!-- Name + slug -->
-                <div>
-                  <h3 class="font-bold text-white text-base leading-tight">${escapeHtml(s.name)}</h3>
-                  <p class="text-xs font-mono text-gray-600 mt-0.5">#${escapeHtml(s.slug || s.id)}</p>
-                </div>
-
-                <p class="text-xs text-gray-400 line-clamp-2 -mt-1">${escapeHtml(s.shortDesc || 'No description yet.')}</p>
-
-                <!-- Price range + stats row -->
-                <div class="flex flex-wrap gap-1.5">
-                  ${priceRange
-                    ? `<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-800/40">${priceRange}</span>`
-                    : `<span class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-500">Contact for pricing</span>`}
-                  <span class="text-xs px-2.5 py-1 rounded-full ${hasImg ? 'bg-green-900/30 text-green-400' : 'bg-red-900/20 text-red-400'}">
-                    ${hasImg ? '✓ Image' : '⚠ No image'}
-                  </span>
-                  <span class="text-xs px-2.5 py-1 rounded-full ${pkgCount > 0 ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/20 text-yellow-500'}">
-                    ${pkgCount > 0 ? `${pkgCount} pkg${pkgCount !== 1 ? 's' : ''}` : '+ Packages'}
-                  </span>
-                  ${featCount > 0 ? `<span class="text-xs px-2.5 py-1 rounded-full bg-purple-900/20 text-purple-400">${featCount} feat${featCount !== 1 ? 's' : ''}</span>` : ''}
-                  ${faqCount  > 0 ? `<span class="text-xs px-2.5 py-1 rounded-full bg-blue-900/20 text-blue-400">${faqCount} FAQ${faqCount !== 1 ? 's' : ''}</span>` : ''}
-                </div>
-
-                <!-- Demand bar -->
-                ${demand > 0 ? `
-                <div>
-                  <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Client demand</span><span>${demand} enquir${demand !== 1 ? 'ies' : 'y'}</span>
+              ${!hidePerf && p ? `
+                <div class="grid grid-cols-4 gap-4 flex-shrink-0 text-center">
+                  <div>
+                    <p class="text-xs text-gray-500">Enquiries</p>
+                    <p class="text-lg font-bold text-white">${p.enquiries}</p>
+                    ${svcDelta(p.enquiries, p.enquiriesPrev)}
                   </div>
-                  <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-orange-500 to-yellow-400 rounded-full" style="width:${demandPct}%"></div>
+                  <div>
+                    <p class="text-xs text-gray-500">Won</p>
+                    <p class="text-lg font-bold text-purple-400">${p.won}</p>
+                    <span class="text-xs text-gray-600">${p.winRate != null ? p.winRate + '%' : '—'}</span>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Booked</p>
+                    <p class="text-lg font-bold ${p.booked > 0 ? 'text-green-400' : 'text-gray-600'}">${svcKes(p.booked)}</p>
+                    ${svcDelta(p.booked, p.bookedPrev)}
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Ready</p>
+                    <p class="text-lg font-bold ${readinessColour(c.readiness)}">${c.readiness}%</p>
+                    <span class="text-xs text-gray-600">${c.packages} pkg</span>
                   </div>
                 </div>` : ''}
 
-                <!-- Completeness hint -->
-                ${hint ? `
-                <div class="text-xs text-yellow-400/80 bg-yellow-900/15 border border-yellow-800/25 rounded-xl px-3 py-2 leading-relaxed">
-                  ${hint}
-                </div>` : `
-                <div class="text-xs text-green-400/70 bg-green-900/10 border border-green-800/20 rounded-xl px-3 py-2">
-                  <i class="fas fa-check-circle mr-1"></i>${complete}% complete — looking great!
-                </div>`}
-
-                <!-- Action bar -->
-                <div class="flex gap-1.5 pt-2 border-t border-gray-800/80 mt-auto">
-                  <a href="../service-detail.html?service=${escapeHtml(s.slug || s.id)}" target="_blank"
-                    class="flex-1 text-center py-1.5 bg-purple-600/10 hover:bg-purple-600/25 text-purple-400 rounded-lg text-xs font-medium transition" title="Preview on site">
-                    <i class="fas fa-eye mr-1"></i>Preview
-                  </a>
-                  <button onclick="editService('${s.id}')"
-                    class="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition">
-                    <i class="fas fa-edit mr-1"></i>Edit
-                  </button>
-                  <button onclick="duplicateService('${s.id}')" title="Duplicate"
-                    class="py-1.5 px-2.5 bg-blue-600/10 hover:bg-blue-600/25 text-blue-400 rounded-lg text-xs transition">
-                    <i class="fas fa-copy"></i>
-                  </button>
-                  <button onclick="toggleServiceActive('${s.id}')" title="${isActive ? 'Hide from site' : 'Publish to site'}"
-                    class="py-1.5 px-2.5 ${isActive ? 'bg-yellow-600/10 hover:bg-yellow-600/25 text-yellow-400' : 'bg-green-600/10 hover:bg-green-600/25 text-green-400'} rounded-lg text-xs font-medium transition">
-                    ${isActive ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-globe"></i>'}
-                  </button>
-                  <button onclick="deleteService('${s.id}')" title="Delete"
-                    class="py-1.5 px-2.5 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
+              <div class="flex gap-1.5 flex-wrap flex-shrink-0">
+                <button onclick="openServiceForm('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-purple-600 hover:bg-purple-700 transition">
+                  <i class="fas fa-pen mr-1"></i>Edit
+                </button>
+                <button onclick="toggleServiceActive('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${s.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+                  ${s.isActive ? 'Hide' : 'Show'}
+                </button>
+                <button onclick="deleteService('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
-            </div>`;
-          }).join('')}
-
-          <!-- Add new service CTA card -->
-          ${store.services.length < 12 ? `
-          <div onclick="openServiceForm()"
-            class="bg-gray-900/40 rounded-2xl border-2 border-dashed border-gray-700 hover:border-purple-500 transition cursor-pointer flex flex-col items-center justify-center p-8 text-center min-h-48 group">
-            <div class="w-14 h-14 bg-purple-600/20 group-hover:bg-purple-600/30 rounded-full flex items-center justify-center mb-3 transition">
-              <i class="fas fa-plus text-purple-400 text-xl"></i>
             </div>
-            <p class="font-semibold text-gray-400 group-hover:text-white transition">Add New Service</p>
-            <p class="text-xs text-gray-600 mt-1">Each service = more revenue potential</p>
-          </div>` : ''}
+          </div>`;
+      }).join('')}</div>`;
+    }
+
+    // Content view: sorted by what is most broken, so the work queue is the
+    // screen rather than something the manager has to assemble mentally.
+    function serviceContentView(services, perfById) {
+      const rows = services
+        .map(s => ({ s, p: perfById[s.id] }))
+        .filter(r => r.p)
+        .sort((a, b) => a.p.content.readiness - b.p.content.readiness);
+
+      if (!rows.length) return `<p class="text-sm text-gray-500">No content data available.</p>`;
+
+      const complete = rows.filter(r => r.p.content.readiness >= 80).length;
+
+      return `
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-4">
+          <p class="text-sm text-gray-300">
+            <strong class="${complete === rows.length ? 'text-green-400' : 'text-yellow-400'}">${complete} of ${rows.length}</strong>
+            services are fully set up for clients.
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            A service with no price is the most expensive gap — visitors compare on price and leave when they cannot find one.
+          </p>
         </div>
-      `;
+
+        <div class="space-y-2">
+          ${rows.map(({ s, p }) => {
+            const c = p.content;
+            const chip = (ok, label) => `
+              <span class="text-xs px-2 py-0.5 rounded-full ${ok ? 'bg-green-600/15 text-green-400' : 'bg-red-600/15 text-red-400'}">
+                <i class="fas ${ok ? 'fa-check' : 'fa-xmark'} mr-1"></i>${label}
+              </span>`;
+            return `
+              <div class="bg-gray-900 rounded-xl border border-gray-800 p-3.5">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-white">${escapeHtml(s.name)}</span>
+                    <span class="text-xs font-bold ${readinessColour(c.readiness)}">${c.readiness}%</span>
+                  </div>
+                  <button onclick="openServiceForm('${s.id}')" class="text-xs text-purple-400 hover:underline">Fix this →</button>
+                </div>
+                <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-2.5">
+                  <div class="h-1.5 rounded-full ${c.readiness >= 80 ? 'bg-green-500' : c.readiness >= 50 ? 'bg-yellow-500' : 'bg-red-500'}" style="width:${c.readiness}%"></div>
+                </div>
+                <div class="flex gap-1.5 flex-wrap">
+                  ${chip(c.pricedPackages > 0, c.pricedPackages ? `${c.pricedPackages} priced` : 'no price')}
+                  ${chip(c.shortDesc, 'summary')}
+                  ${chip(c.longDesc, 'full description')}
+                  ${chip(c.photos >= 3, c.photos ? `${c.photos} photos` : 'no photos')}
+                  ${chip(c.image, 'cover image')}
+                  ${chip(c.faqs > 0, c.faqs ? `${c.faqs} FAQs` : 'no FAQs')}
+                </div>
+              </div>`;
+          }).join('')}
+        </div>`;
     }
 
     function setServiceView(mode) { serviceViewMode = mode; renderServices(); }
 
-    async function toggleServiceActive(id) {
-      const svc = store.services.find(s => s.id === id);
-      if (!svc) return;
-      const newActive = !(svc.isActive !== false);
-      const result = await apiRequest('PUT', `/api/admin/services/${id}`, { ...svc, isActive: newActive });
-      if (result?.data) {
-        store.services = store.services.map(s => s.id === id ? result.data : s);
-        renderServices();
-        Swal.fire({
-          icon: 'success',
-          title: newActive ? '✅ Now Live on Your Website!' : 'Hidden from Public',
-          text: newActive ? `"${svc.name}" is now visible to clients.` : `"${svc.name}" moved to Draft.`,
-          timer: 2500, showConfirmButton: false, background: '#1e1e2a', color: '#fff'
-        });
-      }
+    async function setServicePerfRange(k) {
+      servicePerfRange = k;
+      servicePerf = null; servicePerfError = null;
+      await renderServices();
     }
+
+    // Hiding a service is the safe alternative to deleting one: the website
+    // stops offering it while every booking that ever referenced it keeps its
+    // attribution. Awaited and checked, so the card cannot show a state the
+    // server did not accept.
+    async function toggleServiceActive(id) {
+      const s = store.services.find(x => x.id === id);
+      if (!s) return;
+
+      const res = await apiRequest('PUT', `/api/admin/services/${id}`, { ...s, isActive: !s.isActive });
+      if (res?._error) {
+        Swal.fire({ icon: 'error', title: 'Could not change', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      store.services = store.services.map(x => x.id === id ? res.data : x);
+      servicePerf = null;                       // active count and ordering change
+      await renderServices();
+      showToast(res.data.isActive ? 'Service is live on the website' : 'Service hidden from the website', 'success');
+    }
+
     function openServiceForm(id = null) {
       currentEditId = id;
       const service = id ? store.services.find(s => s.id === id) : null;
@@ -1360,21 +1402,28 @@
       const faqCount  = (service?.faqs      || []).length;
       const countBadge = n => n ? `<span class="ml-1 text-xs bg-purple-800/60 text-purple-300 rounded-full px-1.5 py-0.5 font-bold">${n}</span>` : '';
 
-      const pkgListHtml = (service?.packages || []).map((pkg, idx) => `
-        <div class="bg-gray-800/70 border border-gray-700/50 rounded-xl p-3 flex justify-between items-start gap-3">
+      // Addressed by pkg.id, not by array index. The buttons used to pass the
+      // position in the array, so a reorder or a concurrent edit acted on
+      // whichever package happened to occupy that slot.
+      const pkgListHtml = (service?.packages || []).map(pkg => `
+        <div class="bg-gray-800/70 border ${pkg.isPopular ? 'border-yellow-600/50' : 'border-gray-700/50'} rounded-xl p-3 flex justify-between items-start gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2 mb-1">
               <span class="font-semibold text-white text-sm">${escapeHtml(pkg.name)}</span>
-              ${pkg.price ? `<span class="text-yellow-400 text-xs font-bold">KES ${parseInt(pkg.price).toLocaleString()}</span>` : '<span class="text-gray-500 text-xs">Contact for pricing</span>'}
+              ${pkg.price != null
+                ? `<span class="text-yellow-400 text-xs font-bold">KES ${Number(pkg.price).toLocaleString('en-KE')}</span>`
+                : '<span class="text-gray-500 text-xs">Contact for a quote</span>'}
               ${pkg.duration ? `<span class="text-gray-500 text-xs">· ${escapeHtml(pkg.duration)}</span>` : ''}
+              ${pkg.isPopular ? '<span class="text-xs bg-yellow-500/90 text-black px-1.5 py-0.5 rounded-full font-bold">Most popular</span>' : ''}
+              ${pkg.isActive === false ? '<span class="text-xs bg-gray-700/60 text-gray-400 px-1.5 py-0.5 rounded-full">Hidden</span>' : ''}
             </div>
             ${(pkg.features||[]).length ? `<p class="text-xs text-gray-500 line-clamp-1">${(pkg.features).slice(0,3).map(f=>escapeHtml(f)).join(' · ')}${pkg.features.length>3?' …':''}</p>` : ''}
           </div>
           <div class="flex gap-1 shrink-0">
-            <button onclick="editPackage(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
-            <button onclick="deletePackage(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Del</button>
+            <button onclick="editPackage('${pkg.id}')" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button onclick="deletePackage('${pkg.id}')" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Del</button>
           </div>
-        </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No packages yet — add your pricing tiers below.</p>';
+        </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No packages yet. A visitor comparing suppliers leaves when they cannot find a price — this is the highest-value thing to add.</p>';
 
       const featListHtml = (service?.features || []).map((feat, idx) => `
         <div class="bg-gray-800/70 border border-gray-700/50 rounded-xl p-3 flex justify-between items-start gap-3">
@@ -1632,59 +1681,181 @@
       }
     }
 
+    // ── Packages ───────────────────────────────────────────────
+    //
+    // Packages are rows with stable ids now. Everything below addresses a
+    // package by id rather than by array position, which is what made
+    // editPackage(2) mean "whatever happens to be third right now" and let a
+    // reorder or a concurrent edit modify the wrong one.
+    //
+    // Every save is AWAITED and its result checked before the UI claims success.
+    // The previous savePackage fired the request without awaiting, mutated the
+    // local store, then re-rendered from that mutated copy and showed
+    // "Package added!" — so a failed save was indistinguishable from a good one
+    // until the page was reloaded.
+
+    let editingPackageId = null;
+
+    function packageFormHtml(pkg) {
+      const featureText = (pkg && pkg.features ? pkg.features : []).join('\n');
+      return '<div class="space-y-3">'
+        + '<div><label class="block text-sm mb-1" for="packageName">Package name *</label>'
+        + '<input type="text" id="packageName" value="' + escapeHtml(pkg && pkg.name || '') + '" maxlength="80"'
+        + ' class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. Standard, Premium, VIP">'
+        + '<p class="pkg-err text-xs text-red-400 mt-1 hidden" data-for="name"></p></div>'
+        + '<div class="grid grid-cols-2 gap-3">'
+        + '<div><label class="block text-sm mb-1" for="packagePrice">Price (KES)</label>'
+        + '<input type="number" id="packagePrice" min="0" step="500" value="' + (pkg && pkg.price != null ? pkg.price : '') + '"'
+        + ' class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="Leave blank to quote">'
+        + '<p class="text-xs text-gray-600 mt-1">Blank shows "contact us for a quote".</p>'
+        + '<p class="pkg-err text-xs text-red-400 mt-1 hidden" data-for="price"></p></div>'
+        + '<div><label class="block text-sm mb-1" for="packageDuration">Duration</label>'
+        + '<input type="text" id="packageDuration" value="' + escapeHtml(pkg && pkg.duration || '') + '" maxlength="60"'
+        + ' class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g. 4 hours, Full day"></div>'
+        + '</div>'
+        + '<div><label class="block text-sm mb-1" for="packageFeatures">What is included — one per line</label>'
+        + '<textarea id="packageFeatures" rows="5" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">'
+        + escapeHtml(featureText) + '</textarea></div>'
+        + '<label class="flex items-center gap-2 cursor-pointer">'
+        + '<input type="checkbox" id="packagePopular" class="accent-yellow-400" ' + (pkg && pkg.isPopular ? 'checked' : '') + '>'
+        + '<span class="text-sm">Highlight as "most popular" <span class="text-gray-600 text-xs">(only one per service)</span></span></label>'
+        + '<p class="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2">'
+        + '<i class="fas fa-lightbulb text-yellow-400 mr-1"></i>Three tiers works well — a cheap entry point, the one you want them to pick, and a premium option.</p>'
+        + '</div>';
+    }
+
     function addPackage() {
-      document.getElementById('modalTitle').textContent = 'Add Package';
-      document.getElementById('modalForm').innerHTML = `
-        <div class="space-y-3">
-          <div><label class="block text-sm mb-1">Package Name *</label><input type="text" id="packageName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required placeholder="e.g. Standard, Premium, VIP"></div>
-          <div><label class="block text-sm mb-1">Price (KES) <span class="text-gray-500 font-normal text-xs">(optional)</span></label><input type="number" id="packagePrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="Leave blank for 'Contact for pricing'"></div>
-          <div><label class="block text-sm mb-1">Duration <span class="text-gray-500 font-normal text-xs">(optional)</span></label><input type="text" id="packageDuration" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g., 4 hours, Full day, Weekend"></div>
-          <div><label class="block text-sm mb-1">What's included — one item per line</label><textarea id="packageFeatures" rows="4" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="Professional DJ&#10;Sound system setup&#10;2 wireless microphones&#10;Lighting effects"></textarea></div>
-          <p class="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2"><i class="fas fa-lightbulb text-yellow-400 mr-1"></i>Tip: You can add multiple packages per service — e.g. Basic, Standard, Premium — so clients can choose their budget.</p>
-        </div>
-      `;
+      if (!currentEditId) {
+        Swal.fire({ icon: 'info', title: 'Save the service first', text: 'A package has to belong to a saved service.', background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      editingPackageId = null;
+      document.getElementById('modalTitle').textContent = 'Add package';
+      document.getElementById('modalForm').innerHTML = packageFormHtml(null);
       document.getElementById('formModal').classList.remove('hidden');
     }
 
-    function editPackage(idx) {
+    function editPackage(pkgId) {
       const service = store.services.find(s => s.id === currentEditId);
-      const pkg = service?.packages?.[idx];
+      const pkg = ((service && service.packages) || []).find(p => p.id === pkgId);
+      if (!pkg) return;
+      editingPackageId = pkgId;
+      document.getElementById('modalTitle').textContent = 'Edit package';
+      document.getElementById('modalForm').innerHTML = packageFormHtml(pkg);
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    async function deletePackage(pkgId) {
+      const service = store.services.find(s => s.id === currentEditId);
+      const pkg = ((service && service.packages) || []).find(p => p.id === pkgId);
       if (!pkg) return;
 
-      document.getElementById('modalTitle').textContent = 'Edit Package';
-      document.getElementById('modalForm').innerHTML = `
-        <div class="space-y-3">
-          <div><label class="block text-sm mb-1">Package Name *</label><input type="text" id="packageName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(pkg.name)}" required></div>
-          <div><label class="block text-sm mb-1">Price (KES) <span class="text-gray-500 font-normal text-xs">(optional)</span></label><input type="number" id="packagePrice" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${pkg.price || ''}" placeholder="Leave blank for 'Contact for pricing'"></div>
-          <div><label class="block text-sm mb-1">Duration <span class="text-gray-500 font-normal text-xs">(optional)</span></label><input type="text" id="packageDuration" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(pkg.duration || '')}" placeholder="e.g., 4 hours, Full day"></div>
-          <div><label class="block text-sm mb-1">What's included — one item per line</label><textarea id="packageFeatures" rows="4" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${(pkg.features || []).join('\n')}</textarea></div>
-        </div>
-      `;
-      editingPackageIndex = idx;
-      document.getElementById('formModal').classList.remove('hidden');
+      const ok = await Swal.fire({
+        title: 'Delete this package?',
+        html: '<p style="color:#9ca3af">"' + escapeHtml(pkg.name) + '" will be removed from the website.</p>',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
+      });
+      if (!ok.isConfirmed) return;
+
+      const res = await apiRequest('DELETE', '/api/admin/packages/' + pkgId);
+      if (res && res._error) {
+        // 409 means a client actually chose this package. Offer the action that
+        // keeps the sales record rather than pushing them to force it.
+        const wantHide = await Swal.fire({
+          icon: 'warning', title: 'Cannot delete', text: res.message,
+          showCancelButton: true, confirmButtonText: 'Deactivate instead',
+          background: '#1e1e2a', color: '#fff',
+        });
+        if (wantHide.isConfirmed) {
+          await apiRequest('PUT', '/api/admin/packages/' + pkgId, { isActive: false });
+          await refreshServicePackages(currentEditId);
+          openServiceForm(currentEditId);
+          showToast('Package deactivated', 'success');
+        }
+        return;
+      }
+      await refreshServicePackages(currentEditId);
+      openServiceForm(currentEditId);
+      showToast('Package deleted', 'success');
     }
 
-    function deletePackage(idx) {
-      const service = store.services.find(s => s.id === currentEditId);
-      if (!service?.packages?.[idx]) return;
+    async function savePackage() {
+      document.querySelectorAll('#modalForm .pkg-err').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
 
-      Swal.fire({
-        title: 'Delete package?',
-        text: 'This action cannot be undone',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        confirmButtonText: 'Delete',
-        background: '#1e1e2a',
-        color: '#fff'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          service.packages.splice(idx, 1);
-          apiRequest('PUT', `/api/admin/services/${currentEditId}`, service);
-          openServiceForm(currentEditId);
-          Swal.fire({ icon: 'success', title: 'Package deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+      const priceRaw = document.getElementById('packagePrice').value.trim();
+      const payload = {
+        name:      document.getElementById('packageName').value.trim(),
+        price:     priceRaw === '' ? null : Number(priceRaw),
+        duration:  document.getElementById('packageDuration').value.trim() || null,
+        features:  document.getElementById('packageFeatures').value.split('\n').map(f => f.trim()).filter(Boolean),
+        isPopular: document.getElementById('packagePopular').checked,
+      };
+
+      const btn = document.getElementById('saveModalBtn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+
+      const res = editingPackageId
+        ? await apiRequest('PUT',  '/api/admin/packages/' + editingPackageId, payload)
+        : await apiRequest('POST', '/api/admin/services/' + currentEditId + '/packages', payload);
+
+      btn.disabled = false; btn.textContent = 'Save';
+
+      // Check the result before claiming it worked.
+      if (res && res._error) {
+        if (res.fields) {
+          Object.entries(res.fields).forEach(([f, m]) => {
+            const el = document.querySelector('#modalForm .pkg-err[data-for="' + f + '"]');
+            if (el) { el.textContent = m; el.classList.remove('hidden'); }
+          });
+          return;
         }
+        Swal.fire({ icon: 'error', title: 'Could not save', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+
+      const wasEdit = !!editingPackageId;
+      editingPackageId = null;
+      closeModal();
+      await refreshServicePackages(currentEditId);
+      openServiceForm(currentEditId);
+      showToast(wasEdit ? 'Package updated' : 'Package added', 'success');
+    }
+
+    // Re-reads packages for one service from the server rather than trusting the
+    // local copy, so what the form shows is what was actually stored.
+    async function refreshServicePackages(serviceId) {
+      const res = await apiRequest('GET', '/api/admin/services/' + serviceId + '/packages');
+      if (res && res._error) return;
+      store.services = store.services.map(s =>
+        s.id === serviceId ? Object.assign({}, s, { packages: res.data }) : s);
+      servicePerf = null;   // readiness and "from price" have changed
+    }
+
+    async function deleteService(id) {
+      const s = store.services.find(x => x.id === id);
+      const ok = await Swal.fire({
+        title: 'Delete this service?',
+        html: '<p style="color:#9ca3af">"' + escapeHtml((s && s.name) || '') + '" and its packages would be removed.</p>',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff',
       });
+      if (!ok.isConfirmed) return;
+
+      const res = await apiRequest('DELETE', '/api/admin/services/' + id);
+      if (res && res._error) {
+        const wantHide = await Swal.fire({
+          icon: 'warning', title: 'Cannot delete', text: res.message,
+          showCancelButton: true, confirmButtonText: 'Hide it instead',
+          background: '#1e1e2a', color: '#fff',
+        });
+        if (wantHide.isConfirmed) await toggleServiceActive(id);
+        return;
+      }
+      store.services = store.services.filter(x => x.id !== id);
+      servicePerf = null;
+      renderServices();
+      showToast('Service deleted', 'success');
     }
 
     function addFeature() {
@@ -1850,38 +2021,11 @@
       });
     }
 
-    function savePackage() {
-      const name = document.getElementById('packageName').value;
-      const price = parseInt(document.getElementById('packagePrice').value);
-      const duration = document.getElementById('packageDuration').value;
-      const featuresText = document.getElementById('packageFeatures').value;
-
-      if (!name) {
-        Swal.fire({ icon: 'error', title: 'Missing Name', text: 'Package name is required', background: '#1e1e2a', color: '#fff' });
-        return;
-      }
-
-      const features = featuresText.split('\n').filter(f => f.trim());
-      const service = store.services.find(s => s.id === currentEditId);
-      if (!service) { Swal.fire({ icon: 'error', title: 'Save the service first', text: 'Please save the service before adding packages.', background: '#1e1e2a', color: '#fff' }); return; }
-
-      if (!service.packages) service.packages = [];
-
-      const pkg = { name, price, duration, features };
-
-      if (editingPackageIndex !== null) {
-        service.packages[editingPackageIndex] = pkg;
-      } else {
-        service.packages.push(pkg);
-      }
-
-      const _pkgSvcId = currentEditId;
-      apiRequest('PUT', `/api/admin/services/${_pkgSvcId}`, service);
-      closeModal();
-      openServiceForm(_pkgSvcId);
-      Swal.fire({ icon: 'success', title: editingPackageIndex !== null ? 'Package updated!' : 'Package added!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
-      editingPackageIndex = null;
-    }
+    // The original index-addressed savePackage lived here. Replaced by the
+    // id-based version further up, which awaits the request and checks its
+    // result before reporting success. The old one fired an un-awaited PUT of
+    // the whole service, mutated the local store, then re-rendered from that
+    // mutated copy and showed "Package added!" regardless of the outcome.
 
     function saveFeature() {
       const title = document.getElementById('featureTitle').value;
@@ -6236,7 +6380,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

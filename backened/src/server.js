@@ -125,7 +125,11 @@ const map = {
   booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
-  poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, createdAt: r.created_at }),
+  poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, mediaType: r.media_type || 'image', storagePath: r.storage_path, thumbUrl: r.thumb_url, thumbPath: r.thumb_path, mimeType: r.mime_type, fileSize: r.file_size, width: r.width, height: r.height, createdAt: r.created_at }),
+  // The homepage needs enough to render the poster and nothing else. storage_path
+  // is internal plumbing — it names an object in our bucket, and publishing it
+  // invites people to probe paths we never intended to expose.
+  publicPoster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, mediaType: r.media_type || 'image', thumbUrl: r.thumb_url, width: r.width, height: r.height }),
   notification: (r) => r && ({ id: r.id, type: r.type, title: r.title, message: r.message, isRead: r.is_read, referenceId: r.reference_id, referenceTable: r.reference_table, createdAt: r.created_at }),
   setting: (r) => r && ({ id: r.id, key: r.key, value: r.value, description: r.description, updatedAt: r.updated_at }),
 };
@@ -479,13 +483,21 @@ function pageParams(query, fallback = GALLERY_PAGE_SIZE) {
 // Storage keys must be ASCII-safe. Titles are free text from a human, and the
 // live data already contains spaces and ampersands ("Power & Lighting"), which
 // would otherwise produce keys that need escaping at every use site.
-function storageKey(title, mime) {
+function storageKey(title, mime, prefix = '') {
   const ext  = GALLERY_MIME[mime] || 'bin';
   const stem = String(title || 'item').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'item';
   const rand = Math.random().toString(36).slice(2, 8);
-  return `${new Date().getFullYear()}/${stem}-${Date.now().toString(36)}${rand}.${ext}`;
+  return `${prefix}${new Date().getFullYear()}/${stem}-${Date.now().toString(36)}${rand}.${ext}`;
 }
+
+// Posters share the gallery bucket under their own prefix rather than getting a
+// bucket of their own. The bucket already has the right MIME allow-list, the
+// right 50 MB ceiling and a proven public-read policy; a second bucket would
+// duplicate all three and add a new policy surface for no functional gain.
+// Listings are driven by the posters table, never by enumerating the bucket, so
+// the two sets never mix.
+const POSTER_PREFIX = 'posters/';
 
 // Validate a gallery write. Returns a field->message map the dashboard renders
 // inline, so the manager sees which input is wrong instead of "Save Failed".
@@ -837,8 +849,9 @@ app.get('/api/posters', async (req, res) => {
   if (error) return handleError(res, error);
   const active = data.filter(p => (!p.start_date || p.start_date <= today) && (!p.end_date || p.end_date >= today));
   // This was the one public endpoint returning raw snake_case rows, so posters
-  // had a different shape from every other resource on the API.
-  res.json({ success: true, data: active.map(map.poster) });
+  // had a different shape from every other resource on the API. It now also
+  // uses the public projection rather than the admin one — see map.publicPoster.
+  res.json({ success: true, data: active.map(map.publicPoster) });
 });
 
 // Submit booking / enquiry (public)
@@ -2050,32 +2063,158 @@ app.delete('/api/admin/banners/:id', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — POSTERS ====================
+// A poster is a still or a video the homepage shows to visitors. Validation
+// returns a field->message map so the dashboard can mark the offending input
+// instead of showing "Save Failed" over a form the manager must then re-read.
+function validatePoster(body, { isUpdate = false } = {}) {
+  const errors = {};
+  const title = String(body.title || '').trim();
+  const url   = String(body.imageUrl || '').trim();
+  const type  = body.mediaType === 'video' ? 'video' : 'image';
+
+  if (!title) errors.title = 'Give the poster a title.';
+  else if (title.length > 120) errors.title = 'Keep the title under 120 characters.';
+
+  if (!url) {
+    errors.imageUrl = type === 'video' ? 'Upload a video or paste a link.' : 'Upload an image or paste a link.';
+  } else if (/^data:/i.test(url)) {
+    // Belt and braces with the database CHECK. A data: URI here would be stored
+    // in Postgres and re-sent to every homepage visitor in full.
+    errors.imageUrl = 'Inline image data is not accepted. Upload the file instead.';
+  } else if (!/^https?:\/\//i.test(url)) {
+    errors.imageUrl = 'Must be a full link starting with https://';
+  } else if (url.length > 2048) {
+    errors.imageUrl = 'That link is too long.';
+  }
+
+  // A hosted video needs a still to show before it plays and when autoplay is
+  // refused. Embeds (YouTube/Vimeo) carry their own, so they are exempt.
+  if (type === 'video' && url && !/(youtube|youtu\.be|vimeo)/i.test(url) && !String(body.thumbUrl || '').trim()) {
+    errors.imageUrl = 'This video has no preview frame. Re-upload it so one can be generated.';
+  }
+
+  if (String(body.caption || '').length > 100) errors.caption = 'Keep the caption under 100 characters.';
+
+  const start = body.startDate || null, end = body.endDate || null;
+  if (start && end && end < start) errors.endDate = 'The end date is before the start date.';
+
+  const order = body.displayOrder;
+  if (order !== undefined && order !== null && order !== '' && !Number.isFinite(+order)) {
+    errors.displayOrder = 'Display order must be a number.';
+  }
+
+  return { errors, valid: Object.keys(errors).length === 0 };
+}
+
+function toPosterDB(b) {
+  const type = b.mediaType === 'video' ? 'video' : 'image';
+  return {
+    title:        String(b.title || '').trim(),
+    image_url:    String(b.imageUrl || '').trim(),
+    caption:      b.caption ? String(b.caption).trim() : null,
+    media_type:   type,
+    storage_path: b.storagePath || null,
+    thumb_url:    b.thumbUrl  || null,
+    thumb_path:   b.thumbPath || null,
+    mime_type:    b.mimeType || null,
+    file_size:    Number.isFinite(+b.fileSize) ? +b.fileSize : null,
+    width:        Number.isFinite(+b.width)  ? +b.width  : null,
+    height:       Number.isFinite(+b.height) ? +b.height : null,
+    is_active:    b.isActive !== false,
+    start_date:   b.startDate || null,
+    end_date:     b.endDate   || null,
+    display_order: Number.isFinite(+b.displayOrder) ? +b.displayOrder : 0,
+  };
+}
+
+// Same direct-to-Storage flow as the gallery: the browser PUTs the file to
+// Supabase itself. Vercel caps a serverless request body at 4.5 MB, so routing
+// a video through the API was never going to work — which is why the form only
+// ever offered a URL box for video.
+app.post('/api/admin/posters/upload-url', adminAuth, async (req, res) => {
+  const { fileName, mimeType, fileSize } = req.body;
+
+  if (!GALLERY_MIME[mimeType]) {
+    return res.status(400).json({
+      error: `Unsupported file type${mimeType ? ` (${mimeType})` : ''}. Use JPG, PNG, WebP, GIF, MP4 or WebM.`,
+      fields: { imageUrl: 'That file type is not supported.' },
+    });
+  }
+  if (Number.isFinite(+fileSize) && +fileSize > GALLERY_MAX_BYTES) {
+    return res.status(400).json({
+      error: `File is ${(+fileSize / 1048576).toFixed(1)} MB — the limit is ${GALLERY_MAX_BYTES / 1048576} MB.`,
+      fields: { imageUrl: `That file is ${(+fileSize / 1048576).toFixed(1)} MB. The limit is ${GALLERY_MAX_BYTES / 1048576} MB.` },
+    });
+  }
+
+  const path = storageKey(fileName, mimeType, POSTER_PREFIX);
+  const { data, error } = await supabase.storage.from(GALLERY_BUCKET).createSignedUploadUrl(path);
+  if (error) return handleError(res, error);
+
+  const { data: pub } = supabase.storage.from(GALLERY_BUCKET).getPublicUrl(path);
+  res.json({
+    success: true,
+    data: { path, token: data.token, signedUrl: data.signedUrl, publicUrl: pub.publicUrl, cacheControl: 'max-age=31536000' },
+  });
+});
+
 app.get('/api/admin/posters', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('posters').select('*').order('display_order');
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.poster) });
 });
+
 app.post('/api/admin/posters', adminAuth, async (req, res) => {
-  const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
-  const { data, error } = await supabase.from('posters').insert({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).select().single();
-  if (error) return handleError(res, error);
+  const { errors, valid } = validatePoster(req.body);
+  if (!valid) return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+
+  const { data, error } = await supabase.from('posters').insert(toPosterDB(req.body)).select().single();
+  if (error) {
+    // The upload already landed in Storage. Nothing references it now, so drop
+    // it rather than leaving an object nobody can see or delete.
+    await removeGalleryObject(req.body.storagePath);
+    return handleError(res, error);
+  }
   res.status(201).json({ success: true, data: map.poster(data) });
 });
+
 app.put('/api/admin/posters/:id', adminAuth, async (req, res) => {
-  const { title, imageUrl, caption, isActive, startDate, endDate, displayOrder } = req.body;
-  const { data, error } = await supabase.from('posters').update({ title, image_url: imageUrl, caption, is_active: isActive !== false, start_date: startDate || null, end_date: endDate || null, display_order: displayOrder || 0 }).eq('id', req.params.id).select().single();
+  const { errors, valid } = validatePoster(req.body, { isUpdate: true });
+  if (!valid) return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+
+  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).single();
+
+  const { data, error } = await supabase.from('posters')
+    .update(toPosterDB(req.body)).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
+
+  // Media was replaced: the old objects are now unreferenced. Removed after the
+  // row is safely updated, so a failed write never destroys the live poster.
+  if (cur?.storage_path && cur.storage_path !== data.storage_path) {
+    await removeGalleryObject(cur.storage_path);
+  }
+  if (cur?.thumb_path && cur.thumb_path !== data.thumb_path) {
+    await removeGalleryObject(cur.thumb_path);
+  }
   res.json({ success: true, data: map.poster(data) });
 });
+
 app.patch('/api/admin/posters/:id/toggle', adminAuth, async (req, res) => {
   const { data: cur } = await supabase.from('posters').select('is_active').eq('id', req.params.id).single();
-  const { data, error } = await supabase.from('posters').update({ is_active: !cur?.is_active }).eq('id', req.params.id).select().single();
+  if (!cur) return res.status(404).json({ error: 'Poster not found' });
+  const { data, error } = await supabase.from('posters').update({ is_active: !cur.is_active }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
   res.json({ success: true, data: map.poster(data) });
 });
+
 app.delete('/api/admin/posters/:id', adminAuth, async (req, res) => {
+  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).single();
   const { error } = await supabase.from('posters').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
+  // Delete the row first: an object without a row is invisible clutter, but a
+  // row pointing at a deleted object is a broken poster on the homepage.
+  await removeGalleryObject(cur?.storage_path);
+  await removeGalleryObject(cur?.thumb_path);
   res.json({ success: true });
 });
 

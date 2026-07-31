@@ -762,23 +762,39 @@
       const dotsEl = document.getElementById('posterDots');
       section.classList.remove('hidden');
 
+      // p.image_url was read here, but the API returns camelCase like every
+      // other resource — so src was the string "undefined" and every poster was
+      // a broken image. It went unnoticed only because no poster existed yet.
       track.innerHTML = `
         <div class="flex transition-transform duration-500 ease-in-out h-full" id="posterSlider">
-          ${posters.map(p => `
+          ${posters.map(p => {
+            const url = escHtml(p.imageUrl || '');
+            // A video poster used to render as an <img>, which shows nothing at
+            // all. muted+playsinline are what let it autoplay on a phone; the
+            // captured frame is the poster attribute so there is something to
+            // look at before it decodes, and when autoplay is refused outright.
+            const media = p.mediaType === 'video'
+              ? `<video src="${url}" ${p.thumbUrl ? `poster="${escHtml(p.thumbUrl)}"` : ''}
+                   class="w-full h-full object-cover absolute inset-0"
+                   autoplay muted loop playsinline preload="metadata"></video>`
+              : `<img src="${url}" alt="${escHtml(p.title)}" class="w-full h-full object-cover absolute inset-0">`;
+            return `
             <div class="min-w-full relative" style="min-height:inherit">
-              <img src="${p.image_url}" alt="${p.title}" class="w-full h-full object-cover absolute inset-0">
+              ${media}
               <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col items-center justify-end pb-10 px-6 text-center">
-                <h3 class="text-white text-2xl sm:text-4xl font-extrabold drop-shadow-lg">${p.title}</h3>
-                ${p.caption ? `<p class="text-white/90 text-sm sm:text-lg mt-2 max-w-xl">${p.caption}</p>` : ''}
+                <h3 class="text-white text-2xl sm:text-4xl font-extrabold drop-shadow-lg">${escHtml(p.title)}</h3>
+                ${p.caption ? `<p class="text-white/90 text-sm sm:text-lg mt-2 max-w-xl">${escHtml(p.caption)}</p>` : ''}
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       `;
 
       if (posters.length > 1) {
-        dotsEl.innerHTML = posters.map((_, i) => `<button onclick="goToPoster(${i})" class="poster-dot w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-yellow-400 w-5' : 'bg-white/50 hover:bg-white'}"></button>`).join('');
-        posterTimer = setInterval(() => goToPoster((posterIndex + 1) % posters.length), 5000);
+        dotsEl.innerHTML = posters.map((_, i) => `<button onclick="goToPoster(${i})" aria-label="Show poster ${i + 1}" class="poster-dot w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-yellow-400 w-5' : 'bg-white/50 hover:bg-white'}"></button>`).join('');
+        // A video needs longer than a still before it is worth moving on.
+        const hasVideo = posters.some(p => p.mediaType === 'video');
+        posterTimer = setInterval(() => goToPoster((posterIndex + 1) % posters.length), hasVideo ? 9000 : 5000);
       }
     }
 
@@ -935,8 +951,15 @@
         const items = [
           ...banners.filter(b => b.isActive !== false && (!b.endDate || new Date(b.endDate) >= now))
             .map(b => ({ type: 'banner', title: b.message, cta: b.ctaText || 'Learn More', ctaLink: b.ctaLink || 'booking.html', icon: '📢', color: 'from-purple-600 to-pink-600' })),
-          ...posters.filter(p => p.is_active !== false && (!p.end_date || new Date(p.end_date) >= now))
-            .slice(0, 3).map(p => ({ type: 'poster', title: p.title, caption: p.caption, imageUrl: p.image_url, icon: '🎨', color: 'from-yellow-500 to-orange-500' }))
+          // /api/posters already returns only active posters inside their date
+          // window, so filtering again here is redundant — and it was filtering
+          // on snake_case keys the API does not return, so it never excluded
+          // anything anyway. A video shows its captured frame in this grid.
+          ...posters.slice(0, 3).map(p => ({
+            type: 'poster', title: p.title, caption: p.caption,
+            imageUrl: p.mediaType === 'video' ? (p.thumbUrl || p.imageUrl) : p.imageUrl,
+            icon: '🎨', color: 'from-yellow-500 to-orange-500',
+          }))
         ].slice(0, 6);
         if (!items.length) return;
         const section = document.getElementById('updatesSection');
@@ -952,11 +975,14 @@
               </div>
             </a>`;
           }
-          const bgStyle = item.imageUrl ? `background-image:url('${item.imageUrl}');background-size:cover;background-position:center` : '';
+          // The URL goes inside a CSS url('…') inside an HTML attribute, so a
+          // quote in either context would break out of it. Escaped for both.
+          const safeUrl = escHtml(String(item.imageUrl || '').replace(/['"\\)]/g, ''));
+          const bgStyle = item.imageUrl ? `background-image:url('${safeUrl}');background-size:cover;background-position:center` : '';
           return `<div class="rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition group" style="${bgStyle}">
             <div class="p-4 ${item.imageUrl ? 'bg-black/60 backdrop-blur-sm' : 'bg-gray-50'}">
-              <p class="font-bold ${item.imageUrl ? 'text-white' : 'text-gray-900'} text-sm">${item.icon} ${item.title}</p>
-              ${item.caption ? `<p class="text-xs mt-1 ${item.imageUrl ? 'text-gray-300' : 'text-gray-500'}">${item.caption}</p>` : ''}
+              <p class="font-bold ${item.imageUrl ? 'text-white' : 'text-gray-900'} text-sm">${item.icon} ${escHtml(item.title)}</p>
+              ${item.caption ? `<p class="text-xs mt-1 ${item.imageUrl ? 'text-gray-300' : 'text-gray-500'}">${escHtml(item.caption)}</p>` : ''}
               <a href="booking.html" class="inline-block mt-2 text-xs font-bold text-yellow-400 group-hover:underline">Book for your event →</a>
             </div>
           </div>`;

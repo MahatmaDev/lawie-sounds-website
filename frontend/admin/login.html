@@ -322,8 +322,23 @@
       Swal.fire({ ...SWAL_DEFAULTS, title: 'Reset Password', text: 'Contact the system administrator to reset your password.' });
     }
 
-    // If already logged in, skip to dashboard
+    // If already logged in, skip to dashboard.
     (function () {
+      // Honour ?logout=1 BEFORE the auto-redirect, not after it.
+      //
+      // These were the other way round, and the redirect below `return`s — so
+      // with a valid session the logout branch was unreachable. ?logout=1 only
+      // worked once the token had already expired, which is exactly when it is
+      // not needed. Anyone signed in as one role could not reach the form to
+      // sign in as another: the page bounced them back to the dashboard they
+      // were trying to leave. With "Remember me" that persisted for 30 days.
+      if (new URLSearchParams(location.search).get('logout') === '1') {
+        localStorage.removeItem('lawie_admin_session');
+        sessionStorage.removeItem('lawie_admin_session');
+        deleteCookie('lawie_admin_session');
+        return; // show the form
+      }
+
       const stored = localStorage.getItem('lawie_admin_session') || sessionStorage.getItem('lawie_admin_session');
       if (stored) {
         try {
@@ -337,8 +352,11 @@
           }
         } catch (_) {}
       }
-      // Clear stale/invalid session only on explicit logout or expired token
-      if (new URLSearchParams(location.search).get('logout') === '1') {
+
+      // A token that is present but unparseable or expired is not a session.
+      // Leaving it in place meant a dead token sat in storage until someone
+      // happened to log out, and the 30-day cookie outlived it either way.
+      if (stored) {
         localStorage.removeItem('lawie_admin_session');
         sessionStorage.removeItem('lawie_admin_session');
         deleteCookie('lawie_admin_session');

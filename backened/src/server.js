@@ -2638,7 +2638,37 @@ const ANALYTICS_MAX_DAYS = 730;   // two years; beyond that use an export
 // Money is financial data about identifiable clients. Managers run the day to
 // day, but revenue, costs and margins are the owner's business — the same line
 // already drawn around employees and payroll.
-app.get('/api/admin/analytics', adminAuth, adminOnly, async (req, res) => {
+// Strip every figure that describes the company's financial position, leaving
+// the operational picture a manager needs to market the business.
+//
+// Done here rather than by hiding tiles in the dashboard: a manager's token can
+// call this endpoint directly, so anything the server sends is disclosed
+// whether or not the interface draws it.
+//
+// Removed: revenue (booked, collected, average deal, outstanding), payroll
+// costs, and dataQuality — which counts how many won enquiries still have no
+// amount recorded, and is a prompt aimed at the owner.
+// Reshaped: byEventType keeps its label and count but loses `value`, the
+// revenue each type earned; byMethod goes entirely, being payment totals; the
+// daily series keeps enquiries and wins but loses `collected`.
+function operationalAnalytics(d) {
+  if (!d) return d;
+  return {
+    period:         d.period,
+    enquiries:      d.enquiries,
+    reviews:        d.reviews,
+    responsiveness: d.responsiveness,
+    breakdown: {
+      byEventType: (d.breakdown?.byEventType || []).map(r => ({ label: r.label, count: r.count })),
+    },
+    series: (d.series || []).map(r => ({ day: r.day, enquiries: r.enquiries, won: r.won })),
+    // Lets the dashboard render the manager's view without guessing from
+    // which keys happen to be absent.
+    scope: 'operational',
+  };
+}
+
+app.get('/api/admin/analytics', adminAuth, async (req, res) => {
   const today = new Date();
   const iso   = (d) => d.toISOString().split('T')[0];
 
@@ -2660,7 +2690,12 @@ app.get('/api/admin/analytics', adminAuth, adminOnly, async (req, res) => {
 
   const { data, error } = await supabase.rpc('analytics_summary', { p_from: from, p_to: to });
   if (error) return handleError(res, error);
-  res.json({ success: true, data });
+
+  // The owner sees the full picture; everyone else sees the operational subset.
+  // Defaulting to the reduced form means a role added later is private by
+  // default rather than inheriting the finances by omission.
+  const full = req.admin?.role === 'admin';
+  res.json({ success: true, data: full ? { ...data, scope: 'full' } : operationalAnalytics(data) });
 });
 
 // Record what the client agreed to pay. This is the number every revenue figure

@@ -6233,8 +6233,14 @@ function duplicateMarketingBanner(id) {
         return;
       }
 
-      const d  = analyticsData;
-      const dq = d.dataQuality;
+      const d = analyticsData;
+
+      // The server decides what this account may see and sends only that. The
+      // dashboard reads `scope` rather than sniffing for missing keys, so a
+      // field that is legitimately absent — no payments yet — is never mistaken
+      // for a field that was withheld.
+      const full = d.scope !== 'operational';
+      const dq   = d.dataQuality || {};
 
       // ── Honesty banner ────────────────────────────────────────
       // The single most useful thing this screen can tell the manager is
@@ -6242,7 +6248,7 @@ function duplicateMarketingBanner(id) {
       // "nobody typed the amounts in" look identical on a chart and mean
       // completely different things.
       const unpriced = dq.wonMissingAmount;
-      const banner = unpriced > 0 ? `
+      const banner = (full && unpriced > 0) ? `
         <div class="mb-5 bg-yellow-600/10 border border-yellow-600/40 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
           <i class="fas fa-circle-info text-yellow-500"></i>
           <p class="text-sm text-yellow-200 flex-1">
@@ -6255,13 +6261,16 @@ function duplicateMarketingBanner(id) {
           </button>
         </div>` : '';
 
-      const noMoneyYet = d.revenue.booked === 0 && d.revenue.collected === 0 && dq.wonTotal === 0;
+      const noMoneyYet = full && d.revenue.booked === 0 && d.revenue.collected === 0 && dq.wonTotal === 0;
 
       // ── KPI tiles ─────────────────────────────────────────────
-      const net = Number(d.revenue.collected) - Number(d.costs.payroll);
-      const netPrev = Number(d.revenue.collectedPrev) - Number(d.costs.payrollPrev);
+      const net     = full ? Number(d.revenue.collected)     - Number(d.costs.payroll)     : 0;
+      const netPrev = full ? Number(d.revenue.collectedPrev) - Number(d.costs.payrollPrev) : 0;
       const convRate     = d.enquiries.total     ? (d.enquiries.won     / d.enquiries.total)     * 100 : 0;
       const convRatePrev = d.enquiries.totalPrev ? (d.enquiries.wonPrev / d.enquiries.totalPrev) * 100 : 0;
+      const replyText = d.responsiveness.medianHours === null ? 'no data'
+        : d.responsiveness.medianHours < 1 ? '< 1 hr'
+        : d.responsiveness.medianHours.toFixed(1) + ' hrs';
 
       const tile = (label, value, delta, hint, accent) => `
         <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4">
@@ -6298,6 +6307,7 @@ function duplicateMarketingBanner(id) {
 
         ${banner}
 
+        ${full ? `
         <!-- Money first. This is the question the owner actually opens the tab
              to answer, so it is not below three charts about content counts. -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
@@ -6313,7 +6323,7 @@ function duplicateMarketingBanner(id) {
           ${tile('Net after payroll', kesShort(net),
                  deltaChip(net, netPrev),
                  `payroll ${kesShort(d.costs.payroll)}`, net >= 0 ? 'text-green-400' : 'text-red-400')}
-        </div>
+        </div>` : ''}
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           ${tile('Enquiries', d.enquiries.total,
@@ -6325,9 +6335,17 @@ function duplicateMarketingBanner(id) {
           ${tile('Win rate', convRate.toFixed(0) + '%',
                  deltaChip(convRate, convRatePrev),
                  'enquiries that became jobs', 'text-purple-400')}
-          ${tile('Avg job value', kesShort(d.revenue.avgDeal),
-                 deltaChip(d.revenue.avgDeal, d.revenue.avgDealPrev),
-                 'per job won', 'text-white')}
+          ${full
+            ? tile('Avg job value', kesShort(d.revenue.avgDeal),
+                   deltaChip(d.revenue.avgDeal, d.revenue.avgDealPrev),
+                   'per job won', 'text-white')
+            // The manager's fourth tile is the number they can actually move.
+            // Leaving a gap here would read as something failing to load.
+            : tile('Median reply time', replyText,
+                   `<span class="text-xs text-gray-500">${d.responsiveness.unanswered} unanswered</span>`,
+                   'promise is 2 hours',
+                   d.responsiveness.medianHours === null ? 'text-gray-400'
+                     : d.responsiveness.medianHours <= 2 ? 'text-green-400' : 'text-yellow-400')}
         </div>
 
         ${noMoneyYet ? `
@@ -6347,8 +6365,10 @@ function duplicateMarketingBanner(id) {
 
         <div class="grid lg:grid-cols-3 gap-5 mb-5">
           <div class="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-5">
-            <h3 class="font-semibold mb-1">Cash collected &amp; enquiries</h3>
-            <p class="text-xs text-gray-500 mb-3">Daily. Bars are money received on that day; the line is enquiries arriving.</p>
+            <h3 class="font-semibold mb-1">${full ? 'Cash collected &amp; enquiries' : 'Enquiries &amp; jobs won'}</h3>
+            <p class="text-xs text-gray-500 mb-3">${full
+              ? 'Daily. Bars are money received on that day; the line is enquiries arriving.'
+              : 'Daily. Bars are jobs won on that day; the line is enquiries arriving.'}</p>
             <div id="anTrend"></div>
           </div>
           <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
@@ -6414,6 +6434,7 @@ function duplicateMarketingBanner(id) {
             </dl>
           </div>
 
+          ${!full ? '' : `
           <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <h3 class="font-semibold mb-3">How clients pay</h3>
             ${d.breakdown.byMethod.length ? `
@@ -6434,12 +6455,15 @@ function duplicateMarketingBanner(id) {
                 }).join('')}
               </div>`
             : `<p class="text-sm text-gray-600 py-6 text-center">No payments recorded in this period.</p>`}
-          </div>
+          </div>`}
         </div>
 
         <p class="text-xs text-gray-600 mt-5 text-center">
           Figures are read from the database each time this tab is opened
-          <span id="anRefreshed"></span>. Cancelled jobs are excluded from all revenue.
+          <span id="anRefreshed"></span>.
+          ${full
+            ? 'Cancelled jobs are excluded from all revenue.'
+            : 'Revenue, costs and payments are visible to the business owner only.'}
         </p>
       `;
 
@@ -6464,6 +6488,11 @@ function duplicateMarketingBanner(id) {
       if (typeof ApexCharts === 'undefined' || !analyticsData) return;
       const d = analyticsData;
 
+      // Without the money series the bars plot jobs won instead, so the chart
+      // still answers "is the work coming in?" rather than disappearing.
+      const full = d.scope !== 'operational';
+      const barName = full ? 'Collected (KES)' : 'Jobs won';
+
       const trendEl = document.getElementById('anTrend');
       if (trendEl) {
         const labels = d.series.map(p => p.day);
@@ -6473,8 +6502,9 @@ function duplicateMarketingBanner(id) {
         const t = new ApexCharts(trendEl, {
           chart: { height: 260, background: 'transparent', toolbar: { show: false }, stacked: false },
           series: [
-            { name: 'Collected (KES)', type: 'column', data: d.series.map(p => Number(p.collected)) },
-            { name: 'Enquiries',       type: 'line',   data: d.series.map(p => p.enquiries) },
+            { name: barName, type: 'column',
+              data: d.series.map(p => Number(full ? p.collected : p.won)) },
+            { name: 'Enquiries', type: 'line', data: d.series.map(p => p.enquiries) },
           ],
           stroke: { width: [0, 2], curve: 'smooth' },
           colors: ['#22c55e', '#7c4dff'],
@@ -6491,7 +6521,9 @@ function duplicateMarketingBanner(id) {
             tooltip: { enabled: false },
           },
           yaxis: [
-            { seriesName: 'Collected (KES)', labels: { style: { colors: '#9ca3af' }, formatter: v => kesShort(v) }, min: 0 },
+            { seriesName: barName, min: 0,
+              labels: { style: { colors: '#9ca3af' },
+                        formatter: v => full ? kesShort(v) : Math.round(v) } },
             { seriesName: 'Enquiries', opposite: true, min: 0,
               labels: { style: { colors: '#9ca3af' }, formatter: v => Math.round(v) } },
           ],
@@ -6559,25 +6591,41 @@ function duplicateMarketingBanner(id) {
         return `"${safe.replace(/"/g, '""')}"`;
       };
 
+      // The export must not become a way around the screen's restrictions: it
+      // writes only the figures this account was actually sent.
+      const full = d.scope !== 'operational';
+
       const lines = [];
-      lines.push(cell('Lawie Sounds — business analytics'));
+      lines.push(cell(full ? 'Lawie Sounds — business analytics'
+                           : 'Lawie Sounds — enquiry and service report'));
       lines.push([cell('Period'), cell(d.period.from), cell('to'), cell(d.period.to)].join(','));
       lines.push([cell('Generated'), cell(new Date().toISOString())].join(','));
       lines.push('');
       lines.push([cell('Metric'), cell('This period'), cell('Previous period')].join(','));
-      lines.push([cell('Cash collected (KES)'), cell(d.revenue.collected), cell(d.revenue.collectedPrev)].join(','));
-      lines.push([cell('Revenue booked (KES)'), cell(d.revenue.booked),    cell(d.revenue.bookedPrev)].join(','));
-      lines.push([cell('Payroll cost (KES)'),   cell(d.costs.payroll),     cell(d.costs.payrollPrev)].join(','));
-      lines.push([cell('Outstanding, all time (KES)'), cell(d.revenue.outstanding), cell('')].join(','));
+      if (full) {
+        lines.push([cell('Cash collected (KES)'), cell(d.revenue.collected), cell(d.revenue.collectedPrev)].join(','));
+        lines.push([cell('Revenue booked (KES)'), cell(d.revenue.booked),    cell(d.revenue.bookedPrev)].join(','));
+        lines.push([cell('Payroll cost (KES)'),   cell(d.costs.payroll),     cell(d.costs.payrollPrev)].join(','));
+        lines.push([cell('Outstanding, all time (KES)'), cell(d.revenue.outstanding), cell('')].join(','));
+      }
       lines.push([cell('Enquiries'), cell(d.enquiries.total), cell(d.enquiries.totalPrev)].join(','));
       lines.push([cell('Jobs won'),  cell(d.enquiries.won),   cell(d.enquiries.wonPrev)].join(','));
       lines.push([cell('Cancelled'), cell(d.enquiries.cancelled), cell('')].join(','));
-      lines.push([cell('Average job value (KES)'), cell(d.revenue.avgDeal), cell(d.revenue.avgDealPrev)].join(','));
+      if (full) {
+        lines.push([cell('Average job value (KES)'), cell(d.revenue.avgDeal), cell(d.revenue.avgDealPrev)].join(','));
+      }
       lines.push([cell('Median reply time (hours)'), cell(d.responsiveness.medianHours ?? ''), cell('')].join(','));
-      lines.push([cell('Won bookings missing an agreed price'), cell(d.dataQuality.wonMissingAmount), cell('')].join(','));
+      lines.push([cell('Unanswered enquiries'), cell(d.responsiveness.unanswered), cell('')].join(','));
+      if (full) {
+        lines.push([cell('Won bookings missing an agreed price'), cell(d.dataQuality.wonMissingAmount), cell('')].join(','));
+      }
       lines.push('');
-      lines.push([cell('Date'), cell('Enquiries'), cell('Jobs won'), cell('Cash collected (KES)')].join(','));
-      d.series.forEach(p => lines.push([cell(p.day), cell(p.enquiries), cell(p.won), cell(p.collected)].join(',')));
+      lines.push(full
+        ? [cell('Date'), cell('Enquiries'), cell('Jobs won'), cell('Cash collected (KES)')].join(',')
+        : [cell('Date'), cell('Enquiries'), cell('Jobs won')].join(','));
+      d.series.forEach(p => lines.push(full
+        ? [cell(p.day), cell(p.enquiries), cell(p.won), cell(p.collected)].join(',')
+        : [cell(p.day), cell(p.enquiries), cell(p.won)].join(',')));
 
       // BOM so Excel reads the UTF-8 correctly instead of mangling accents.
       const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
@@ -6711,13 +6759,13 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
               <div>
                 <p class="text-xs font-semibold text-green-400 uppercase tracking-wide mb-2">✅ Can Access</p>
                 <ul class="space-y-1.5 text-sm text-gray-300">
-                  ${['Dashboard overview & stats','Events — add, edit, publish','Services — add, edit, manage packages','Gallery — upload photos &amp; videos','Reviews — approve &amp; reply','Marketing banners','Promotional posters','Bookings — view &amp; update status'].map(i => `<li class="flex items-start gap-2"><i class="fas fa-check text-green-500 text-xs mt-1 flex-shrink-0"></i>${i}</li>`).join('')}
+                  ${['Dashboard overview &amp; stats','Events — add, edit, publish','Services — add, edit, manage packages','Gallery — upload photos &amp; videos','Reviews — approve &amp; reply','Marketing banners','Promotional posters','Enquiries — view &amp; update status','Analytics — enquiries, conversion and reply times only'].map(i => `<li class="flex items-start gap-2"><i class="fas fa-check text-green-500 text-xs mt-1 flex-shrink-0"></i>${i}</li>`).join('')}
                 </ul>
               </div>
               <div>
                 <p class="text-xs font-semibold text-red-400 uppercase tracking-wide mb-2">🚫 Cannot Access</p>
                 <ul class="space-y-1.5 text-sm text-gray-300">
-                  ${['Employee records &amp; HR data','Payroll &amp; payment information','Team Access settings (this page)','Changing admin credentials'].map(i => `<li class="flex items-start gap-2"><i class="fas fa-times text-red-500 text-xs mt-1 flex-shrink-0"></i>${i}</li>`).join('')}
+                  ${['Revenue, costs, margins and money owed','Employee records &amp; HR data','Payroll &amp; payment information','The work log and what the developer is owed','Team access settings (this page)','Changing admin credentials'].map(i => `<li class="flex items-start gap-2"><i class="fas fa-times text-red-500 text-xs mt-1 flex-shrink-0"></i>${i}</li>`).join('')}
                 </ul>
               </div>
             </div>
@@ -6743,13 +6791,15 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
       if (role === 'manager') {
         const subtitle = document.getElementById('dashboardSubtitle');
         if (subtitle) subtitle.innerHTML = '<span class="text-yellow-400 font-semibold">Manager Mode</span>';
-        // Hide every tab the manager has no access to, not just some of them.
-        // Analytics and the work log were left in the nav, so a manager could
-        // click either and be told they are not allowed — an invitation
-        // followed by a refusal, on a screen meant to be uncluttered. The
-        // server-side guards remain the actual enforcement; these panels still
-        // render their locked state if reached another way.
-        ['tabEmployees', 'tabPayroll', 'tabAnalytics', 'tabUpdates']
+        // Hide every tab the manager has no access to, not just some of them —
+        // offering a tab and then refusing it is worse than not offering it.
+        //
+        // Analytics is no longer in this list. A manager marketing the company
+        // needs to see enquiry volume, conversion and reply times to do the job;
+        // what they must not see is the owner's financial position. That split
+        // is made by the server, which sends this account the operational
+        // figures only, so the tab can be open without disclosing revenue.
+        ['tabEmployees', 'tabPayroll', 'tabUpdates']
           .forEach(id => document.getElementById(id)?.classList.add('hidden'));
       }
     }

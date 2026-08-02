@@ -1164,7 +1164,15 @@ app.post('/api/admin/auth/login', (req, res) => {
   else if (devUser && devPass && username === devUser && password === devPass) role = 'developer';
 
   if (role) {
-    const NAMES = { admin: 'Administrator', manager: 'Website Manager', developer: 'Developer' };
+    // The people, not the job titles. "Administrator" is what a system calls
+    // someone; Lawrence is what he is called. Environment variables so a name
+    // can be corrected, or the manager replaced, without a code change and a
+    // deploy — the defaults are the current team.
+    const NAMES = {
+      admin:     process.env.ADMIN_NAME     || 'Lawrence Gichaga',
+      manager:   process.env.MANAGER_NAME   || 'Nyambura',
+      developer: process.env.DEVELOPER_NAME || 'Developer',
+    };
     const IDS   = { admin: 1, manager: 2, developer: 3 };
     const name    = NAMES[role];
     const payload = { id: IDS[role], username, name, role, loginTime: Date.now() };

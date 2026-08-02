@@ -42,6 +42,81 @@
     .value-card { transition: all 0.3s ease; }
     .value-card:hover { transform: translateY(-4px); }
     .welcome-banner { background: linear-gradient(135deg, #1e1e2a 0%, #2d2d3a 100%); }
+
+    /* ── Welcome hero ────────────────────────────────────────────────────────
+       The first thing either of them sees each day. It has to feel like their
+       own desk rather than a piece of software, so it is built around their
+       name, the real date, and what has actually changed since they were last
+       here — never a motivational line with no fact behind it.
+
+       The aurora is two slow-drifting radial gradients under a blur. It reads
+       as depth and warmth without costing a single image request, and it stops
+       entirely for anyone who has asked for reduced motion. */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.5rem;
+      background: linear-gradient(140deg, #14141f 0%, #191926 55%, #1b1b2b 100%);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .hero::before,
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 460px; height: 460px;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .hero::before {
+      background: radial-gradient(circle, rgba(124,77,255,0.55), transparent 68%);
+      top: -230px; left: -110px;
+      animation: heroDriftA 22s ease-in-out infinite alternate;
+    }
+    .hero::after {
+      background: radial-gradient(circle, rgba(250,204,21,0.30), transparent 68%);
+      bottom: -260px; right: -120px;
+      animation: heroDriftB 27s ease-in-out infinite alternate;
+    }
+    @keyframes heroDriftA { to { transform: translate3d(70px, 45px, 0) scale(1.12); } }
+    @keyframes heroDriftB { to { transform: translate3d(-60px, -40px, 0) scale(1.08); } }
+    .hero-inner { position: relative; z-index: 1; }
+
+    /* The name is the loudest thing on the screen, on purpose. */
+    .hero-name {
+      background: linear-gradient(95deg, #fff 15%, #c4b5fd 55%, #facc15 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Momentum chips. Glass over the aurora so the colour shows through. */
+    .hero-chip {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.09);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      transition: transform .25s ease, border-color .25s ease, background .25s ease;
+    }
+    .hero-chip:hover {
+      transform: translateY(-3px);
+      border-color: rgba(167,139,250,0.45);
+      background: rgba(255,255,255,0.07);
+    }
+
+    /* Entrance: each element arrives a beat after the one before, so the eye is
+       led from the greeting to the numbers rather than meeting them at once. */
+    .hero-rise { animation: heroRise .55s cubic-bezier(.21,.6,.35,1) both; }
+    @keyframes heroRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .spark-line { stroke-dasharray: 300; stroke-dashoffset: 300; animation: sparkDraw 1.4s ease-out .35s forwards; }
+    @keyframes sparkDraw { to { stroke-dashoffset: 0; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero::before, .hero::after, .hero-rise, .spark-line { animation: none !important; }
+      .spark-line { stroke-dashoffset: 0; }
+      .hero-chip { transition: none; }
+    }
     
     /* Modal draggable styles */
     .modal-header { cursor: move; user-select: none; }
@@ -426,6 +501,158 @@
 
     function startAutoRefresh() { setInterval(refreshLiveData, 30000); }
 
+    // ==================== WELCOME HERO ====================
+    //
+    // Shared by both dashboards. Every figure in it is read from data already
+    // loaded — nothing is estimated, rounded up, or invented to look better.
+    // A greeting that congratulates you on numbers that are not real is worse
+    // than no greeting: it teaches you to distrust the whole screen.
+
+    function firstName(full) {
+      return String(full || '').trim().split(/\s+/)[0] || 'there';
+    }
+
+    // Kenya is UTC+3 and does not observe daylight saving. Using the browser's
+    // clock would greet the owner "good evening" at 11am if he ever opened the
+    // dashboard while travelling.
+    function nairobiNow() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    }
+
+    function heroGreeting(h) {
+      if (h < 5)  return { text: 'Still up',      icon: 'fa-moon' };
+      if (h < 12) return { text: 'Good morning',  icon: 'fa-sun' };
+      if (h < 17) return { text: 'Good afternoon',icon: 'fa-sun' };
+      if (h < 21) return { text: 'Good evening',  icon: 'fa-cloud-moon' };
+      return { text: 'Good evening', icon: 'fa-moon' };
+    }
+
+    // What has actually changed since this person last had the dashboard open.
+    // Read before the marker is rewritten, so the first render after a login
+    // reports the gap rather than zero.
+    function readLastSeen(role) {
+      const key = `lawie_last_seen_${role}`;
+      const raw = localStorage.getItem(key);
+      localStorage.setItem(key, new Date().toISOString());
+      const t = raw ? Date.parse(raw) : NaN;
+      return Number.isFinite(t) ? t : null;
+    }
+
+    function humanGap(ms) {
+      const h = ms / 3600000;
+      if (h < 1)  return 'a few minutes ago';
+      if (h < 2)  return 'an hour ago';
+      if (h < 24) return `${Math.round(h)} hours ago`;
+      const d = Math.round(h / 24);
+      return d === 1 ? 'yesterday' : `${d} days ago`;
+    }
+
+    // A fortnight of enquiry counts as an inline SVG. No library, no request,
+    // and it answers "are things moving?" faster than any number can.
+    function heroSparkline(counts, stroke = '#a78bfa') {
+      const w = 132, h = 34, max = Math.max(1, ...counts);
+      const step = counts.length > 1 ? w / (counts.length - 1) : w;
+      const pts = counts.map((v, i) => [i * step, h - (v / max) * (h - 4) - 2]);
+      const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      const area = `${line} L${w},${h} L0,${h} Z`;
+      return `
+        <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true" class="overflow-visible">
+          <defs>
+            <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${stroke}" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="${stroke}" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="${area}" fill="url(#sparkFill)"></path>
+          <path d="${line}" fill="none" stroke="${stroke}" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" class="spark-line"></path>
+        </svg>`;
+    }
+
+    function dailyCounts(items, field, days = 14) {
+      const out = new Array(days).fill(0);
+      const today = new Date(); today.setHours(23, 59, 59, 999);
+      const start = new Date(today.getTime() - (days - 1) * 86400000); start.setHours(0, 0, 0, 0);
+      items.forEach(it => {
+        const t = Date.parse(it[field] || '');
+        if (!Number.isFinite(t) || t < start.getTime() || t > today.getTime()) return;
+        const idx = Math.floor((t - start.getTime()) / 86400000);
+        if (idx >= 0 && idx < days) out[idx]++;
+      });
+      return out;
+    }
+
+    function heroChip(label, value, note, accent = 'text-white', delay = 0) {
+      return `
+        <div class="hero-chip px-4 py-3 hero-rise" style="animation-delay:${delay}ms">
+          <p class="text-[11px] uppercase tracking-wide text-gray-400">${label}</p>
+          <p class="text-2xl font-black ${accent} leading-tight mt-0.5">${value}</p>
+          <p class="text-[11px] text-gray-500 mt-0.5">${note}</p>
+        </div>`;
+    }
+
+    /**
+     * @param role      'admin' | 'manager'
+     * @param chips     already-rendered chip markup
+     * @param cta       { label, tab, tone } the single most useful next step
+     * @param sparkData 14 daily counts
+     */
+    function welcomeHero({ role, chips, cta, sparkData, sparkLabel }) {
+      const now  = nairobiNow();
+      const g    = heroGreeting(now.getHours());
+      const name = firstName(sessionStorage.getItem('adminName') || (role === 'manager' ? 'Manager' : 'Administrator'));
+      const last = readLastSeen(role);
+
+      const dateLine = now.toLocaleDateString('en-KE', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      });
+
+      // Said once, quietly, and only when it is true.
+      const backLine = last && (Date.now() - last) > 20 * 60 * 1000
+        ? `<span class="text-gray-500">· last here ${humanGap(Date.now() - last)}</span>`
+        : '';
+
+      const total = sparkData.reduce((a, b) => a + b, 0);
+
+      return `
+      <section class="hero p-6 sm:p-8 mb-6">
+        <div class="hero-inner flex flex-col xl:flex-row xl:items-center gap-7">
+
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-gray-400 flex items-center gap-2 hero-rise">
+              <i class="fas ${g.icon} text-yellow-400"></i>
+              ${g.text} <span class="text-gray-600">·</span> ${dateLine} ${backLine}
+            </p>
+
+            <h2 class="mt-2 text-3xl sm:text-[2.6rem] font-black leading-[1.1] hero-rise" style="animation-delay:70ms">
+              <span class="hero-name">${escapeHtml(name)}</span>
+            </h2>
+
+            <p class="text-sm text-gray-400 mt-2 max-w-lg hero-rise" style="animation-delay:130ms">
+              ${role === 'manager'
+                ? 'Everything you publish today is what a client sees tomorrow.'
+                : 'Every number here is read from your live data — nothing estimated.'}
+            </p>
+
+            <div class="mt-5 flex flex-wrap items-center gap-3 hero-rise" style="animation-delay:190ms">
+              <button onclick="switchTab('${cta.tab}')"
+                class="px-5 py-2.5 rounded-xl text-sm font-bold transition shadow-lg ${cta.tone}">
+                ${cta.label}
+              </button>
+              <div class="flex items-center gap-2.5 text-xs text-gray-500">
+                ${heroSparkline(sparkData, role === 'manager' ? '#facc15' : '#a78bfa')}
+                <span class="whitespace-nowrap">${total} ${sparkLabel}<br><span class="text-gray-600">last 14 days</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 xl:w-[27rem] flex-shrink-0">
+            ${chips}
+          </div>
+        </div>
+      </section>`;
+    }
+
     // ==================== DASHBOARD ====================
     function renderDashboard() {
       const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
@@ -514,26 +741,35 @@
       // Analytics tab, where it is computed from agreed prices and payments.
       const activeServices = store.services.filter(s => s.isActive).length;
 
+      // ── Owner's hero ──────────────────────────────────────────────
+      // The three numbers he opens the dashboard to check, and the one action
+      // most worth taking right now. The action is chosen from what is actually
+      // outstanding rather than always pointing at the same tab.
+      const heroPending  = store.bookings.filter(b => b.status === 'pending').length;
+      const heroSpark    = dailyCounts(store.bookings, 'createdAt', 14);
+      const ownerCta =
+        heroPending  ? { label: `Answer ${heroPending} waiting ${heroPending === 1 ? 'enquiry' : 'enquiries'}`, tab: 'bookings',  tone: 'bg-yellow-500 hover:bg-yellow-400 text-black' }
+      : unpricedWon  ? { label: `Price ${unpricedWon} won ${unpricedWon === 1 ? 'job' : 'jobs'}`,               tab: 'bookings',  tone: 'bg-yellow-500 hover:bg-yellow-400 text-black' }
+      : pendingReviews.length ? { label: `Approve ${pendingReviews.length} review${pendingReviews.length === 1 ? '' : 's'}`, tab: 'reviews', tone: 'bg-purple-600 hover:bg-purple-500 text-white' }
+                       : { label: 'Open full analytics', tab: 'analytics', tone: 'bg-purple-600 hover:bg-purple-500 text-white' };
+
+      const ownerChips =
+        heroChip('Booked', bookedValue ? kesShort(bookedValue) : '—',
+                 unpricedWon ? `${unpricedWon} still unpriced` : 'on work won', 'text-white', 0) +
+        heroChip('Jobs won', wonBookings.length,
+                 `${convRate}% of enquiries`, 'text-green-400', 60) +
+        heroChip('Waiting', heroPending,
+                 heroPending ? 'needs a reply' : 'all answered',
+                 heroPending ? 'text-yellow-400' : 'text-gray-400', 120);
+
       container.innerHTML = `
-      <!-- Welcome Banner -->
-      <div class="welcome-banner rounded-2xl p-6 mb-6 border border-gray-800 bg-gradient-to-r from-gray-900 to-gray-900/80">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 class="text-2xl font-bold text-white">${greeting}, <span class="text-purple-400">${adminName}</span>! ${emoji}</h2>
-            <p class="text-gray-400 mt-1 text-sm">Your business command centre — track, manage & grow.</p>
-          </div>
-          <div class="flex gap-3">
-            <div class="bg-purple-600/20 rounded-xl px-4 py-2.5 text-center border border-purple-700/30">
-              <p class="text-lg font-black text-purple-400">KES ${bookedValue.toLocaleString()}</p>
-              <p class="text-xs text-gray-400">Booked${unpricedWon ? ` <span class="text-yellow-400" title="${unpricedWon} won job${unpricedWon===1?'':'s'} still need a price">·&nbsp;${unpricedWon} unpriced</span>` : ''}</p>
-            </div>
-            <div class="bg-green-600/20 rounded-xl px-4 py-2.5 text-center border border-green-700/30">
-              <p class="text-lg font-black text-green-400">${wonBookings.length}</p>
-              <p class="text-xs text-gray-400">Jobs won</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      ${welcomeHero({
+        role: 'admin',
+        chips: ownerChips,
+        cta: ownerCta,
+        sparkData: heroSpark,
+        sparkLabel: heroSpark.reduce((a, b) => a + b, 0) === 1 ? 'enquiry' : 'enquiries',
+      })}
 
       <!-- Upcoming Events Reminder -->
       ${upcomingHtml}
@@ -624,16 +860,44 @@
       if (activeBanners.length === 0) checklist.push({ urgent: false, icon: 'fa-bullhorn text-blue-400', text: 'No active marketing banners — create one to boost visibility', action: "switchTab('marketing')" });
       if (store.gallery.length < 5) checklist.push({ urgent: false, icon: 'fa-images text-purple-400', text: 'Gallery is sparse — upload event photos to showcase work', action: "switchTab('gallery')" });
       if (checklist.length === 0) checklist.push({ urgent: false, icon: 'fa-check-circle text-green-400', text: "All caught up! No pending actions today.", action: null });
+      // ── Manager's hero ────────────────────────────────────────────
+      // Framed around the work she does rather than the money she cannot see:
+      // what is published, what is waiting on her, and what she has put out in
+      // the last fortnight.
+      //
+      // The sparkline counts everything she publishes — photos, banners,
+      // posters and reviews she has approved — not gallery uploads alone. A
+      // single-source line sat at zero on any week she spent on banners, which
+      // reads as "you did nothing" while being merely incomplete.
+      const publishedReviews = store.reviews.filter(r => r.isApproved).length;
+      const published = [
+        ...store.gallery,
+        ...store.marketingBanners,
+        ...(store.posters || []),
+        ...store.reviews.filter(r => r.isApproved),
+      ];
+      const mgrSpark = dailyCounts(published, 'createdAt', 14);
+      const mgrCta =
+        pendingBookings.length ? { label: `Review ${pendingBookings.length} new ${pendingBookings.length === 1 ? 'enquiry' : 'enquiries'}`, tab: 'bookings', tone: 'bg-yellow-500 hover:bg-yellow-400 text-black' }
+      : pendingReviews.length  ? { label: `Approve ${pendingReviews.length} review${pendingReviews.length === 1 ? '' : 's'}`, tab: 'reviews', tone: 'bg-yellow-500 hover:bg-yellow-400 text-black' }
+      : activeBanners.length === 0 ? { label: 'Put a banner live', tab: 'marketing', tone: 'bg-purple-600 hover:bg-purple-500 text-white' }
+                               : { label: 'Add photos to the gallery', tab: 'gallery', tone: 'bg-purple-600 hover:bg-purple-500 text-white' };
+
+      const mgrChips =
+        heroChip('Waiting on you', pendingBookings.length + pendingReviews.length,
+                 pendingBookings.length + pendingReviews.length ? 'enquiries & reviews' : 'nothing pending',
+                 (pendingBookings.length + pendingReviews.length) ? 'text-yellow-400' : 'text-green-400', 0) +
+        heroChip('Photos live', store.gallery.length, 'in the gallery', 'text-purple-400', 60) +
+        heroChip('Reviews live', publishedReviews, 'published for clients', 'text-white', 120);
+
       container.innerHTML = `
-        <div class="bg-gradient-to-r from-yellow-900/20 to-purple-900/20 border border-yellow-700/20 rounded-2xl p-6 mb-6">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h2 class="text-2xl font-bold text-white">${greeting}, <span class="text-yellow-400">${adminName}</span>! ${emoji}</h2>
-              <p class="text-gray-400 mt-1 text-sm">Here's what needs your attention today.</p>
-            </div>
-            <span class="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1.5 rounded-full font-semibold border border-yellow-500/30">Manager Access</span>
-          </div>
-        </div>
+        ${welcomeHero({
+          role: 'manager',
+          chips: mgrChips,
+          cta: mgrCta,
+          sparkData: mgrSpark,
+          sparkLabel: mgrSpark.reduce((a, b) => a + b, 0) === 1 ? 'item published' : 'items published',
+        })}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <button onclick="switchTab('bookings')" class="bg-gray-900 rounded-2xl p-4 border ${pendingBookings.length > 0 ? 'border-yellow-600/50' : 'border-gray-800'} text-left hover:opacity-90 transition">
             <div class="flex items-center justify-between"><div><p class="text-xs text-gray-400">New Enquiries</p><p class="text-3xl font-black ${pendingBookings.length > 0 ? 'text-yellow-400' : 'text-white'}">${pendingBookings.length}</p></div><div class="w-10 h-10 ${pendingBookings.length > 0 ? 'bg-yellow-600/20' : 'bg-gray-800'} rounded-xl flex items-center justify-center"><i class="fas fa-inbox ${pendingBookings.length > 0 ? 'text-yellow-400' : 'text-gray-500'}"></i></div></div>
@@ -6788,9 +7052,18 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
 
     function applyRoleBasedUI() {
       const role = window._adminRole || sessionStorage.getItem('adminRole') || 'admin';
+
+      // Name first, role second. On a shared screen this answers "whose session
+      // is this?" — the question that matters before anyone clicks anything.
+      const subtitle = document.getElementById('dashboardSubtitle');
+      if (subtitle) {
+        const who = escapeHtml(sessionStorage.getItem('adminName') || 'Administrator');
+        const tone = role === 'manager' ? 'text-yellow-400' : role === 'developer' ? 'text-blue-400' : 'text-purple-400';
+        const label = role === 'manager' ? 'Manager' : role === 'developer' ? 'Developer' : 'Owner';
+        subtitle.innerHTML = `<span class="${tone} font-semibold">${who}</span> <span class="text-gray-600">·</span> ${label}`;
+      }
+
       if (role === 'manager') {
-        const subtitle = document.getElementById('dashboardSubtitle');
-        if (subtitle) subtitle.innerHTML = '<span class="text-yellow-400 font-semibold">Manager Mode</span>';
         // Hide every tab the manager has no access to, not just some of them —
         // offering a tab and then refusing it is worse than not offering it.
         //

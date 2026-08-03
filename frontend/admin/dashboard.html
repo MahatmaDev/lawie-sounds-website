@@ -214,35 +214,35 @@
         <a href="../index.html" target="_blank" rel="noopener" class="bg-green-800 hover:bg-green-700 px-3 sm:px-4 py-2 rounded-lg transition flex items-center gap-2 text-green-300 text-sm font-medium">
           <i class="fas fa-external-link-alt"></i> <span class="hidden sm:inline">View Site</span>
         </a>
-        <button id="notifBtn" class="relative bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition" title="Pending actions — click to view enquiries">
+        <button type="button" id="notifBtn" class="relative bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition" title="Pending actions — click to view enquiries">
           <i class="fas fa-bell text-gray-300"></i>
           <span id="notifBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full items-center justify-center font-bold leading-none">0</span>
         </button>
         <div class="text-right hidden sm:block"><p class="text-xs text-gray-400" id="adminGreetingDisplay">Welcome</p><p class="text-sm font-semibold" id="adminNameDisplay">Administrator</p></div>
-        <button id="logoutBtn" class="bg-gray-800 hover:bg-gray-700 px-3 sm:px-4 py-2 rounded-lg transition flex items-center gap-2"><i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span></button>
+        <button type="button" id="logoutBtn" class="bg-gray-800 hover:bg-gray-700 px-3 sm:px-4 py-2 rounded-lg transition flex items-center gap-2"><i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span></button>
       </div>
     </div>
     <div class="px-4 sm:px-6 border-t border-gray-800 flex flex-wrap gap-1 overflow-x-auto">
-      <button data-tab="dashboard" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📊 Dashboard</button>
-      <button data-tab="events" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📅 Events</button>
-      <button data-tab="services" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🎧 Services</button>
-      <button data-tab="gallery" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🖼️ Gallery</button>
-      <button data-tab="reviews" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">⭐ Reviews</button>
-      <button data-tab="marketing" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📢 Marketing</button>
+      <button type="button" data-tab="dashboard" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📊 Dashboard</button>
+      <button type="button" data-tab="events" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📅 Events</button>
+      <button type="button" data-tab="services" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🎧 Services</button>
+      <button type="button" data-tab="gallery" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🖼️ Gallery</button>
+      <button type="button" data-tab="reviews" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">⭐ Reviews</button>
+      <button type="button" data-tab="marketing" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📢 Marketing</button>
       <!-- Posters tab removed: folded into Marketing as a sub-view. Banners and
            posters do the same job — putting a message in front of a visitor —
            so managing them on two screens made "what is running?" a two-screen
            question. 14 tabs down to 13. -->
-      <button data-tab="bookings" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📥 Enquiries</button>
-      <button data-tab="employees" id="tabEmployees" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">👥 Employees</button>
-      <button data-tab="payroll" id="tabPayroll" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">💰 Payroll</button>
-      <button data-tab="analytics" id="tabAnalytics" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📈 Analytics</button>
-      <button data-tab="training" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📚 Training</button>
-      <button data-tab="beta" id="tabBeta" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🧪 Beta</button>
+      <button type="button" data-tab="bookings" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📥 Enquiries</button>
+      <button type="button" data-tab="employees" id="tabEmployees" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">👥 Employees</button>
+      <button type="button" data-tab="payroll" id="tabPayroll" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">💰 Payroll</button>
+      <button type="button" data-tab="analytics" id="tabAnalytics" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📈 Analytics</button>
+      <button type="button" data-tab="training" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📚 Training</button>
+      <button type="button" data-tab="beta" id="tabBeta" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🧪 Beta</button>
       <!-- Was "Updates" showing a hardcoded changelog. It is now the work log:
            development delivered, and the company's acceptance of it. The badge
            counts entries waiting for the owner to accept. -->
-      <button data-tab="updates" id="tabUpdates" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap relative">📋 Work log<span id="updatesBadge" class="ml-1.5 hidden text-xs font-bold bg-yellow-500 text-black px-1.5 py-0.5 rounded-full"></span></button>
+      <button type="button" data-tab="updates" id="tabUpdates" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap relative">📋 Work log<span id="updatesBadge" class="ml-1.5 hidden text-xs font-bold bg-yellow-500 text-black px-1.5 py-0.5 rounded-full"></span></button>
     </div>
   </header>
 
@@ -253,12 +253,12 @@
     <div class="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden border border-gray-800 modal-enter relative">
       <div class="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-800 flex justify-between items-center modal-header">
         <h3 id="modalTitle" class="text-xl font-bold">Add Item</h3>
-        <button id="closeModalBtn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <button type="button" id="closeModalBtn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
       </div>
       <div class="overflow-y-auto" style="max-height: calc(90vh - 120px);"><form id="modalForm" class="p-6 space-y-4"></form></div>
       <div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3">
-        <button id="cancelModalBtn" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition">Cancel</button>
-        <button id="saveModalBtn" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 transition">Save</button>
+        <button type="button" id="cancelModalBtn" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition">Cancel</button>
+        <button type="button" id="saveModalBtn" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 transition">Save</button>
       </div>
     </div>
   </div>
@@ -645,7 +645,7 @@
             </p>
 
             <div class="mt-5 flex flex-wrap items-center gap-3 hero-rise" style="animation-delay:190ms">
-              <button onclick="switchTab('${cta.tab}')"
+              <button type="button" onclick="switchTab('${cta.tab}')"
                 class="px-5 py-2.5 rounded-xl text-sm font-bold transition shadow-lg ${cta.tone}">
                 ${cta.label}
               </button>
@@ -738,7 +738,7 @@
           </div>
           <div class="px-6 py-3 bg-gray-800/20 flex items-center justify-between">
             <p class="text-xs text-gray-500">Prepare logistics, staff & equipment for these events</p>
-            <button onclick="switchTab('events')" class="text-purple-400 text-xs hover:underline font-medium">Manage events →</button>
+            <button type="button" onclick="switchTab('events')" class="text-purple-400 text-xs hover:underline font-medium">Manage events →</button>
           </div>
         </div>`;
 
@@ -807,17 +807,17 @@
           return `<div class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-5 py-3 mb-6">
               <i class="fas fa-circle-check text-green-400"></i>
               <p class="text-sm text-gray-300 flex-1">Nothing needs your attention — every enquiry has been answered and priced.</p>
-              <button onclick="switchTab('analytics')" class="text-xs text-purple-400 hover:underline font-medium flex-shrink-0">Full analytics →</button>
+              <button type="button" onclick="switchTab('analytics')" class="text-xs text-purple-400 hover:underline font-medium flex-shrink-0">Full analytics →</button>
             </div>`;
         }
         return `<div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-3 mb-6">
             <div class="flex items-center justify-between gap-3 mb-2">
               <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Needs your attention</p>
-              <button onclick="switchTab('analytics')" class="text-xs text-purple-400 hover:underline font-medium flex-shrink-0">Full analytics →</button>
+              <button type="button" onclick="switchTab('analytics')" class="text-xs text-purple-400 hover:underline font-medium flex-shrink-0">Full analytics →</button>
             </div>
             <div class="space-y-1.5">
               ${items.map(i => `
-                <button onclick="switchTab('${i.tab}')" class="w-full flex items-center gap-2.5 text-left text-sm text-gray-300 hover:text-white transition">
+                <button type="button" onclick="switchTab('${i.tab}')" class="w-full flex items-center gap-2.5 text-left text-sm text-gray-300 hover:text-white transition">
                   <i class="fas ${i.icon} text-xs flex-shrink-0" style="color:${i.color}"></i>
                   <span class="flex-1">${i.text}</span>
                   <i class="fas fa-chevron-right text-xs text-gray-600"></i>
@@ -825,9 +825,9 @@
             </div>
           </div>`;
       })()}
-      <div class="grid md:grid-cols-2 gap-6 mb-8"><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">📊 Enquiries — Last 6 Months</h3><canvas id="bookingsChart" height="200"></canvas></div><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">⚡ Quick Actions</h3><div class="grid grid-cols-2 gap-3"><button onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Add event</button><button onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Upload image</button><button onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Create banner</button><button onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">View enquiries</button></div></div></div>
-      <div class="bg-gray-900 rounded-xl border border-gray-800 mb-6"><div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center"><h3 class="font-semibold">📥 Recent Enquiries</h3><button onclick="switchTab('bookings')" class="text-purple-400 text-sm hover:underline">View all →</button></div><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left text-xs">Name</th><th class="px-4 py-3 text-left text-xs">Event</th><th class="px-4 py-3 text-left text-xs">Date</th><th class="px-4 py-3 text-left text-xs">Status</th><th class="px-4 py-3 text-left text-xs">Actions</th></tr></thead><tbody>${recentBookings.map(booking => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(booking.name)}</td><td class="px-4 py-3">${escapeHtml(booking.eventType)}</td><td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td><td class="px-4 py-3"><span class="badge-${booking.status}">${booking.status}</span></td><td class="px-4 py-3"><button onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 hover:text-purple-300 text-sm">View</button></td></tr>`).join('')}</tbody></table></div></div>
-      ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-xl border border-gray-800"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.map(review => `<div class="p-4 flex justify-between items-center"><div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div><div class="flex gap-2"><button onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div>`).join('')}</div></div>` : ''}
+      <div class="grid md:grid-cols-2 gap-6 mb-8"><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">📊 Enquiries — Last 6 Months</h3><canvas id="bookingsChart" height="200"></canvas></div><div class="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 class="font-semibold mb-4">⚡ Quick Actions</h3><div class="grid grid-cols-2 gap-3"><button type="button" onclick="switchTab('events')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Add event</button><button type="button" onclick="switchTab('gallery')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Upload image</button><button type="button" onclick="switchTab('marketing')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">Create banner</button><button type="button" onclick="switchTab('bookings')" class="p-3 bg-purple-600/20 rounded-xl text-purple-400 hover:bg-purple-600/30 transition">View enquiries</button></div></div></div>
+      <div class="bg-gray-900 rounded-xl border border-gray-800 mb-6"><div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center"><h3 class="font-semibold">📥 Recent Enquiries</h3><button type="button" onclick="switchTab('bookings')" class="text-purple-400 text-sm hover:underline">View all →</button></div><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left text-xs">Name</th><th class="px-4 py-3 text-left text-xs">Event</th><th class="px-4 py-3 text-left text-xs">Date</th><th class="px-4 py-3 text-left text-xs">Status</th><th class="px-4 py-3 text-left text-xs">Actions</th></tr></thead><tbody>${recentBookings.map(booking => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(booking.name)}</td><td class="px-4 py-3">${escapeHtml(booking.eventType)}</td><td class="px-4 py-3">${new Date(booking.eventDate).toLocaleDateString()}</td><td class="px-4 py-3"><span class="badge-${booking.status}">${booking.status}</span></td><td class="px-4 py-3"><button type="button" onclick="viewBookingDetails('${booking.id}')" class="text-purple-400 hover:text-purple-300 text-sm">View</button></td></tr>`).join('')}</tbody></table></div></div>
+      ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-xl border border-gray-800"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">⭐ Pending Reviews (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.map(review => `<div class="p-4 flex justify-between items-center"><div><p class="font-medium">${escapeHtml(review.clientName)}</p><p class="text-sm text-gray-400">${escapeHtml(review.comment)}</p></div><div class="flex gap-2"><button type="button" onclick="approveReview('${review.id}')" class="px-3 py-1 bg-green-600 rounded-lg text-sm">Approve</button><button type="button" onclick="deleteReview('${review.id}')" class="px-3 py-1 bg-red-600 rounded-lg text-sm">Delete</button></div></div>`).join('')}</div></div>` : ''}
       <div class="mt-6 grid md:grid-cols-2 gap-6">
         <div class="bg-gray-900 rounded-xl border border-gray-800">
           <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
@@ -909,19 +909,19 @@
           sparkLabel: mgrSpark.reduce((a, b) => a + b, 0) === 1 ? 'item published' : 'items published',
         })}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <button onclick="switchTab('bookings')" class="bg-gray-900 rounded-2xl p-4 border ${pendingBookings.length > 0 ? 'border-yellow-600/50' : 'border-gray-800'} text-left hover:opacity-90 transition">
+          <button type="button" onclick="switchTab('bookings')" class="bg-gray-900 rounded-2xl p-4 border ${pendingBookings.length > 0 ? 'border-yellow-600/50' : 'border-gray-800'} text-left hover:opacity-90 transition">
             <div class="flex items-center justify-between"><div><p class="text-xs text-gray-400">New Enquiries</p><p class="text-3xl font-black ${pendingBookings.length > 0 ? 'text-yellow-400' : 'text-white'}">${pendingBookings.length}</p></div><div class="w-10 h-10 ${pendingBookings.length > 0 ? 'bg-yellow-600/20' : 'bg-gray-800'} rounded-xl flex items-center justify-center"><i class="fas fa-inbox ${pendingBookings.length > 0 ? 'text-yellow-400' : 'text-gray-500'}"></i></div></div>
             <p class="text-xs ${pendingBookings.length > 0 ? 'text-yellow-400 font-medium' : 'text-gray-500'} mt-2">${pendingBookings.length > 0 ? 'Needs review →' : 'None pending'}</p>
           </button>
-          <button onclick="switchTab('reviews')" class="bg-gray-900 rounded-2xl p-4 border ${pendingReviews.length > 0 ? 'border-orange-600/50' : 'border-gray-800'} text-left hover:opacity-90 transition">
+          <button type="button" onclick="switchTab('reviews')" class="bg-gray-900 rounded-2xl p-4 border ${pendingReviews.length > 0 ? 'border-orange-600/50' : 'border-gray-800'} text-left hover:opacity-90 transition">
             <div class="flex items-center justify-between"><div><p class="text-xs text-gray-400">Pending Reviews</p><p class="text-3xl font-black ${pendingReviews.length > 0 ? 'text-orange-400' : 'text-white'}">${pendingReviews.length}</p></div><div class="w-10 h-10 ${pendingReviews.length > 0 ? 'bg-orange-600/20' : 'bg-gray-800'} rounded-xl flex items-center justify-center"><i class="fas fa-star ${pendingReviews.length > 0 ? 'text-orange-400' : 'text-gray-500'}"></i></div></div>
             <p class="text-xs ${pendingReviews.length > 0 ? 'text-orange-400 font-medium' : 'text-gray-500'} mt-2">${pendingReviews.length > 0 ? 'Approve now →' : 'All reviewed'}</p>
           </button>
-          <button onclick="switchTab('marketing')" class="bg-gray-900 rounded-2xl p-4 border border-gray-800 text-left hover:border-blue-500/30 transition">
+          <button type="button" onclick="switchTab('marketing')" class="bg-gray-900 rounded-2xl p-4 border border-gray-800 text-left hover:border-blue-500/30 transition">
             <div class="flex items-center justify-between"><div><p class="text-xs text-gray-400">Live Banners</p><p class="text-3xl font-black text-blue-400">${activeBanners.length}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center"><i class="fas fa-bullhorn text-blue-400"></i></div></div>
             <p class="text-xs text-gray-500 mt-2">${store.marketingBanners.length} total banners</p>
           </button>
-          <button onclick="switchTab('gallery')" class="bg-gray-900 rounded-2xl p-4 border border-gray-800 text-left hover:border-purple-500/30 transition">
+          <button type="button" onclick="switchTab('gallery')" class="bg-gray-900 rounded-2xl p-4 border border-gray-800 text-left hover:border-purple-500/30 transition">
             <div class="flex items-center justify-between"><div><p class="text-xs text-gray-400">Gallery Photos</p><p class="text-3xl font-black text-purple-400">${store.gallery.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center"><i class="fas fa-images text-purple-400"></i></div></div>
             <p class="text-xs text-gray-500 mt-2">${store.reviews.filter(r=>r.isApproved).length} approved reviews</p>
           </button>
@@ -933,24 +933,24 @@
             <span class="ml-auto text-xs text-gray-500">${new Date().toLocaleDateString('en-KE',{weekday:'long',month:'short',day:'numeric'})}</span>
           </div>
           <div class="divide-y divide-gray-800">
-            ${checklist.map(item => `<div class="px-6 py-4 flex items-center gap-4 ${item.urgent ? 'bg-yellow-500/5' : ''}"><i class="fas ${item.icon} text-sm flex-shrink-0"></i><p class="text-sm flex-1 ${item.urgent ? 'text-white' : 'text-gray-400'}">${item.text}</p>${item.action ? `<button onclick="${item.action}" class="text-xs text-purple-400 hover:underline flex-shrink-0 font-medium">Go →</button>` : ''}</div>`).join('')}
+            ${checklist.map(item => `<div class="px-6 py-4 flex items-center gap-4 ${item.urgent ? 'bg-yellow-500/5' : ''}"><i class="fas ${item.icon} text-sm flex-shrink-0"></i><p class="text-sm flex-1 ${item.urgent ? 'text-white' : 'text-gray-400'}">${item.text}</p>${item.action ? `<button type="button" onclick="${item.action}" class="text-xs text-purple-400 hover:underline flex-shrink-0 font-medium">Go →</button>` : ''}</div>`).join('')}
           </div>
         </div>
         <div class="grid md:grid-cols-2 gap-6 mb-6">
           <div class="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between"><h3 class="font-bold">⏰ Upcoming Events</h3><button onclick="switchTab('events')" class="text-purple-400 text-xs hover:underline">Manage →</button></div>
+            <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between"><h3 class="font-bold">⏰ Upcoming Events</h3><button type="button" onclick="switchTab('events')" class="text-purple-400 text-xs hover:underline">Manage →</button></div>
             ${upcomingEvents.length === 0 ? '<p class="p-6 text-sm text-gray-500 text-center">No events in the next 14 days</p>' : '<div class="divide-y divide-gray-800">' + upcomingEvents.map(e => { const ed = new Date(e.date); const days = Math.ceil((ed - nowDate) / 864e5); const col = days <= 2 ? 'text-red-400' : days <= 7 ? 'text-yellow-400' : 'text-green-400'; return `<div class="px-6 py-3 flex items-center gap-3"><div class="text-center w-10 flex-shrink-0"><p class="text-xs text-gray-500">${ed.toLocaleDateString('en-KE',{month:'short'})}</p><p class="text-xl font-black text-white">${ed.getDate()}</p></div><div class="flex-1 min-w-0"><p class="font-medium text-sm truncate">${escapeHtml(e.title)}</p><p class="text-xs text-gray-500 truncate">${escapeHtml(e.venue)}</p></div><span class="text-xs font-bold ${col} flex-shrink-0">${days === 0 ? 'TODAY' : days + 'd'}</span></div>`; }).join('') + '</div>'}
           </div>
           <div class="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between"><h3 class="font-bold">📥 New Enquiries</h3><button onclick="switchTab('bookings')" class="text-purple-400 text-xs hover:underline">View all →</button></div>
-            ${pendingBookings.length === 0 ? '<p class="p-6 text-sm text-gray-500 text-center">No pending inquiries</p>' : '<div class="divide-y divide-gray-800">' + pendingBookings.slice(0,5).map(b => `<div class="px-6 py-3 flex items-center gap-3"><div class="w-8 h-8 bg-purple-600/20 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-purple-400 text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">${escapeHtml(b.name)}</p><p class="text-xs text-gray-500">${escapeHtml(b.eventType||'—')} · ${b.eventDate ? new Date(b.eventDate).toLocaleDateString('en-KE') : '—'}</p></div><button onclick="viewBookingDetails('${b.id}')" class="text-xs text-purple-400 hover:underline flex-shrink-0">View</button></div>`).join('') + '</div>'}
+            <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between"><h3 class="font-bold">📥 New Enquiries</h3><button type="button" onclick="switchTab('bookings')" class="text-purple-400 text-xs hover:underline">View all →</button></div>
+            ${pendingBookings.length === 0 ? '<p class="p-6 text-sm text-gray-500 text-center">No pending inquiries</p>' : '<div class="divide-y divide-gray-800">' + pendingBookings.slice(0,5).map(b => `<div class="px-6 py-3 flex items-center gap-3"><div class="w-8 h-8 bg-purple-600/20 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-purple-400 text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">${escapeHtml(b.name)}</p><p class="text-xs text-gray-500">${escapeHtml(b.eventType||'—')} · ${b.eventDate ? new Date(b.eventDate).toLocaleDateString('en-KE') : '—'}</p></div><button type="button" onclick="viewBookingDetails('${b.id}')" class="text-xs text-purple-400 hover:underline flex-shrink-0">View</button></div>`).join('') + '</div>'}
           </div>
         </div>
-        ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-2xl border border-orange-600/30 overflow-hidden mb-6"><div class="px-6 py-4 border-b border-gray-800 flex items-center gap-2 bg-orange-500/5"><span class="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span><h3 class="font-bold text-orange-300">⭐ Reviews Awaiting Approval (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.slice(0,5).map(r => `<div class="px-6 py-4 flex items-start gap-4"><div class="flex-1 min-w-0"><p class="font-medium text-sm">${escapeHtml(r.clientName)}</p><p class="text-xs text-gray-400 mt-0.5 line-clamp-2">${escapeHtml(r.comment)}</p></div><div class="flex gap-2 flex-shrink-0"><button onclick="approveReview('${r.id}')" class="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-lg text-xs hover:bg-green-600/30 transition border border-green-600/30">Approve</button><button onclick="deleteReview('${r.id}')" class="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg text-xs hover:bg-red-600/30 transition border border-red-600/30">Delete</button></div></div>`).join('')}</div>${pendingReviews.length > 5 ? `<div class="px-6 py-3 bg-gray-800/20"><button onclick="switchTab('reviews')" class="text-purple-400 text-xs hover:underline">See all ${pendingReviews.length} pending reviews →</button></div>` : ''}</div>` : ''}
+        ${pendingReviews.length > 0 ? `<div class="bg-gray-900 rounded-2xl border border-orange-600/30 overflow-hidden mb-6"><div class="px-6 py-4 border-b border-gray-800 flex items-center gap-2 bg-orange-500/5"><span class="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span><h3 class="font-bold text-orange-300">⭐ Reviews Awaiting Approval (${pendingReviews.length})</h3></div><div class="divide-y divide-gray-800">${pendingReviews.slice(0,5).map(r => `<div class="px-6 py-4 flex items-start gap-4"><div class="flex-1 min-w-0"><p class="font-medium text-sm">${escapeHtml(r.clientName)}</p><p class="text-xs text-gray-400 mt-0.5 line-clamp-2">${escapeHtml(r.comment)}</p></div><div class="flex gap-2 flex-shrink-0"><button type="button" onclick="approveReview('${r.id}')" class="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-lg text-xs hover:bg-green-600/30 transition border border-green-600/30">Approve</button><button type="button" onclick="deleteReview('${r.id}')" class="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg text-xs hover:bg-red-600/30 transition border border-red-600/30">Delete</button></div></div>`).join('')}</div>${pendingReviews.length > 5 ? `<div class="px-6 py-3 bg-gray-800/20"><button type="button" onclick="switchTab('reviews')" class="text-purple-400 text-xs hover:underline">See all ${pendingReviews.length} pending reviews →</button></div>` : ''}</div>` : ''}
         <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
           <h3 class="font-bold mb-4 text-sm text-gray-300 uppercase tracking-wide">Quick Navigation</h3>
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            ${[{icon:'fa-calendar-alt',label:'Events',tab:'events',c:'text-purple-400 bg-purple-600/10 hover:bg-purple-600/20'},{icon:'fa-images',label:'Gallery',tab:'gallery',c:'text-blue-400 bg-blue-600/10 hover:bg-blue-600/20'},{icon:'fa-bullhorn',label:'Marketing',tab:'marketing',c:'text-yellow-400 bg-yellow-600/10 hover:bg-yellow-600/20'},{icon:'fa-star',label:'Reviews',tab:'reviews',c:'text-orange-400 bg-orange-600/10 hover:bg-orange-600/20'},{icon:'fa-headphones',label:'Services',tab:'services',c:'text-green-400 bg-green-600/10 hover:bg-green-600/20'},{icon:'fa-clipboard-list',label:'Enquiries',tab:'bookings',c:'text-red-400 bg-red-600/10 hover:bg-red-600/20'}].map(n => `<button onclick="switchTab('${n.tab}')" class="flex flex-col items-center gap-2 p-3 ${n.c} rounded-xl transition"><i class="fas ${n.icon} text-lg"></i><span class="text-xs font-medium">${n.label}</span></button>`).join('')}
+            ${[{icon:'fa-calendar-alt',label:'Events',tab:'events',c:'text-purple-400 bg-purple-600/10 hover:bg-purple-600/20'},{icon:'fa-images',label:'Gallery',tab:'gallery',c:'text-blue-400 bg-blue-600/10 hover:bg-blue-600/20'},{icon:'fa-bullhorn',label:'Marketing',tab:'marketing',c:'text-yellow-400 bg-yellow-600/10 hover:bg-yellow-600/20'},{icon:'fa-star',label:'Reviews',tab:'reviews',c:'text-orange-400 bg-orange-600/10 hover:bg-orange-600/20'},{icon:'fa-headphones',label:'Services',tab:'services',c:'text-green-400 bg-green-600/10 hover:bg-green-600/20'},{icon:'fa-clipboard-list',label:'Enquiries',tab:'bookings',c:'text-red-400 bg-red-600/10 hover:bg-red-600/20'}].map(n => `<button type="button" onclick="switchTab('${n.tab}')" class="flex flex-col items-center gap-2 p-3 ${n.c} rounded-xl transition"><i class="fas ${n.icon} text-lg"></i><span class="text-xs font-medium">${n.label}</span></button>`).join('')}
           </div>
         </div>
       `;
@@ -1014,11 +1014,11 @@
         <!-- View Toggle -->
         <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div class="flex gap-2">
-            <button onclick="setEventView('upcoming')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'upcoming' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">Upcoming</button>
-            <button onclick="setEventView('past')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'past' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">Past events</button>
-            <button onclick="setEventView('all')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">All events</button>
+            <button type="button" onclick="setEventView('upcoming')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'upcoming' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">Upcoming</button>
+            <button type="button" onclick="setEventView('past')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'past' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">Past events</button>
+            <button type="button" onclick="setEventView('all')" class="view-toggle-btn px-4 py-2 rounded-lg text-sm font-medium transition ${eventViewMode === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">All events</button>
           </div>
-          <button onclick="openEventForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
+          <button type="button" onclick="openEventForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
             <i class="fas fa-plus"></i> Create Event
           </button>
         </div>
@@ -1029,7 +1029,7 @@
             <div class="bg-gray-900 rounded-xl p-12 text-center border border-gray-800">
               <i class="fas fa-calendar-alt text-5xl text-gray-600 mb-4"></i>
               <p class="text-gray-400">No events found</p>
-              <button onclick="openEventForm()" class="mt-4 text-purple-400 hover:underline">Create your first event →</button>
+              <button type="button" onclick="openEventForm()" class="mt-4 text-purple-400 hover:underline">Create your first event →</button>
             </div>
           ` : filteredEvents.map(event => `
             <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-purple-500 transition">
@@ -1051,8 +1051,8 @@
                     </div>
                     <div class="flex gap-2">
                       <span class="px-3 py-1 rounded-full text-xs font-semibold ${getEventStatusBadge(event)}">${getEventStatusText(event)}</span>
-                      <button onclick="editEvent('${event.id}')" class="text-purple-400 hover:text-purple-300 p-1"><i class="fas fa-edit"></i></button>
-                      <button onclick="deleteEvent('${event.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash"></i></button>
+                      <button type="button" onclick="editEvent('${event.id}')" class="text-purple-400 hover:text-purple-300 p-1"><i class="fas fa-edit"></i></button>
+                      <button type="button" onclick="deleteEvent('${event.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash"></i></button>
                     </div>
                   </div>
                   
@@ -1085,8 +1085,8 @@
                   
                   <!-- Quick Actions -->
                   <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
-                    <button onclick="duplicateEvent('${event.id}')" class="px-3 py-1 bg-gray-800 rounded-lg text-xs hover:bg-gray-700 transition"><i class="fas fa-copy mr-1"></i>Duplicate</button>
-                    <button onclick="exportEventData('${event.id}')" class="px-3 py-1 bg-gray-800 rounded-lg text-xs hover:bg-gray-700 transition"><i class="fas fa-download mr-1"></i>Export Data</button>
+                    <button type="button" onclick="duplicateEvent('${event.id}')" class="px-3 py-1 bg-gray-800 rounded-lg text-xs hover:bg-gray-700 transition"><i class="fas fa-copy mr-1"></i>Duplicate</button>
+                    <button type="button" onclick="exportEventData('${event.id}')" class="px-3 py-1 bg-gray-800 rounded-lg text-xs hover:bg-gray-700 transition"><i class="fas fa-download mr-1"></i>Export Data</button>
                     <a href="/event-details.html?id=${event.id}" target="_blank" class="px-3 py-1 bg-gray-800 rounded-lg text-xs hover:bg-gray-700 transition"><i class="fas fa-external-link-alt mr-1"></i>View Public Page</a>
                   </div>
                 </div>
@@ -1445,7 +1445,7 @@
       (servicePerf?.services || []).forEach(s => { perfById[s.id] = s; });
 
       const tab = (k, label) => `
-        <button onclick="setServiceView('${k}')"
+        <button type="button" onclick="setServiceView('${k}')"
           class="px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition border ${
             serviceViewMode === k ? 'bg-purple-600 border-purple-500 text-white'
                                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">${label}</button>`;
@@ -1462,13 +1462,13 @@
           </div>
           <div class="flex gap-2 flex-wrap">
             ${Object.keys(SERVICE_RANGES).map(k => `
-              <button onclick="setServicePerfRange('${k}')"
+              <button type="button" onclick="setServicePerfRange('${k}')"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
                   servicePerfRange === k ? 'bg-purple-600 border-purple-500 text-white'
                                         : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">
                 ${k === '365d' ? '12 months' : k.replace('d', ' days')}
               </button>`).join('')}
-            <button onclick="openServiceForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <button type="button" onclick="openServiceForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
               <i class="fas fa-plus"></i> New service
             </button>
           </div>
@@ -1513,7 +1513,7 @@
         return `<div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
             <i class="fas fa-headphones text-3xl text-gray-600 mb-3"></i>
             <p class="text-gray-400 text-sm mb-4">${serviceViewMode === 'inactive' ? 'No inactive services.' : 'No services yet.'}</p>
-            <button onclick="openServiceForm()" class="text-purple-400 hover:underline text-sm">Add one →</button>
+            <button type="button" onclick="openServiceForm()" class="text-purple-400 hover:underline text-sm">Add one →</button>
           </div>`;
       }
 
@@ -1579,13 +1579,13 @@
                 </div>` : ''}
 
               <div class="flex gap-1.5 flex-wrap flex-shrink-0">
-                <button onclick="openServiceForm('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-purple-600 hover:bg-purple-700 transition">
+                <button type="button" onclick="openServiceForm('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-purple-600 hover:bg-purple-700 transition">
                   <i class="fas fa-pen mr-1"></i>Edit
                 </button>
-                <button onclick="toggleServiceActive('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${s.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+                <button type="button" onclick="toggleServiceActive('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${s.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
                   ${s.isActive ? 'Hide' : 'Show'}
                 </button>
-                <button onclick="deleteService('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
+                <button type="button" onclick="deleteService('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -1631,7 +1631,7 @@
                     <span class="text-sm font-semibold text-white">${escapeHtml(s.name)}</span>
                     <span class="text-xs font-bold ${readinessColour(c.readiness)}">${c.readiness}%</span>
                   </div>
-                  <button onclick="openServiceForm('${s.id}')" class="text-xs text-purple-400 hover:underline">Fix this →</button>
+                  <button type="button" onclick="openServiceForm('${s.id}')" class="text-xs text-purple-400 hover:underline">Fix this →</button>
                 </div>
                 <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-2.5">
                   <div class="h-1.5 rounded-full ${c.readiness >= 80 ? 'bg-green-500' : c.readiness >= 50 ? 'bg-yellow-500' : 'bg-red-500'}" style="width:${c.readiness}%"></div>
@@ -1719,8 +1719,8 @@
             ${(pkg.features||[]).length ? `<p class="text-xs text-gray-500 line-clamp-1">${(pkg.features).slice(0,3).map(f=>escapeHtml(f)).join(' · ')}${pkg.features.length>3?' …':''}</p>` : ''}
           </div>
           <div class="flex gap-1 shrink-0">
-            <button onclick="editPackage('${pkg.id}')" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
-            <button onclick="deletePackage('${pkg.id}')" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
+            <button type="button" onclick="editPackage('${pkg.id}')" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button type="button" onclick="deletePackage('${pkg.id}')" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
           </div>
         </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No packages yet. A visitor comparing suppliers leaves when they cannot find a price — this is the highest-value thing to add.</p>';
 
@@ -1736,8 +1736,8 @@
             </div>
           </div>
           <div class="flex gap-1 shrink-0">
-            <button onclick="editFeature(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
-            <button onclick="deleteFeature(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
+            <button type="button" onclick="editFeature(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button type="button" onclick="deleteFeature(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
           </div>
         </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No features yet — highlight what makes this service special.</p>';
 
@@ -1748,8 +1748,8 @@
             <p class="text-xs text-gray-400 mt-1 line-clamp-2">${escapeHtml(faq.a)}</p>
           </div>
           <div class="flex gap-1 shrink-0">
-            <button onclick="editFaq(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
-            <button onclick="deleteFaq(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
+            <button type="button" onclick="editFaq(${idx})" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
+            <button type="button" onclick="deleteFaq(${idx})" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
           </div>
         </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No FAQs yet — answer common client questions.</p>';
 
@@ -1760,17 +1760,17 @@
       document.getElementById('modalForm').innerHTML = `
         <!-- Tab navigation -->
         <div class="flex gap-0.5 border-b border-gray-700 mb-4 overflow-x-auto">
-          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="basic">
+          <button type="button" class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="basic">
             📝 Info
           </button>
           ${id ? `
-          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="packages">
+          <button type="button" class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="packages">
             💰 Packages${countBadge(pkgCount)}
           </button>
-          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="features">
+          <button type="button" class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="features">
             ✨ Features${countBadge(featCount)}
           </button>
-          <button class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="faqs">
+          <button type="button" class="tab-service shrink-0 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:text-purple-300 transition" data-tab="faqs">
             ❓ FAQs${countBadge(faqCount)}
           </button>
           ` : `
@@ -1906,7 +1906,7 @@
         <!-- ── PACKAGES TAB ── -->
         <div id="tabPackages" class="tab-service-content hidden space-y-3">
           <div id="packagesList" class="space-y-2">${pkgListHtml}</div>
-          <button onclick="addPackage()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+          <button type="button" onclick="addPackage()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
             <i class="fas fa-plus text-xs"></i> Add Package
           </button>
           <p class="text-xs text-gray-600 text-center">Add Basic, Standard &amp; Premium tiers — clients convert better with choice.</p>
@@ -1915,7 +1915,7 @@
         <!-- ── FEATURES TAB ── -->
         <div id="tabFeatures" class="tab-service-content hidden space-y-3">
           <div id="featuresList" class="space-y-2">${featListHtml}</div>
-          <button onclick="addFeature()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+          <button type="button" onclick="addFeature()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
             <i class="fas fa-plus text-xs"></i> Add Feature
           </button>
           <p class="text-xs text-gray-600 text-center">Showcase equipment, expertise, and USPs that set you apart.</p>
@@ -1924,7 +1924,7 @@
         <!-- ── FAQS TAB ── -->
         <div id="tabFaqs" class="tab-service-content hidden space-y-3">
           <div id="faqsList" class="space-y-2">${faqListHtml}</div>
-          <button onclick="addFaq()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+          <button type="button" onclick="addFaq()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
             <i class="fas fa-plus text-xs"></i> Add FAQ
           </button>
           <p class="text-xs text-gray-600 text-center">Answer the questions clients ask before booking — it removes hesitation.</p>
@@ -2527,7 +2527,7 @@ function renderGallery() {
   const reorderable = !['all', 'drafts', 'featured'].includes(galleryUI.filter) && !galleryUI.search;
 
   const chip = (key, label, count, tone = '') => `
-    <button onclick="setGalleryFilter('${key}')"
+    <button type="button" onclick="setGalleryFilter('${key}')"
       class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition border ${
         galleryUI.filter === key
           ? 'bg-purple-600 border-purple-500 text-white'
@@ -2551,7 +2551,7 @@ function renderGallery() {
           class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center gap-2">
           <i class="fas fa-external-link-alt text-xs"></i> View live page
         </a>
-        <button onclick="openGalleryForm()"
+        <button type="button" onclick="openGalleryForm()"
           class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
           <i class="fas fa-cloud-arrow-up"></i> Upload photos
         </button>
@@ -2581,12 +2581,12 @@ function renderGallery() {
   const bulkBar = galleryUI.selected.size ? `
     <div class="sticky top-2 z-20 mb-4 bg-purple-900/90 backdrop-blur border border-purple-600/50 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-2">
       <span class="text-sm font-semibold text-white mr-1">${galleryUI.selected.size} selected</span>
-      <button onclick="bulkGallery('publish')"   class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
-      <button onclick="bulkGallery('unpublish')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unpublish</button>
-      <button onclick="bulkGallery('feature')"   class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/80 hover:bg-yellow-600 transition">Feature</button>
-      <button onclick="bulkGallery('unfeature')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unfeature</button>
-      <button onclick="bulkGallery('delete')"    class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Delete</button>
-      <button onclick="clearGallerySelection()"  class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
+      <button type="button" onclick="bulkGallery('publish')"   class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
+      <button type="button" onclick="bulkGallery('unpublish')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unpublish</button>
+      <button type="button" onclick="bulkGallery('feature')"   class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/80 hover:bg-yellow-600 transition">Feature</button>
+      <button type="button" onclick="bulkGallery('unfeature')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Unfeature</button>
+      <button type="button" onclick="bulkGallery('delete')"    class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Delete</button>
+      <button type="button" onclick="clearGallerySelection()"  class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
     </div>` : '';
 
   if (!all.length) {
@@ -2597,7 +2597,7 @@ function renderGallery() {
         </div>
         <h3 class="text-lg font-bold text-white mb-2">Your gallery is empty</h3>
         <p class="text-gray-500 text-sm max-w-sm mx-auto mb-6">Upload photos from an event you have just covered. You can select several at once.</p>
-        <button onclick="openGalleryForm()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition">
+        <button type="button" onclick="openGalleryForm()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition">
           <i class="fas fa-cloud-arrow-up"></i> Upload photos
         </button>
       </div>`;
@@ -2610,7 +2610,7 @@ function renderGallery() {
         <i class="fas fa-filter text-3xl text-gray-600 mb-3"></i>
         <h3 class="text-base font-bold text-white mb-1">Nothing matches this view</h3>
         <p class="text-gray-500 text-sm mb-5">Try a different category, or clear the search.</p>
-        <button onclick="setGalleryFilter('all')" class="px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition">Show all</button>
+        <button type="button" onclick="setGalleryFilter('all')" class="px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition">Show all</button>
       </div>`;
     return;
   }
@@ -2671,19 +2671,19 @@ function galleryCard(item, draggable) {
         <p class="text-xs font-semibold text-white truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
         <p class="text-xs text-gray-500 mt-0.5 truncate">${escapeHtml(catLabelFor(item.category))}</p>
         <div class="flex gap-1 mt-auto pt-2">
-          <button onclick="toggleGalleryFeatured('${item.id}')" title="${item.isFeatured ? 'Remove from featured' : 'Feature on the gallery page'}"
+          <button type="button" onclick="toggleGalleryFeatured('${item.id}')" title="${item.isFeatured ? 'Remove from featured' : 'Feature on the gallery page'}"
             class="flex-none px-2 py-1 rounded-lg text-xs transition ${item.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-500 hover:text-yellow-400 hover:bg-gray-700'}">
             <i class="fas fa-star"></i>
           </button>
-          <button onclick="toggleGalleryPublish('${item.id}')" title="${draft ? 'Publish to the website' : 'Hide from the website'}"
+          <button type="button" onclick="toggleGalleryPublish('${item.id}')" title="${draft ? 'Publish to the website' : 'Hide from the website'}"
             class="flex-none px-2 py-1 rounded-lg text-xs transition ${draft ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-gray-800 text-gray-500 hover:text-green-400 hover:bg-gray-700'}">
             <i class="fas ${draft ? 'fa-eye-slash' : 'fa-eye'}"></i>
           </button>
-          <button onclick="openGalleryEditForm('${item.id}')"
+          <button type="button" onclick="openGalleryEditForm('${item.id}')"
             class="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs transition flex items-center justify-center gap-1">
             <i class="fas fa-pen text-xs"></i> Edit
           </button>
-          <button onclick="deleteGalleryItem('${item.id}')" title="Delete"
+          <button type="button" onclick="deleteGalleryItem('${item.id}')" title="Delete"
             class="flex-none px-2 py-1 bg-red-600/10 hover:bg-red-600/25 text-red-400 rounded-lg text-xs transition">
             <i class="fas fa-trash"></i>
           </button>
@@ -3317,7 +3317,7 @@ async function saveGalleryEdit() {
       const items = visibleReviews();
 
       const chip = (key, label, count, urgent = false) => `
-        <button onclick="setReviewFilter('${key}')"
+        <button type="button" onclick="setReviewFilter('${key}')"
           class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition border ${
             reviewUI.filter === key
               ? 'bg-purple-600 border-purple-500 text-white'
@@ -3360,10 +3360,10 @@ async function saveGalleryEdit() {
       const bulkBar = reviewUI.selected.size ? `
         <div class="sticky top-2 z-20 mb-4 bg-purple-900/90 backdrop-blur border border-purple-600/50 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-2">
           <span class="text-sm font-semibold text-white mr-1">${reviewUI.selected.size} selected</span>
-          <button onclick="bulkReviews('publish')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
-          <button onclick="bulkReviews('reject')"  class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Reject</button>
-          <button onclick="bulkReviews('delete')"  class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Delete</button>
-          <button onclick="clearReviewSelection()" class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
+          <button type="button" onclick="bulkReviews('publish')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/80 hover:bg-green-600 transition">Publish</button>
+          <button type="button" onclick="bulkReviews('reject')"  class="px-3 py-1.5 rounded-lg text-xs bg-red-600/80 hover:bg-red-600 transition">Reject</button>
+          <button type="button" onclick="bulkReviews('delete')"  class="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Delete</button>
+          <button type="button" onclick="clearReviewSelection()" class="px-3 py-1.5 rounded-lg text-xs text-purple-200 hover:text-white ml-auto">Clear</button>
         </div>` : '';
 
       if (!all.length) {
@@ -3462,32 +3462,32 @@ async function saveGalleryEdit() {
 
               <div class="flex flex-wrap gap-1.5 mt-3">
                 ${pending ? `
-                  <button onclick="setReviewStatus('${r.id}','published')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 hover:bg-green-500 transition">
+                  <button type="button" onclick="setReviewStatus('${r.id}','published')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 hover:bg-green-500 transition">
                     <i class="fas fa-check mr-1"></i>Publish
                   </button>
-                  <button onclick="rejectReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
+                  <button type="button" onclick="rejectReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
                     <i class="fas fa-xmark mr-1"></i>Reject
                   </button>` : ''}
 
                 ${status === 'published' ? `
-                  <button onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                  <button type="button" onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
                     <i class="fas fa-eye-slash mr-1"></i>Unpublish
                   </button>
-                  <button onclick="toggleReviewFeatured('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${r.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-400 hover:text-yellow-400 hover:bg-gray-700'}">
+                  <button type="button" onclick="toggleReviewFeatured('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${r.isFeatured ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-400 hover:text-yellow-400 hover:bg-gray-700'}">
                     <i class="fas fa-star mr-1"></i>${r.isFeatured ? 'Unfeature' : 'Feature'}
                   </button>` : ''}
 
                 ${status === 'rejected' ? `
-                  <button onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                  <button type="button" onclick="setReviewStatus('${r.id}','pending')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
                     <i class="fas fa-rotate-left mr-1"></i>Move back to pending
                   </button>` : ''}
 
                 ${!withdrawn ? `
-                  <button onclick="replyToReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                  <button type="button" onclick="replyToReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
                     <i class="fas fa-reply mr-1"></i>${r.adminReply ? 'Edit reply' : 'Reply publicly'}
                   </button>` : ''}
 
-                <button onclick="deleteReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto">
+                <button type="button" onclick="deleteReview('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -3715,7 +3715,7 @@ async function renderMarketing() {
   const livePosters = posters.filter(isLivePoster);
 
   const tab = (key, label, count) => `
-    <button onclick="setMarketingView('${key}')"
+    <button type="button" onclick="setMarketingView('${key}')"
       class="px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition border ${
         marketingUI.view === key
           ? 'bg-purple-600 border-purple-500 text-white'
@@ -3770,7 +3770,7 @@ function marketingOverview(liveOffers, liveBanners, livePosters) {
             `<li class="text-sm text-gray-300 truncate">${icon} ${escapeHtml(describe(i))}</li>`).join('')}
            ${items.length > 3 ? `<li class="text-xs text-gray-600">+${items.length - 3} more</li>` : ''}</ul>`
         : `<p class="text-sm text-gray-600">Nothing live.</p>`}
-      <button onclick="setMarketingView('${goTo}')" class="text-xs text-purple-400 hover:underline mt-3">Manage →</button>
+      <button type="button" onclick="setMarketingView('${goTo}')" class="text-xs text-purple-400 hover:underline mt-3">Manage →</button>
     </div>`;
 
   // Guidance. The point of this panel is that it is derived from real trading
@@ -3787,7 +3787,7 @@ function marketingOverview(liveOffers, liveBanners, livePosters) {
       <div class="bg-gray-900 rounded-2xl border border-red-900/40 p-5 mb-5">
         <p class="text-sm text-gray-400"><i class="fas fa-triangle-exclamation text-red-400 mr-2"></i>
           Could not load guidance${marketingUI.guidanceError ? `: ${escapeHtml(marketingUI.guidanceError)}` : ''}.
-          <button onclick="reloadMarketingGuidance()" class="text-purple-400 hover:underline ml-1">Try again</button>
+          <button type="button" onclick="reloadMarketingGuidance()" class="text-purple-400 hover:underline ml-1">Try again</button>
         </p>
       </div>`;
   } else {
@@ -3806,7 +3806,7 @@ function marketingOverview(liveOffers, liveBanners, livePosters) {
             <h3 class="font-semibold text-white">What the numbers suggest</h3>
             <p class="text-xs text-gray-500 mt-0.5">Worked out from your enquiries, bookings, payments and reviews — not generic advice.</p>
           </div>
-          <button onclick="reloadMarketingGuidance()" class="text-xs text-gray-500 hover:text-gray-300 transition">
+          <button type="button" onclick="reloadMarketingGuidance()" class="text-xs text-gray-500 hover:text-gray-300 transition">
             <i class="fas fa-rotate-right mr-1"></i>Refresh
           </button>
         </div>
@@ -3830,13 +3830,13 @@ function marketingOverview(liveOffers, liveBanners, livePosters) {
                       <div class="flex items-center gap-2 mt-2.5">
                         <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">${CONF[r.confidence] || r.confidence}</span>
                         ${r.id === 'quiet-weeks-ahead'
-                          ? `<button onclick="createOfferForQuietWeeks()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-500 transition">Create a dated offer</button>`
+                          ? `<button type="button" onclick="createOfferForQuietWeeks()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-500 transition">Create a dated offer</button>`
                           : ''}
                         ${r.id === 'nothing-running'
-                          ? `<button onclick="setMarketingView('banners'); openMarketingForm()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 transition">Write a banner</button>`
+                          ? `<button type="button" onclick="setMarketingView('banners'); openMarketingForm()" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 transition">Write a banner</button>`
                           : ''}
                         ${r.id === 'stale-offers'
-                          ? `<button onclick="setMarketingView('offers')" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 transition">Review offers</button>`
+                          ? `<button type="button" onclick="setMarketingView('offers')" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 transition">Review offers</button>`
                           : ''}
                       </div>
                     </div>
@@ -3871,7 +3871,7 @@ function marketingOffers(offers) {
       <p class="text-sm text-gray-500">
         A code a client types when booking. Every use is recorded, so you can see what a campaign actually brought in.
       </p>
-      <button onclick="openOfferForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+      <button type="button" onclick="openOfferForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
         <i class="fas fa-plus"></i> New offer
       </button>
     </div>`;
@@ -3887,7 +3887,7 @@ function marketingOffers(offers) {
           Start with something small and dated — 10% off for a specific quiet week. A capped, time-limited offer
           tells you whether price is the obstacle without permanently lowering what you charge.
         </p>
-        <button onclick="openOfferForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">
+        <button type="button" onclick="openOfferForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">
           Create your first offer
         </button>
       </div>`;
@@ -3922,19 +3922,19 @@ function marketingOffers(offers) {
                   <div class="h-1.5 rounded-full ${capPct >= 100 ? 'bg-yellow-500' : 'bg-green-500'}" style="width:${capPct}%"></div>
                 </div>` : ''}
               ${o.timesRedeemed > 0
-                ? `<button onclick="viewOfferRedemptions('${o.id}')" class="text-xs text-purple-400 hover:underline">Who used it →</button>`
+                ? `<button type="button" onclick="viewOfferRedemptions('${o.id}')" class="text-xs text-purple-400 hover:underline">Who used it →</button>`
                 : ''}
             </div>
           </div>
 
           <div class="flex gap-1.5 flex-wrap flex-shrink-0">
-            <button onclick="toggleOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${o.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+            <button type="button" onclick="toggleOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${o.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
               ${o.isActive ? 'Pause' : 'Resume'}
             </button>
-            <button onclick="openOfferForm('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+            <button type="button" onclick="openOfferForm('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
               <i class="fas fa-pen mr-1"></i>Edit
             </button>
-            <button onclick="deleteOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
+            <button type="button" onclick="deleteOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -3951,7 +3951,7 @@ function marketingBanners(banners) {
   if (marketingUI.bannerFilter === 'expired') shown = banners.filter(b => b.endDate && b.endDate < t);
 
   const chip = (k, l, n) => `
-    <button onclick="setBannerFilter('${k}')"
+    <button type="button" onclick="setBannerFilter('${k}')"
       class="px-3 py-1.5 rounded-full text-xs font-medium transition border ${
         marketingUI.bannerFilter === k
           ? 'bg-purple-600 border-purple-500 text-white'
@@ -3964,7 +3964,7 @@ function marketingBanners(banners) {
         ${chip('all', 'All', banners.length)}
         ${chip('expired', '⏰ Expired', banners.filter(b => b.endDate && b.endDate < t).length)}
       </div>
-      <button onclick="openMarketingForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+      <button type="button" onclick="openMarketingForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
         <i class="fas fa-plus"></i> New banner
       </button>
     </div>
@@ -3978,7 +3978,7 @@ function marketingBanners(banners) {
       <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
         <i class="fas fa-bullhorn text-3xl text-gray-600 mb-3"></i>
         <p class="text-gray-400 text-sm mb-4">${banners.length ? 'No banners in this view.' : 'No banners yet.'}</p>
-        <button onclick="openMarketingForm()" class="text-purple-400 hover:underline text-sm">Create one →</button>
+        <button type="button" onclick="openMarketingForm()" class="text-purple-400 hover:underline text-sm">Create one →</button>
       </div>`;
   }
 
@@ -4020,12 +4020,12 @@ function marketingBanners(banners) {
           </div>
 
           <div class="flex gap-1.5 flex-wrap flex-shrink-0">
-            <button onclick="toggleMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${b.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+            <button type="button" onclick="toggleMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${b.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
               ${b.isActive ? 'Pause' : 'Activate'}
             </button>
-            <button onclick="openMarketingForm('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>
-            <button onclick="duplicateMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-copy"></i></button>
-            <button onclick="deleteMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
+            <button type="button" onclick="openMarketingForm('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>
+            <button type="button" onclick="duplicateMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-copy"></i></button>
+            <button type="button" onclick="deleteMarketingBanner('${b.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
           </div>
         </div>
       </div>`;
@@ -4037,7 +4037,7 @@ function marketingPosters(posters) {
   const head = `
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <p class="text-sm text-gray-500">Image announcements that rotate on the homepage — seasonal greetings, offers, upcoming events.</p>
-      <button onclick="openPosterForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+      <button type="button" onclick="openPosterForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
         <i class="fas fa-plus"></i> New poster
       </button>
     </div>`;
@@ -4050,7 +4050,7 @@ function marketingPosters(posters) {
         </div>
         <h3 class="font-bold text-white mb-2">No posters yet</h3>
         <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">A poster carries more than a banner line — good for a Christmas greeting or a photo-led offer.</p>
-        <button onclick="openPosterForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Create your first poster</button>
+        <button type="button" onclick="openPosterForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Create your first poster</button>
       </div>`;
   }
 
@@ -4077,11 +4077,11 @@ function marketingPosters(posters) {
               ${p.caption ? `<p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${escapeHtml(p.caption)}</p>` : ''}
               <p class="text-xs text-gray-600 mt-1">${p.startDate || 'now'} → ${p.endDate || 'no end'} · order ${p.displayOrder ?? 0}</p>
               <div class="flex gap-1.5 mt-auto pt-3">
-                <button onclick="togglePoster('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs transition ${p.isActive !== false ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
+                <button type="button" onclick="togglePoster('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs transition ${p.isActive !== false ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
                   ${p.isActive !== false ? 'Pause' : 'Activate'}
                 </button>
-                <button onclick="openPosterForm('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">Edit</button>
-                <button onclick="deletePoster('${p.id}')" class="flex-none px-2.5 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
+                <button type="button" onclick="openPosterForm('${p.id}')" class="flex-1 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">Edit</button>
+                <button type="button" onclick="deletePoster('${p.id}')" class="flex-none px-2.5 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition"><i class="fas fa-trash"></i></button>
               </div>
             </div>
           </div>`;
@@ -4541,7 +4541,7 @@ function duplicateMarketingBanner(id) {
       };
 
       const chip = (key, label) => `
-        <button onclick="setEnquiryStatus('${key}')"
+        <button type="button" onclick="setEnquiryStatus('${key}')"
                 aria-pressed="${enquiryStatus === key}"
                 class="px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
                   enquiryStatus === key
@@ -4567,12 +4567,12 @@ function duplicateMarketingBanner(id) {
             </div>
           </div>
           <div class="flex gap-2">
-            <button onclick="exportEnquiriesCsv()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition" title="Download the filtered list as a spreadsheet">
+            <button type="button" onclick="exportEnquiriesCsv()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition" title="Download the filtered list as a spreadsheet">
               <i class="fas fa-file-csv mr-1"></i> Export
             </button>
-            <button onclick="setBookingView('table')" aria-pressed="${bookingViewMode === 'table'}"
+            <button type="button" onclick="setBookingView('table')" aria-pressed="${bookingViewMode === 'table'}"
               class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${bookingViewMode === 'table' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">≡ Table</button>
-            <button onclick="setBookingView('pipeline')" aria-pressed="${bookingViewMode === 'pipeline'}"
+            <button type="button" onclick="setBookingView('pipeline')" aria-pressed="${bookingViewMode === 'pipeline'}"
               class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${bookingViewMode === 'pipeline' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}">⬛ Pipeline</button>
           </div>
         </div>
@@ -4624,7 +4624,7 @@ function duplicateMarketingBanner(id) {
         <div class="text-center py-16">
           <i class="fas fa-filter text-4xl text-gray-700 mb-3"></i>
           <p class="text-gray-400 font-medium">No enquiries match your filters</p>
-          <button onclick="clearEnquiryFilters()" class="mt-3 text-purple-400 text-sm hover:underline">Clear filters</button>
+          <button type="button" onclick="clearEnquiryFilters()" class="mt-3 text-purple-400 text-sm hover:underline">Clear filters</button>
         </div>` : `
         <div class="text-center py-16">
           <i class="fas fa-inbox text-4xl text-gray-700 mb-3"></i>
@@ -4681,9 +4681,9 @@ function duplicateMarketingBanner(id) {
           </td>
           <td class="px-4 py-3">
             <div class="flex gap-1">
-              <button onclick="openEnquiry('${b.id}')" class="text-purple-400 hover:text-purple-300 px-2 py-1 rounded hover:bg-purple-600/10 transition" title="Open enquiry" aria-label="Open enquiry from ${escapeHtml(b.name)}"><i class="fas fa-eye"></i></button>
+              <button type="button" onclick="openEnquiry('${b.id}')" class="text-purple-400 hover:text-purple-300 px-2 py-1 rounded hover:bg-purple-600/10 transition" title="Open enquiry" aria-label="Open enquiry from ${escapeHtml(b.name)}"><i class="fas fa-eye"></i></button>
               <a href="tel:${encodeURIComponent(b.phone||'')}" class="text-green-400 hover:text-green-300 px-2 py-1 rounded hover:bg-green-600/10 transition inline-block" title="Call ${escapeHtml(b.name)}" aria-label="Call ${escapeHtml(b.name)}"><i class="fas fa-phone"></i></a>
-              <button onclick="deleteBooking('${b.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-600/10 transition" title="Delete enquiry" aria-label="Delete enquiry from ${escapeHtml(b.name)}"><i class="fas fa-trash"></i></button>
+              <button type="button" onclick="deleteBooking('${b.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-600/10 transition" title="Delete enquiry" aria-label="Delete enquiry from ${escapeHtml(b.name)}"><i class="fas fa-trash"></i></button>
             </div>
           </td>
         </tr>`;
@@ -4794,9 +4794,9 @@ function duplicateMarketingBanner(id) {
                         <span class="text-[11px] text-gray-600">${humanAge(enquiryAgeMs(b))}</span>
                       </div>
                       <div class="mt-2.5 pt-2 border-t border-gray-800 flex gap-1.5">
-                        <button onclick="openEnquiry('${b.id}')" class="flex-1 text-xs py-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/30 transition">Open</button>
-                        ${col.key === 'pending'   ? `<button onclick="updateBookingStatus('${b.id}','confirmed')" class="flex-1 text-xs py-1.5 bg-green-600/20 text-green-400 rounded-lg hover:bg-green-600/30 transition">Confirm</button>` : ''}
-                        ${col.key === 'confirmed' ? `<button onclick="updateBookingStatus('${b.id}','completed')" class="flex-1 text-xs py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition">Complete</button>` : ''}
+                        <button type="button" onclick="openEnquiry('${b.id}')" class="flex-1 text-xs py-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/30 transition">Open</button>
+                        ${col.key === 'pending'   ? `<button type="button" onclick="updateBookingStatus('${b.id}','confirmed')" class="flex-1 text-xs py-1.5 bg-green-600/20 text-green-400 rounded-lg hover:bg-green-600/30 transition">Confirm</button>` : ''}
+                        ${col.key === 'confirmed' ? `<button type="button" onclick="updateBookingStatus('${b.id}','completed')" class="flex-1 text-xs py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition">Complete</button>` : ''}
                       </div>
                     </article>`;
                     }).join('')
@@ -4868,7 +4868,7 @@ function duplicateMarketingBanner(id) {
               <h3 id="enquiryDrawerTitle" class="text-lg font-bold">Enquiry</h3>
               <p id="enquiryDrawerRef" class="text-xs font-mono text-gray-500 mt-0.5"></p>
             </div>
-            <button id="enquiryDrawerClose" class="text-gray-400 hover:text-white text-2xl leading-none px-2" aria-label="Close">&times;</button>
+            <button type="button" id="enquiryDrawerClose" class="text-gray-400 hover:text-white text-2xl leading-none px-2" aria-label="Close">&times;</button>
           </header>
           <div id="enquiryDrawerBody" class="flex-1 overflow-y-auto px-5 py-4"></div>
         </aside>`;
@@ -5171,12 +5171,12 @@ function duplicateMarketingBanner(id) {
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:outline-none resize-y"
                     placeholder="Quoted KES 65,000 on 27 Jul. Waiting on their venue confirmation…">${escapeHtml(b.notes || '')}</textarea>
           <div class="flex items-center gap-3 mt-2">
-            <button id="enquirySaveNotes" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition">Save notes</button>
+            <button type="button" id="enquirySaveNotes" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition">Save notes</button>
             <span id="enquiryNotesStatus" class="text-xs text-gray-500" role="status" aria-live="polite"></span>
           </div>
         </div>
 
-        <button onclick="closeEnquiry(); deleteBooking('${b.id}')" class="w-full py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-600/10 rounded-lg transition border border-red-900/50">
+        <button type="button" onclick="closeEnquiry(); deleteBooking('${b.id}')" class="w-full py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-600/10 rounded-lg transition border border-red-900/50">
           <i class="fas fa-trash mr-1.5"></i>Delete this enquiry
         </button>`;
 
@@ -5244,15 +5244,15 @@ function duplicateMarketingBanner(id) {
     function renderEmployees() { const container = document.getElementById('sectionContent'); const leaderboard = calculateLeaderboard('month'); const employeeOfMonth = leaderboard[0]; container.innerHTML = `${employeeOfMonth ? `<div class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-6 mb-8"><div class="flex flex-col md:flex-row items-center justify-between gap-4"><div class="flex items-center gap-4"><div class="w-20 h-20 bg-white rounded-full flex items-center justify-center"><i class="fas fa-crown text-4xl text-yellow-500"></i></div><div><p class="text-black/70 text-sm font-semibold">🏆 EMPLOYEE OF THE MONTH</p><h2 class="text-3xl font-bold text-black">${employeeOfMonth.name}</h2><p class="text-black/70">${employeeOfMonth.role} • ⭐ ${employeeOfMonth.avgRating.toFixed(1)} rating • ${employeeOfMonth.eventCount} events</p></div></div><div class="bg-black/20 rounded-xl px-6 py-3 text-center"><p class="text-2xl font-bold text-black">KES ${(employeeOfMonth.score * 1000).toLocaleString()}</p><p class="text-xs text-black/70">Bonus Reward</p></div></div></div>` : ''}
       <div class="grid md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Employees</p><p class="text-2xl font-bold text-white">${store.employees.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-users text-purple-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Active Technicians</p><p class="text-2xl font-bold text-white">${store.employees.filter(e => e.status === 'active').length}</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.employees.reduce((sum, e) => sum + e.totalEvents, 0)}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-check text-blue-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Avg Rating</p><p class="text-2xl font-bold text-white">${store.employees.length ? (store.employees.reduce((sum, e) => sum + (e.avgRating || 0), 0) / store.employees.length).toFixed(1) : '—'} ⭐</p></div><div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div></div></div></div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 mb-8"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">🏆 Monthly Leaderboard</h3><p class="text-xs text-gray-400 mt-1">Top performers based on ratings and events</p></div><div class="divide-y divide-gray-800">${leaderboard.slice(0, 5).map((emp, idx) => `<div class="leaderboard-item p-4 flex items-center justify-between"><div class="flex items-center gap-4"><div class="w-8 text-center">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}th`}</div><div><p class="font-medium">${emp.name}</p><p class="text-xs text-gray-400">${emp.role}</p></div></div><div class="flex items-center gap-6"><div class="text-center"><p class="text-sm font-semibold">${emp.eventCount}</p><p class="text-xs text-gray-400">Events</p></div><div class="text-center"><p class="text-sm font-semibold text-yellow-400">${emp.avgRating.toFixed(1)} ⭐</p><p class="text-xs text-gray-400">Rating</p></div><div class="text-center"><p class="text-sm font-semibold text-green-400">${emp.score.toFixed(0)}</p><p class="text-xs text-gray-400">Score</p></div></div></div>`).join('')}</div></div>
-      <div class="flex justify-end mb-4"><button onclick="openEmployeeForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add employee</button></div>
-      <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Role</th><th class="px-4 py-3 text-left">Phone</th><th class="px-4 py-3 text-left">Events</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.employees.map(emp => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(emp.name)}</td><td class="px-4 py-3">${escapeHtml(emp.role)}</td><td class="px-4 py-3">${escapeHtml(emp.phone)}</td><td class="px-4 py-3">${emp.totalEvents}</td><td class="px-4 py-3"><span class="text-yellow-400">${emp.avgRating} ⭐</span></td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">${emp.status}</span></td><td class="px-4 py-3"><button onclick="editEmployee('${emp.id}')" class="text-purple-400 mr-2">Edit</button><button onclick="deleteEmployee('${emp.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
+      <div class="flex justify-end mb-4"><button type="button" onclick="openEmployeeForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add employee</button></div>
+      <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Role</th><th class="px-4 py-3 text-left">Phone</th><th class="px-4 py-3 text-left">Events</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.employees.map(emp => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(emp.name)}</td><td class="px-4 py-3">${escapeHtml(emp.role)}</td><td class="px-4 py-3">${escapeHtml(emp.phone)}</td><td class="px-4 py-3">${emp.totalEvents}</td><td class="px-4 py-3"><span class="text-yellow-400">${emp.avgRating} ⭐</span></td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}">${emp.status}</span></td><td class="px-4 py-3"><button type="button" onclick="editEmployee('${emp.id}')" class="text-purple-400 mr-2">Edit</button><button type="button" onclick="deleteEmployee('${emp.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
     function openEmployeeForm(id = null) { currentEditId = id; const emp = id ? store.employees.find(e => e.id === id) : null; document.getElementById('modalTitle').textContent = id ? 'Edit employee' : 'New employee'; document.getElementById('modalForm').innerHTML = `<div><label for="empName" class="block text-sm mb-1">Full name *</label><input type="text" id="empName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.name || '')}" required></div><div><label for="empRole" class="block text-sm mb-1">Role *</label><input type="text" id="empRole" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.role || '')}" placeholder="e.g., Senior DJ, Sound Engineer" required></div><div><label for="empPhone" class="block text-sm mb-1">Phone</label><input type="tel" id="empPhone" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.phone || '')}"></div><div><label for="empEmail" class="block text-sm mb-1">Email</label><input type="email" id="empEmail" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(emp?.email || '')}"></div><div><label for="empHireDate" class="block text-sm mb-1">Hire date</label><input type="date" id="empHireDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${emp?.hireDate || ''}"></div><div><label for="empStatus" class="block text-sm mb-1">Status</label><select id="empStatus" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${emp?.status === 'active' ? 'selected' : ''}>active</option><option ${emp?.status === 'inactive' ? 'selected' : ''}>inactive</option></select></div>`; document.getElementById('formModal').classList.remove('hidden'); }
     function saveEmployee() { const newEmployee = { id: currentEditId || Date.now().toString(), name: document.getElementById('empName').value, role: document.getElementById('empRole').value, phone: document.getElementById('empPhone').value, email: document.getElementById('empEmail').value, hireDate: document.getElementById('empHireDate').value, status: document.getElementById('empStatus').value, totalEvents: currentEditId ? store.employees.find(e => e.id === currentEditId)?.totalEvents || 0 : 0, avgRating: currentEditId ? store.employees.find(e => e.id === currentEditId)?.avgRating || 0 : 0 }; if (currentEditId) store.employees = store.employees.map(e => e.id === currentEditId ? newEmployee : e); else store.employees.push(newEmployee); const _empPath = currentEditId ? `/api/admin/employees/${currentEditId}` : '/api/admin/employees'; apiRequest(currentEditId ? 'PUT' : 'POST', _empPath, newEmployee); closeModal(); renderEmployees(); Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); }
     async function deleteEmployee(id) { const result = await Swal.fire({ title: 'Delete employee?', text: 'This will remove all payroll records too', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' }); if (result.isConfirmed) { store.employees = store.employees.filter(e => e.id !== id); store.payroll = store.payroll.filter(p => p.employeeId !== id); await apiRequest('DELETE', `/api/admin/employees/${id}`); renderEmployees(); Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); } }
     function editEmployee(id) { openEmployeeForm(id); }
 
     // ==================== PAYROLL MANAGEMENT ====================
-    function renderPayroll() { const container = document.getElementById('sectionContent'); const totalPaid = store.payroll.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0); const totalPending = store.payroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0); container.innerHTML = `<div class="grid md:grid-cols-3 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Paid</p><p class="text-2xl font-bold text-green-400">KES ${totalPaid.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Pending Payments</p><p class="text-2xl font-bold text-yellow-400">KES ${totalPending.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Transactions</p><p class="text-2xl font-bold text-white">${store.payroll.length}</p></div></div><div class="flex justify-end mb-4"><button onclick="openPayrollForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add payment</button></div><div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full payroll-table"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Employee</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.payroll.map(p => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(p.employeeName)}</td><td class="px-4 py-3">${escapeHtml(p.eventName)}</td><td class="px-4 py-3">${new Date(p.eventDate).toLocaleDateString()}</td><td class="px-4 py-3">KES ${p.amount.toLocaleString()}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${p.status}</span></td><td class="px-4 py-3"><span class="text-yellow-400">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td class="px-4 py-3"><button onclick="editPayroll('${p.id}')" class="text-purple-400 mr-2">Edit</button><button onclick="deletePayroll('${p.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
+    function renderPayroll() { const container = document.getElementById('sectionContent'); const totalPaid = store.payroll.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0); const totalPending = store.payroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0); container.innerHTML = `<div class="grid md:grid-cols-3 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Paid</p><p class="text-2xl font-bold text-green-400">KES ${totalPaid.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Pending Payments</p><p class="text-2xl font-bold text-yellow-400">KES ${totalPending.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Transactions</p><p class="text-2xl font-bold text-white">${store.payroll.length}</p></div></div><div class="flex justify-end mb-4"><button type="button" onclick="openPayrollForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add payment</button></div><div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full payroll-table"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Employee</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.payroll.map(p => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(p.employeeName)}</td><td class="px-4 py-3">${escapeHtml(p.eventName)}</td><td class="px-4 py-3">${new Date(p.eventDate).toLocaleDateString()}</td><td class="px-4 py-3">KES ${p.amount.toLocaleString()}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${p.status}</span></td><td class="px-4 py-3"><span class="text-yellow-400">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td class="px-4 py-3"><button type="button" onclick="editPayroll('${p.id}')" class="text-purple-400 mr-2">Edit</button><button type="button" onclick="deletePayroll('${p.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
     function openPayrollForm(id = null) { currentEditId = id; const payroll = id ? store.payroll.find(p => p.id === id) : null; document.getElementById('modalTitle').textContent = id ? 'Edit payment' : 'New payment'; document.getElementById('modalForm').innerHTML = `<div><label for="payrollEmployee" class="block text-sm mb-1">Employee *</label><select id="payrollEmployee" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required><option value="">Select an employee</option>${store.employees.map(emp => `<option value="${emp.id}|${emp.name}" ${payroll?.employeeId === emp.id ? 'selected' : ''}>${emp.name} (${emp.role})</option>`).join('')}</select></div><div><label for="payrollEvent" class="block text-sm mb-1">Event name *</label><input type="text" id="payrollEvent" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(payroll?.eventName || '')}" required></div><div><label for="payrollDate" class="block text-sm mb-1">Event date *</label><input type="date" id="payrollDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.eventDate || ''}" required></div><div><label for="payrollAmount" class="block text-sm mb-1">Amount (KES) *</label><input type="number" id="payrollAmount" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.amount || ''}" required></div><div><label for="payrollRating" class="block text-sm mb-1">Rating (1-5)</label><select id="payrollRating" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.rating === 5 ? 'selected' : ''}>5 - Excellent</option><option ${payroll?.rating === 4 ? 'selected' : ''}>4 - Very Good</option><option ${payroll?.rating === 3 ? 'selected' : ''}>3 - Good</option><option ${payroll?.rating === 2 ? 'selected' : ''}>2 - Fair</option><option ${payroll?.rating === 1 ? 'selected' : ''}>1 - Poor</option></select></div><div><label for="payrollStatus" class="block text-sm mb-1">Status</label><select id="payrollStatus" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.status === 'paid' ? 'selected' : ''}>paid</option><option ${payroll?.status === 'pending' ? 'selected' : ''}>pending</option></select></div>`; document.getElementById('formModal').classList.remove('hidden'); }
     function savePayroll() { const employeeSelect = document.getElementById('payrollEmployee').value; const [empId, empName] = employeeSelect.split('|'); const ratingMap = { '5 - Excellent': 5, '4 - Very Good': 4, '3 - Good': 3, '2 - Fair': 2, '1 - Poor': 1 }; const ratingValue = ratingMap[document.getElementById('payrollRating').value] || 0; const newPayroll = { id: currentEditId || Date.now().toString(), employeeId: empId, employeeName: empName, eventName: document.getElementById('payrollEvent').value, eventDate: document.getElementById('payrollDate').value, amount: parseInt(document.getElementById('payrollAmount').value), status: document.getElementById('payrollStatus').value, paymentDate: document.getElementById('payrollStatus').value === 'paid' ? new Date().toISOString().split('T')[0] : null, rating: ratingValue }; if (currentEditId) store.payroll = store.payroll.map(p => p.id === currentEditId ? newPayroll : p); else store.payroll.push(newPayroll); const employeePayments = store.payroll.filter(p => p.employeeId === empId && p.rating > 0); const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0); const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0; const totalEvents = employeePayments.length; store.employees = store.employees.map(e => e.id === empId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e); const _payPath = currentEditId ? `/api/admin/payroll/${currentEditId}` : '/api/admin/payroll'; apiRequest(currentEditId ? 'PUT' : 'POST', _payPath, newPayroll); closeModal(); renderPayroll(); Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); }
     async function deletePayroll(id) { const result = await Swal.fire({ title: 'Delete payment record?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' }); if (result.isConfirmed) { const deleted = store.payroll.find(p => p.id === id); store.payroll = store.payroll.filter(p => p.id !== id); const employeePayments = store.payroll.filter(p => p.employeeId === deleted.employeeId && p.rating > 0); const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0); const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0; const totalEvents = employeePayments.length; store.employees = store.employees.map(e => e.id === deleted.employeeId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e); await apiRequest('DELETE', `/api/admin/payroll/${id}`); renderPayroll(); Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); } }
@@ -5859,7 +5859,7 @@ function duplicateMarketingBanner(id) {
                 </div>
               </div>
               ${canToggle ? `
-                <button onclick="toggleBetaFeature('${f.id}')"
+                <button type="button" onclick="toggleBetaFeature('${f.id}')"
                   class="flex-shrink-0 w-11 h-6 rounded-full border transition-all duration-200 relative ${isOn ? 'bg-purple-600 border-purple-500' : 'bg-gray-700 border-gray-600'}"
                   title="${isOn ? 'Disable' : 'Enable'} this feature">
                   <span class="absolute top-0.5 ${isOn ? 'right-0.5' : 'left-0.5'} w-5 h-5 bg-white rounded-full shadow transition-all duration-200"></span>
@@ -5985,7 +5985,7 @@ function duplicateMarketingBanner(id) {
         container.innerHTML = `
           <div class="bg-gray-900 border border-red-900/40 rounded-2xl p-12 text-center">
             <p class="text-sm text-gray-400 mb-4">Could not load the work log: ${escapeHtml(workLog.error)}</p>
-            <button onclick="reloadWorkLog()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-sm transition">Try again</button>
+            <button type="button" onclick="reloadWorkLog()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-sm transition">Try again</button>
           </div>`;
         return;
       }
@@ -6003,7 +6003,7 @@ function duplicateMarketingBanner(id) {
         </div>`;
 
       const chip = (k, label, n) => `
-        <button onclick="setWorkFilter('${k}')"
+        <button type="button" onclick="setWorkFilter('${k}')"
           class="px-3 py-1.5 rounded-full text-xs font-medium transition border ${
             workLogFilter === k ? 'bg-purple-600 border-purple-500 text-white'
                                 : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">
@@ -6021,14 +6021,14 @@ function duplicateMarketingBanner(id) {
             </p>
           </div>
           <div class="flex gap-2 flex-wrap">
-            <button onclick="exportWorkLogCsv()" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+            <button type="button" onclick="exportWorkLogCsv()" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
               <i class="fas fa-download mr-1"></i> Export
             </button>
             ${!isOwner() || isDeveloper() ? `
-              <button onclick="openWorkItemForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+              <button type="button" onclick="openWorkItemForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition">
                 <i class="fas fa-plus mr-1"></i> Record work
               </button>` : `
-              <button onclick="openWorkItemForm()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+              <button type="button" onclick="openWorkItemForm()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
                 <i class="fas fa-plus mr-1"></i> Add entry
               </button>`}
           </div>
@@ -6060,7 +6060,7 @@ function duplicateMarketingBanner(id) {
               Record each piece of work delivered with the agreed fee. The owner accepts it here,
               which locks the entry and gives both sides the same record to invoice against.
             </p>
-            <button onclick="openWorkItemForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Record the first item</button>
+            <button type="button" onclick="openWorkItemForm()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-sm font-medium transition">Record the first item</button>
           </div>`
         : !shown.length ? `
           <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
@@ -6101,26 +6101,26 @@ function duplicateMarketingBanner(id) {
 
             <div class="text-right flex-shrink-0">
               <p class="text-xl font-bold ${w.status === 'paid' ? 'text-gray-400' : 'text-white'}">${w.fee != null ? wlKes(w.fee) : '—'}</p>
-              <button onclick="viewWorkHistory('${w.id}')" class="text-xs text-purple-400 hover:underline mt-1">History →</button>
+              <button type="button" onclick="viewWorkHistory('${w.id}')" class="text-xs text-purple-400 hover:underline mt-1">History →</button>
             </div>
           </div>
 
           <div class="flex gap-1.5 flex-wrap mt-3 pt-3 border-t border-gray-800">
             ${canAccept ? `
-              <button onclick="setWorkStatus('${w.id}','accepted')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-500 transition">
+              <button type="button" onclick="setWorkStatus('${w.id}','accepted')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-500 transition">
                 <i class="fas fa-check mr-1"></i>Accept this work
               </button>
-              <button onclick="rejectWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
+              <button type="button" onclick="rejectWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 hover:bg-red-600/35 text-red-400 transition">
                 <i class="fas fa-rotate-left mr-1"></i>Needs changes
               </button>` : ''}
             ${w.status === 'rejected' && !isOwner() ? `
-              <button onclick="setWorkStatus('${w.id}','delivered')" class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 transition">
+              <button type="button" onclick="setWorkStatus('${w.id}','delivered')" class="px-3 py-1.5 rounded-lg text-xs bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 transition">
                 Resubmit for acceptance
               </button>` : ''}
-            ${canInvoice ? `<button onclick="invoiceWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition"><i class="fas fa-file-invoice mr-1"></i>Mark invoiced</button>` : ''}
-            ${canPay ? `<button onclick="setWorkStatus('${w.id}','paid')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"><i class="fas fa-check-double mr-1"></i>Mark paid</button>` : ''}
-            ${canEdit ? `<button onclick="openWorkItemForm('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>` : ''}
-            ${canEdit && w.status === 'delivered' ? `<button onclick="deleteWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto"><i class="fas fa-trash"></i></button>` : ''}
+            ${canInvoice ? `<button type="button" onclick="invoiceWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition"><i class="fas fa-file-invoice mr-1"></i>Mark invoiced</button>` : ''}
+            ${canPay ? `<button type="button" onclick="setWorkStatus('${w.id}','paid')" class="px-3 py-1.5 rounded-lg text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"><i class="fas fa-check-double mr-1"></i>Mark paid</button>` : ''}
+            ${canEdit ? `<button type="button" onclick="openWorkItemForm('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition"><i class="fas fa-pen mr-1"></i>Edit</button>` : ''}
+            ${canEdit && w.status === 'delivered' ? `<button type="button" onclick="deleteWorkItem('${w.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition ml-auto"><i class="fas fa-trash"></i></button>` : ''}
           </div>
         </div>`;
     }
@@ -6502,7 +6502,7 @@ function duplicateMarketingBanner(id) {
                <i class="fas fa-triangle-exclamation text-3xl text-red-400/70 mb-3"></i>
                <h3 class="font-bold text-white mb-1">Could not load analytics</h3>
                <p class="text-sm text-gray-500 mb-5">${escapeHtml(err.message || 'Unknown error')}</p>
-               <button onclick="renderAnalytics()" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition">Try again</button>
+               <button type="button" onclick="renderAnalytics()" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition">Try again</button>
              </div>`;
         return;
       }
@@ -6530,7 +6530,7 @@ function duplicateMarketingBanner(id) {
             no agreed price recorded, so revenue below is understated.
             Open each enquiry and fill in <strong>Agreed price</strong>.
           </p>
-          <button onclick="switchTab('bookings')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-black transition flex-shrink-0">
+          <button type="button" onclick="switchTab('bookings')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-black transition flex-shrink-0">
             Go to enquiries
           </button>
         </div>` : '';
@@ -6565,14 +6565,14 @@ function duplicateMarketingBanner(id) {
           </div>
           <div class="flex flex-wrap items-center gap-2">
             ${Object.entries(ANALYTICS_PRESETS).map(([k, v]) => `
-              <button onclick="setAnalyticsRange('${k}')"
+              <button type="button" onclick="setAnalyticsRange('${k}')"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
                   analyticsUI.preset === k
                     ? 'bg-purple-600 border-purple-500 text-white'
                     : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'}">
                 ${v.label}
               </button>`).join('')}
-            <button onclick="exportAnalyticsCsv()" title="Download the daily figures as a spreadsheet"
+            <button type="button" onclick="exportAnalyticsCsv()" title="Download the daily figures as a spreadsheet"
               class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 transition">
               <i class="fas fa-download mr-1"></i>Export CSV
             </button>
@@ -6632,7 +6632,7 @@ function duplicateMarketingBanner(id) {
               Revenue appears here once you record what a client agreed to pay and the payments they make.
               Open a confirmed enquiry and fill in the <strong class="text-gray-300">Money</strong> section.
             </p>
-            <button onclick="switchTab('bookings')" class="px-5 py-2.5 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black text-sm font-bold transition">
+            <button type="button" onclick="switchTab('bookings')" class="px-5 py-2.5 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black text-sm font-bold transition">
               Open enquiries
             </button>
           </div>` : ''}
@@ -6931,7 +6931,7 @@ function duplicateMarketingBanner(id) {
           <div class="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
               <h3 class="font-bold text-white">📋 Job Description Template</h3>
-              <button onclick="copyJobDesc()" class="text-xs bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <button type="button" onclick="copyJobDesc()" class="text-xs bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
                 <i class="fas fa-copy"></i> Copy
               </button>
             </div>
@@ -7102,6 +7102,12 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
       document.getElementById('notifBtn')?.addEventListener('click', () => switchTab('bookings'));
 
       document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+      // Belt and braces. Every button in this file is now type="button", but a
+      // future one added without it would submit this form and reload the page,
+      // throwing away whatever the admin was editing. Nothing here is ever
+      // meant to submit natively, so refuse it outright.
+      document.getElementById('modalForm')?.addEventListener('submit', e => e.preventDefault());
 
       const closeBtn = document.getElementById('closeModalBtn');
       const cancelBtn = document.getElementById('cancelModalBtn');

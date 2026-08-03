@@ -7,6 +7,30 @@
     { "src": "Gallery/**", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "/api/(.*)", "continue": true, "headers": {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin"
+    }},
+    { "src": "/admin/(.*)", "continue": true, "headers": {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Cache-Control": "no-store, no-cache, must-revalidate"
+    }},
+    { "src": "/icons/(.*)", "continue": true, "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }},
+    { "src": "/IMAGES/(.*)", "continue": true, "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }},
+    { "src": "/Gallery/(.*)", "continue": true, "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }},
+    { "src": "/(.*\\.(?:js|css))", "continue": true, "headers": {
+      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"
+    }},
+
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/health", "dest": "/api/index.js" },
     { "src": "/IMAGES/(.*)", "dest": "/IMAGES/$1" },
@@ -16,55 +40,5 @@
     { "src": "/(.*)", "dest": "/frontend/$1", "continue": true },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/frontend/404.html", "status": 404 }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
-    },
-    {
-      "source": "/admin/(.*)",
-      "headers": [
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/IMAGES/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
-    {
-      "source": "/icons/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
-    {
-      "source": "/admin/admin.webmanifest",
-      "headers": [
-        { "key": "Content-Type", "value": "application/manifest+json" },
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
-      ]
-    },
-    {
-      "source": "/Gallery/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
-    {
-      "source": "/(.*\\.js|.*\\.css)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
-      ]
-    }
   ]
 }

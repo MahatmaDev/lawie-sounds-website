@@ -7,11 +7,6 @@
     { "src": "Gallery/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "continue": true, "headers": {
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
-      "Referrer-Policy": "strict-origin-when-cross-origin"
-    }},
     { "src": "/admin/(.*)", "continue": true, "headers": {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",

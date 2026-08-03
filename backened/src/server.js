@@ -597,6 +597,12 @@ async function createNotification(type, title, message, referenceId, referenceTa
 function publicCache(seconds = 60, swr = 300) {
   return (_req, res, next) => {
     res.set('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${swr}`);
+    // Without this the CDN would store one copy regardless of Origin, so an
+    // Access-Control-Allow-Origin granted to one caller could be replayed to
+    // every other. The site's own pages are same-origin and unaffected either
+    // way, but a cache that mixes CORS answers is a bug waiting for the first
+    // cross-origin consumer.
+    res.vary('Origin');
     next();
   };
 }

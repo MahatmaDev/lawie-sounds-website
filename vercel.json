@@ -7,7 +7,7 @@
     { "src": "Gallery/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/admin/(.*)", "continue": true, "headers": {
+    { "src": "/admin(?:/.*)?", "continue": true, "headers": {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",

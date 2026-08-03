@@ -577,6 +577,30 @@ async function createNotification(type, title, message, referenceId, referenceTa
 
 // ==================== PUBLIC ROUTES ====================
 
+// Let Vercel's CDN answer public reads instead of this function.
+//
+// Measured against production before adding this: a single homepage visit made
+// five API calls, every one of them a cache MISS with max-age=0, so every
+// visitor cost five serverless invocations and five Postgres round trips. At
+// the traffic this site is being built for that is a quarter of a million
+// database queries to serve the same handful of rows.
+//
+// s-maxage applies to the CDN only; the browser is told nothing, so a visitor
+// who refreshes still gets a fresh check. stale-while-revalidate lets the edge
+// serve the slightly-old copy instantly while it fetches a new one behind the
+// scenes, so nobody ever waits for the database.
+//
+// The cost is that an admin change takes up to a minute to appear publicly.
+// That is the right trade for services, gallery, reviews and banners, none of
+// which change more than a few times a week. Anything personal, anything behind
+// auth, and anything the admin needs to see immediately is never cached.
+function publicCache(seconds = 60, swr = 300) {
+  return (_req, res, next) => {
+    res.set('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${swr}`);
+    next();
+  };
+}
+
 app.get('/health',     (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 app.get('/api/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 // Tells the login page whether env vars are configured (never reveals values)
@@ -586,7 +610,7 @@ app.get('/api/admin/auth/config', (_, res) => res.json({
 }));
 
 // Services (active only — full data so service-detail pages render correctly)
-app.get('/api/services', async (req, res) => {
+app.get('/api/services', publicCache(60), async (req, res) => {
   const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
 
@@ -611,7 +635,7 @@ app.get('/api/services', async (req, res) => {
 });
 
 // Single service by slug or UUID (for service-detail.html)
-app.get('/api/services/:slug', async (req, res) => {
+app.get('/api/services/:slug', publicCache(60), async (req, res) => {
   const { slug } = req.params;
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
   const { data, error } = await supabase.from('services').select('*')
@@ -655,7 +679,7 @@ app.get('/api/services/:slug', async (req, res) => {
 });
 
 // Events (upcoming active)
-app.get('/api/events', async (req, res) => {
+app.get('/api/events', publicCache(60), async (req, res) => {
   const { data, error } = await supabase.from('events').select('*').eq('is_active', true).order('date');
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.event) });
@@ -665,7 +689,7 @@ app.get('/api/events', async (req, res) => {
 // and the dashboard both read this, so their category lists can no longer drift
 // apart the way they had (live data used Audio/Media/Visual, the dashboard
 // offered Weddings/Ruracio/Parties — only one value overlapped).
-app.get('/api/gallery/categories', async (req, res) => {
+app.get('/api/gallery/categories', publicCache(300), async (req, res) => {
   const { data: cats, error } = await supabase
     .from('gallery_categories').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
@@ -689,7 +713,7 @@ app.get('/api/gallery/categories', async (req, res) => {
 // visitor downloaded every row — including a 372 KB base64 blob stored in the
 // image_url column. Media now lives in Supabase Storage and rows are small,
 // but the cap stays: an uncapped list endpoint is a standing liability.
-app.get('/api/gallery', async (req, res) => {
+app.get('/api/gallery', publicCache(60), async (req, res) => {
   const { limit, offset } = pageParams(req.query);
 
   let q = supabase.from('gallery')
@@ -736,7 +760,7 @@ app.get('/api/reviews/consent', (req, res) => {
 
 // Aggregate rating summary. Computed here rather than in the browser so the
 // page does not have to download every review just to average them.
-app.get('/api/reviews/summary', async (req, res) => {
+app.get('/api/reviews/summary', publicCache(120), async (req, res) => {
   let q = supabase.from('reviews').select('rating', { count: 'exact' }).eq('status', 'published');
   if (req.query.service) q = q.eq('service_id', req.query.service);
 
@@ -755,7 +779,7 @@ app.get('/api/reviews/summary', async (req, res) => {
 });
 
 // Public review list — published only, paginated, minimal fields.
-app.get('/api/reviews', async (req, res) => {
+app.get('/api/reviews', publicCache(120), async (req, res) => {
   const { limit, offset } = reviewPageParams(req.query);
 
   let q = supabase.from('reviews').select('*', { count: 'exact' }).eq('status', 'published');
@@ -780,7 +804,7 @@ app.get('/api/reviews', async (req, res) => {
 
 
 // Marketing banners (active, within date range)
-app.get('/api/banners', async (req, res) => {
+app.get('/api/banners', publicCache(60), async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase.from('marketing_banners').select('*').eq('is_active', true).order('priority', { ascending: false });
   if (error) return handleError(res, error);
@@ -843,7 +867,7 @@ app.post('/api/offers/validate', offerCheckLimiter, async (req, res) => {
 });
 
 // Posters (active, within date range)
-app.get('/api/posters', async (req, res) => {
+app.get('/api/posters', publicCache(60), async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase.from('posters').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);

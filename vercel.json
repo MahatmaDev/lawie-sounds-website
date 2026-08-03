@@ -25,6 +25,9 @@
     { "src": "/(.*\\.(?:js|css))", "continue": true, "headers": {
       "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"
     }},
+    { "src": "/((?!admin/|api/).*\\.html)?", "continue": true, "headers": {
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400"
+    }},
 
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/health", "dest": "/api/index.js" },

@@ -1,0 +1,41 @@
+{
+  "name": "Lawie Sounds — Business Dashboard",
+  "short_name": "Lawie Admin",
+  "description": "Enquiries, gallery, reviews and marketing for Lawie Sounds.",
+  "start_url": "/admin/login.html?src=home",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f0f1a",
+  "theme_color": "#7c4dff",
+  "lang": "en-KE",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Enquiries",
+      "short_name": "Enquiries",
+      "description": "Answer the people who contacted us",
+      "url": "/admin/dashboard.html?tab=bookings",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add photos",
+      "short_name": "Gallery",
+      "description": "Upload photos from the last event",
+      "url": "/admin/dashboard.html?tab=gallery",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Reviews",
+      "short_name": "Reviews",
+      "description": "Approve what clients have written",
+      "url": "/admin/dashboard.html?tab=reviews",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

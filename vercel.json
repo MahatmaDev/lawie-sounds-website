@@ -12,6 +12,7 @@
     { "src": "/IMAGES/(.*)", "dest": "/IMAGES/$1" },
     { "src": "/Gallery/(.*)", "dest": "/Gallery/$1" },
     { "src": "/", "dest": "/frontend/index.html" },
+    { "src": "/admin/?", "dest": "/frontend/admin/login.html" },
     { "src": "/(.*)", "dest": "/frontend/$1", "continue": true },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/frontend/404.html", "status": 404 }
@@ -38,6 +39,19 @@
       "source": "/IMAGES/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/admin/admin.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]
     },
     {

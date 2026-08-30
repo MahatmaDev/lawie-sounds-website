@@ -8,7 +8,18 @@ const { createClient } = require('@supabase/supabase-js');
 
 require('dotenv').config();
 
+// The signing key for every admin session. The fallback is a literal in a public
+// repository: with it, anyone can mint a token claiming role "admin" and the
+// server will honour it — no password involved, so the login limiter never sees
+// the attempt. It stays for local development, where there is nothing to protect,
+// and is refused outright in production.
 const JWT_SECRET = process.env.JWT_SECRET || 'lawie-sounds-dev-secret-CHANGE-IN-PRODUCTION';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error(
+    'JWT_SECRET is not set. Refusing to start with the development signing key — ' +
+    'anyone could forge an admin session. Set JWT_SECRET in the Vercel project settings.'
+  );
+}
 
 const app = express();
 
@@ -110,7 +121,7 @@ const map = {
   // PUBLIC view. views/clicks/ctr are our own performance data and were being
   // shipped to every visitor through /api/banners. Allow-list, so a column
   // added later is not exposed by default.
-  publicBanner: (r) => r && ({ id: r.id, type: r.type, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, style: r.style, priority: r.priority }),
+  publicBanner: (r) => r && ({ id: r.id, type: r.type, message: r.message, ctaText: r.cta_text, ctaLink: r.cta_link, style: r.style, priority: r.priority, endDate: r.end_date, createdAt: r.created_at }),
 
   // Packages are real rows now, not JSONB array entries addressed by index.
   // `id` is the point: editing and deleting no longer depend on array position,
@@ -122,14 +133,24 @@ const map = {
   servicePackage: (r) => r && ({ id: r.id, serviceId: r.service_id, name: r.name, price: r.price === null || r.price === undefined ? null : Number(r.price), duration: r.duration, features: r.features || [], displayOrder: r.display_order, isActive: r.is_active, isPopular: r.is_popular, createdAt: r.created_at }),
 
   offer: (r) => r && ({ id: r.id, code: r.code, label: r.label, description: r.description, discountType: r.discount_type, discountValue: Number(r.discount_value), minAmount: r.min_amount === null ? null : Number(r.min_amount), appliesTo: r.applies_to || [], startsOn: r.starts_on, endsOn: r.ends_on, maxRedemptions: r.max_redemptions, timesRedeemed: r.times_redeemed, isActive: r.is_active, notes: r.notes, createdBy: r.created_by, createdAt: r.created_at }),
-  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by, createdAt: r.created_at }),
+  booking: (r) => r && ({ id: r.id, bookingReference: r.booking_reference, name: r.name, email: r.email, phone: r.phone, eventDate: r.event_date, eventType: r.event_type, eventId: r.event_id, guestCount: r.guest_count, budget: r.budget, venue: r.venue, services: r.services, selectedPackage: r.selected_package, ticketQuantity: r.ticket_quantity, totalAmount: r.total_amount, status: r.status, notes: r.notes, specialRequests: r.event_details, source: r.source, channel: r.channel, respondedAt: r.responded_at, handledBy: r.handled_by, agreedAmount: r.agreed_amount === null || r.agreed_amount === undefined ? null : Number(r.agreed_amount), agreedAt: r.agreed_at, agreedBy: r.agreed_by,
+    // The three timestamps. They are not interchangeable and the dashboard is
+    // careful to say which is which: enquiredAt is when the client got in
+    // touch, enteredAt is when one of us typed it in, createdAt is the row.
+    // For a web enquiry all three are the same instant; for one entered from a
+    // WhatsApp message in March they are not, and every arrival-rate figure
+    // depends on not confusing them.
+    enquiredAt: r.enquired_at || r.created_at, enteredAt: r.entered_at || r.created_at, entryMode: r.entry_mode || 'self-serve', createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
   poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, mediaType: r.media_type || 'image', storagePath: r.storage_path, thumbUrl: r.thumb_url, thumbPath: r.thumb_path, mimeType: r.mime_type, fileSize: r.file_size, width: r.width, height: r.height, createdAt: r.created_at }),
   // The homepage needs enough to render the poster and nothing else. storage_path
   // is internal plumbing — it names an object in our bucket, and publishing it
   // invites people to probe paths we never intended to expose.
-  publicPoster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, mediaType: r.media_type || 'image', thumbUrl: r.thumb_url, width: r.width, height: r.height }),
+  // createdAt/endDate are published deliberately: the homepage marks an
+  // announcement as NEW and says when an offer closes. Both are facts about the
+  // announcement itself, which is public by definition — unlike storage_path.
+  publicPoster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, mediaType: r.media_type || 'image', thumbUrl: r.thumb_url, width: r.width, height: r.height, endDate: r.end_date, createdAt: r.created_at }),
   notification: (r) => r && ({ id: r.id, type: r.type, title: r.title, message: r.message, isRead: r.is_read, referenceId: r.reference_id, referenceTable: r.reference_table, createdAt: r.created_at }),
   setting: (r) => r && ({ id: r.id, key: r.key, value: r.value, description: r.description, updatedAt: r.updated_at }),
 };
@@ -138,8 +159,33 @@ const map = {
 // `isUpdate` keeps accumulated counters out of UPDATE payloads. The dashboard
 // edit form does not round-trip booking_count, so including it on update reset
 // every event's booking count to 0 on each save.
+// seats_left is bounded by total_seats at the point of writing, because every
+// figure built on top of it assumes the two are consistent.
+//
+// They were not. Live rows had total_seats 100 against seats_left 120 and 200 —
+// total_seats defaults to 100 in the schema, so any event created without that
+// field acquired a capacity smaller than its own remaining seats. "Tickets sold"
+// is derived as total - left, so the dashboard reported -130 tickets sold and
+// KES -435,000 of revenue generated, and the sold-out and percentage-sold
+// indicators were meaningless. The dashboard's own edit form then re-derived
+// seats_left from that negative figure, so saving an unrelated field carried the
+// drift forward instead of correcting it.
+//
+// Clamping here fixes it for every writer at once, and a save from the dashboard
+// now repairs a drifted row rather than perpetuating it.
+function clampSeats(totalSeats, seatsLeft) {
+  const total = Number.isFinite(+totalSeats) ? Math.max(0, Math.trunc(+totalSeats)) : null;
+  const rawLeft = seatsLeft === undefined || seatsLeft === null || seatsLeft === '' ? total : +seatsLeft;
+  if (total === null) return { total, left: Number.isFinite(rawLeft) ? Math.max(0, Math.trunc(rawLeft)) : null };
+  const left = Number.isFinite(rawLeft) ? Math.trunc(rawLeft) : total;
+  // Never below zero (an oversold event reads as sold out, not as negative
+  // stock) and never above capacity (which is what produced negative sales).
+  return { total, left: Math.min(Math.max(left, 0), total) };
+}
+
 function toEventDB(b, isUpdate = false) {
-  const row = { title: b.title, date: b.date, venue: b.venue, price: b.price || 0, total_seats: b.totalSeats, seats_left: b.seatsLeft !== undefined ? b.seatsLeft : b.totalSeats, description: b.description, image: b.image, status: b.status || 'published', is_active: b.isActive !== false };
+  const { total, left } = clampSeats(b.totalSeats, b.seatsLeft);
+  const row = { title: b.title, date: b.date, venue: b.venue, price: b.price || 0, total_seats: total, seats_left: left, description: b.description, image: b.image, status: b.status || 'published', is_active: b.isActive !== false };
   if (!isUpdate) row.booking_count = b.bookingCount || 0;
   return row;
 }
@@ -229,9 +275,38 @@ async function syncEmployeeStats(employeeId) {
   await supabase.from('employees').update({ total_events: data.length, avg_rating: parseFloat(avg.toFixed(1)) }).eq('id', employeeId);
 }
 
+// Database failures answered as themselves rather than as "something went wrong
+// at 500". A malformed id is the caller's mistake and deserves a 400; a missing
+// row is a 404; a foreign key that will not let go is a 409. Sending 500 for all
+// three told the dashboard the server was broken when it was not, and told a
+// monitor to page someone over a typed URL.
+//
+// The raw Postgres text is kept only for the cases we recognise and have phrased
+// for a person. Anything unmapped is genuinely unexpected, so it is logged in
+// full and answered generically — internal column names and query fragments are
+// not the client's business, and were previously echoed verbatim.
+const PG_ERROR_MAP = {
+  '22P02': { status: 400, message: 'That identifier is not valid.' },                    // invalid text representation
+  '22003': { status: 400, message: 'That number is out of range.' },                     // numeric_value_out_of_range
+  '22007': { status: 400, message: 'That date is not valid.' },                          // invalid_datetime_format
+  '23502': { status: 400, message: 'A required field is missing.' },                     // not_null_violation
+  '23503': { status: 409, message: 'Other records still reference this item, so it cannot be removed.' },
+  '23505': { status: 409, message: 'That value is already in use.' },
+  '23514': { status: 400, message: 'One of the values breaks a rule the database enforces.' },
+  'PGRST116': { status: 404, message: 'Not found.' },                                    // no rows for .single()
+};
+
 function handleError(res, error, status = 500) {
   console.error(error);
-  return res.status(status).json({ error: error.message || 'An error occurred' });
+  const mapped = PG_ERROR_MAP[error?.code];
+  if (mapped && status === 500) {
+    return res.status(mapped.status).json({ error: mapped.message });
+  }
+  // Callers that pass an explicit status have already phrased the message.
+  if (status !== 500) {
+    return res.status(status).json({ error: error?.message || 'An error occurred' });
+  }
+  return res.status(500).json({ error: 'Something went wrong on our side. Please try again.' });
 }
 
 // Postgres `services` is text[]. Accept an array, a comma-joined string, or
@@ -251,7 +326,12 @@ function toTextArray(value) {
 // `notes` is deliberately NOT in this list. It carries text a human typed, so
 // dropping it would report success while discarding their work. That must fail
 // loudly instead — see the notes route below.
-const DROPPABLE_BOOKING_COLUMNS = ['channel', 'event_details', 'source', 'responded_at', 'handled_by'];
+const DROPPABLE_BOOKING_COLUMNS = ['channel', 'event_details', 'source', 'responded_at', 'handled_by',
+  // Provenance columns from 2026-08-30_booking_provenance.sql. Droppable for
+  // the same reason as the rest: until that migration is applied, a deploy
+  // that writes them would reject every enquiry. Losing the provenance of a
+  // booking is a bad day; losing the booking is a lost customer.
+  'enquired_at', 'entered_at', 'entry_mode'];
 
 // Run a bookings write, retrying without any droppable column the live schema
 // is missing. This is the exact failure that silently swallowed every booking
@@ -283,8 +363,13 @@ async function resilientBookingWrite(run, payload) {
 const insertBooking = (row) =>
   resilientBookingWrite(b => supabase.from('bookings').insert(b).select().single(), row);
 
+// maybeSingle so an update against an id that no longer exists comes back as
+// `data: null` rather than a PostgREST coercion error. The callers already
+// answer 404 on a null row; with .single() that branch was unreachable and the
+// dashboard was shown "Internal server error" for an enquiry someone had
+// already deleted in another tab.
 const updateBooking = (id, patch) =>
-  resilientBookingWrite(b => supabase.from('bookings').update(b).eq('id', id).select().single(), patch);
+  resilientBookingWrite(b => supabase.from('bookings').update(b).eq('id', id).select().maybeSingle(), patch);
 
 // ==================== MARKETING ====================
 
@@ -295,7 +380,7 @@ const updateBooking = (id, patch) =>
 const UNSAFE_URL_SCHEME = /^\s*(javascript|data|vbscript|file):/i;
 
 function isSafeCtaLink(url) {
-  if (!url) return true;                                  // empty falls back to /booking.html
+  if (!url) return true;                                  // empty falls back to /book
   if (UNSAFE_URL_SCHEME.test(url)) return false;
   // Allow site-relative paths, anchors, and explicit http(s)/tel/mailto.
   return /^(\/|#|https?:\/\/|tel:|mailto:)/i.test(url.trim());
@@ -548,24 +633,60 @@ async function removeGalleryObject(storagePath) {
   if (error) console.error(`[GALLERY] orphaned object ${storagePath}: ${error.message}`);
 }
 
-// WhatsApp push notification via CallMeBot (free — admin must activate once)
+// WhatsApp push notification via CallMeBot (free — each recipient activates once)
 // Setup: WhatsApp +34 644 38 11 72, send: "I allow callmebot to send me messages"
-// Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars
+// Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars.
+//
+// ADMIN_PHONE takes a comma-separated list, and CALLMEBOT_APIKEY takes the
+// matching list in the same order. CallMeBot issues one key per number, so a
+// single key cannot serve two phones — pairing them positionally is what lets
+// the manager and the owner both get the enquiry. One key with several numbers
+// is still accepted and reused for all of them, which is the common case of the
+// same person on two handsets.
+//
+// This is the channel that matters most: nobody opens the admin dashboard every
+// day, but everybody reads WhatsApp. If it is not configured the enquiry is
+// still saved, but it will sit unseen — so say so loudly in the logs rather
+// than returning silently the way this used to.
+let warnedNoWhatsApp = false;
+
+function whatsAppRecipients() {
+  const phones = String(process.env.ADMIN_PHONE || '')
+    .split(',').map(p => p.trim().replace(/[^\d+]/g, '')).filter(Boolean);
+  const keys = String(process.env.CALLMEBOT_APIKEY || '')
+    .split(',').map(k => k.trim()).filter(Boolean);
+  if (!phones.length || !keys.length) return [];
+  return phones.map((phone, i) => ({ phone, apiKey: keys[i] || keys[0] }));
+}
+
 async function notifyAdmin(message) {
-  const phone = process.env.ADMIN_PHONE;
-  const apiKey = process.env.CALLMEBOT_APIKEY;
-  if (!phone || !apiKey) return;
-  try {
-    // Must be awaited: Vercel freezes the serverless function once the response
-    // is sent, so an un-awaited fetch here was routinely cancelled mid-flight.
-    // Timeout so a slow third party can never hold up the client's confirmation.
-    await fetch(
-      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`,
-      { signal: AbortSignal.timeout(4000) }
-    );
-  } catch (e) {
-    console.error('notifyAdmin failed (non-fatal):', e.message);
+  const recipients = whatsAppRecipients();
+  if (!recipients.length) {
+    if (!warnedNoWhatsApp) {
+      warnedNoWhatsApp = true;
+      console.warn(
+        '[WHATSAPP] ADMIN_PHONE / CALLMEBOT_APIKEY are not set, so enquiries are ' +
+        'only visible inside the admin dashboard. Set both in the Vercel project ' +
+        'settings so new enquiries reach WhatsApp the moment they arrive.'
+      );
+    }
+    return;
   }
+  // Must be awaited: Vercel freezes the serverless function once the response is
+  // sent, so an un-awaited fetch here was routinely cancelled mid-flight. All
+  // recipients go out together, and one failing number must not stop the others
+  // — hence allSettled rather than a sequential loop that throws.
+  await Promise.allSettled(recipients.map(async ({ phone, apiKey }) => {
+    try {
+      await fetch(
+        `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}` +
+        `&text=${encodeURIComponent(message)}&apikey=${encodeURIComponent(apiKey)}`,
+        { signal: AbortSignal.timeout(4000) }
+      );
+    } catch (e) {
+      console.error(`notifyAdmin failed for ${phone} (non-fatal):`, e.message);
+    }
+  }));
 }
 
 // Create an in-app notification record (fire-and-forget)
@@ -956,10 +1077,21 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
     // internal staff-only field edited from the dashboard.
     event_details:    req.body.specialRequests || req.body.eventDetails || null,
     source:           req.body.source          || null,   // "How did you hear about us?"
-    channel:          req.body.channel         || 'booking-form',
+    // How the enquiry reached us, on the fixed vocabulary. Distinct from
+    // `source` above, which is the client's own answer about how they heard
+    // of us and is free text by nature.
+    channel:          'web-form',
     status:           'pending',
     user_ip:          ip,
     user_agent:       ua,
+    // All three timestamps coincide for a self-serve enquiry: the client got
+    // in touch, the row was entered, and the row was created, all in this
+    // request. They are still written explicitly rather than left to the
+    // column default, because a staff-entered booking sets them apart and the
+    // two paths must produce the same shape of row.
+    enquired_at:      new Date().toISOString(),
+    entered_at:       new Date().toISOString(),
+    entry_mode:       'self-serve',
   };
 
   const { data, error } = await insertBooking(row);
@@ -1022,11 +1154,38 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
 
   const ref = data.booking_reference || data.id;
   const serviceList = (row.services || []).join(', ') || 'N/A';
+  const siteUrl = (process.env.FRONTEND_URL || 'https://lawiesounds.com').replace(/\/+$/, '');
+
+  // wa.me wants a bare international number with no plus and no separators,
+  // which is exactly the shape normalisedPhone already has.
+  const clientReplyLink =
+    `https://wa.me/${normalisedPhone}?text=` +
+    encodeURIComponent(
+      `Hi ${name.split(' ')[0] || 'there'}, this is Lawie Sounds. ` +
+      `Thank you for your enquiry (Ref ${ref}) — we'd love to help with your ` +
+      `${row.event_type || 'event'}. When is a good time to talk?`
+    );
 
   // await both: on Vercel serverless the function can freeze the moment the
   // response is sent, cancelling any in-flight promise that was not awaited.
   await Promise.allSettled([
-    notifyAdmin(`🎉 NEW ENQUIRY!\n\nRef: ${ref}\nClient: ${name}\nPhone: ${normalisedPhone}\nEvent: ${row.event_type || 'N/A'} on ${row.event_date || 'TBD'}\nVenue: ${row.venue || 'N/A'}\nBudget: KES ${row.budget || 'N/A'}\nServices: ${serviceList}\n\n👉 Dashboard: ${process.env.FRONTEND_URL || ''}/admin/dashboard.html?tab=bookings`),
+    // The reply link is the point of this message. Reading an enquiry on
+    // WhatsApp and then having to retype the client's number into a new chat is
+    // where the 2-hour response promise gets lost — one tap opens the thread
+    // with an opening line already written.
+    notifyAdmin(
+      `🎉 NEW ENQUIRY — Ref ${ref}\n\n` +
+      `Client: ${name}\n` +
+      `Phone: +${normalisedPhone}\n` +
+      `Event: ${row.event_type || 'N/A'} on ${row.event_date || 'TBD'}\n` +
+      `Venue: ${row.venue || 'N/A'}\n` +
+      `Guests: ${row.guest_count || 'N/A'}\n` +
+      `Budget: KES ${row.budget || 'N/A'}\n` +
+      `Services: ${serviceList}\n` +
+      (row.event_details ? `Notes: ${String(row.event_details).slice(0, 200)}\n` : '') +
+      `\n💬 Reply to the client: ${clientReplyLink}\n` +
+      `📋 Dashboard: ${siteUrl}/admin/dashboard.html?tab=bookings`
+    ),
     createNotification('booking', 'New Enquiry', `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}`, data.id, 'bookings'),
   ]);
 
@@ -1173,8 +1332,14 @@ app.post('/api/reviews/withdraw/:token', async (req, res) => {
 // ==================== ADMIN AUTH ====================
 app.post('/api/admin/auth/login', (req, res) => {
   const { username, password } = req.body;
-  const adminUser   = process.env.ADMIN_USERNAME   || 'admin';
-  const adminPass   = process.env.ADMIN_PASSWORD   || 'admin123';
+  // No default credentials. `ADMIN_PASSWORD || 'admin123'` meant that a deploy
+  // which forgot the environment variable — a new Vercel project, a preview
+  // branch, a restored backup — handed the entire dashboard to anyone who tried
+  // admin/admin123, and every account in it is an owner account. An unconfigured
+  // server must refuse to authenticate anybody rather than fall back to a
+  // password published in this file.
+  const adminUser   = process.env.ADMIN_USERNAME;
+  const adminPass   = process.env.ADMIN_PASSWORD;
   const managerUser = process.env.MANAGER_USERNAME;
   const managerPass = process.env.MANAGER_PASSWORD;
 
@@ -1188,10 +1353,25 @@ app.post('/api/admin/auth/login', (req, res) => {
   const devUser = process.env.DEVELOPER_USERNAME;
   const devPass = process.env.DEVELOPER_PASSWORD;
 
+  // Constant-time comparison. `===` on a secret returns as soon as two bytes
+  // differ, so the time it takes to answer leaks how much of the password was
+  // right — enough, over many attempts, to recover it a character at a time.
+  // The login limiter makes that slow, not impossible, and the fix is cheap.
+  const matches = (given, expected) => {
+    if (!expected || typeof given !== 'string') return false;
+    const a = Buffer.from(given);
+    const b = Buffer.from(expected);
+    // timingSafeEqual throws on a length mismatch, which would itself be a
+    // timing signal, so both sides are hashed to a fixed width first.
+    const ha = crypto.createHash('sha256').update(a).digest();
+    const hb = crypto.createHash('sha256').update(b).digest();
+    return crypto.timingSafeEqual(ha, hb);
+  };
+
   let role = null;
-  if (username === adminUser && password === adminPass) role = 'admin';
-  else if (managerUser && managerPass && username === managerUser && password === managerPass) role = 'manager';
-  else if (devUser && devPass && username === devUser && password === devPass) role = 'developer';
+  if (adminUser && adminPass && matches(username, adminUser) && matches(password, adminPass)) role = 'admin';
+  else if (managerUser && managerPass && matches(username, managerUser) && matches(password, managerPass)) role = 'manager';
+  else if (devUser && devPass && matches(username, devUser) && matches(password, devPass)) role = 'developer';
 
   if (role) {
     // The people, not the job titles. "Administrator" is what a system calls
@@ -1225,8 +1405,13 @@ app.post('/api/admin/events', adminAuth, async (req, res) => {
   res.status(201).json({ success: true, data: map.event(data) });
 });
 app.put('/api/admin/events/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('events').update(toEventDB(req.body, true)).eq('id', req.params.id).select().single();
+  // maybeSingle, not single: updating an id that is no longer there is a 404,
+  // not a server fault. With .single() PostgREST raised "Cannot coerce the
+  // result to a single JSON object" and the dashboard showed the manager
+  // "Internal server error" for an event a second tab had already deleted.
+  const { data, error } = await supabase.from('events').update(toEventDB(req.body, true)).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Event not found' });
   res.json({ success: true, data: map.event(data) });
 });
 app.delete('/api/admin/events/:id', adminAuth, async (req, res) => {
@@ -1247,8 +1432,9 @@ app.post('/api/admin/services', adminAuth, async (req, res) => {
   res.status(201).json({ success: true, data: map.service(data) });
 });
 app.put('/api/admin/services/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('services').update(toServiceDB(req.body)).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('services').update(toServiceDB(req.body)).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Service not found' });
   res.json({ success: true, data: map.service(data) });
 });
 app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
@@ -2045,7 +2231,7 @@ function validateBanner(body, { isUpdate = false } = {}) {
     if (message.length > 160) errors.message = `Keep it under 160 characters for the banner bar (currently ${message.length}).`;
   }
   if (body.ctaLink !== undefined && !isSafeCtaLink(body.ctaLink)) {
-    errors.ctaLink = 'Use a page on this site (like /booking.html) or a full https:// address.';
+    errors.ctaLink = 'Use a page on this site (like /book) or a full https:// address.';
   }
   if (body.startDate && !/^\d{4}-\d{2}-\d{2}$/.test(body.startDate)) errors.startDate = 'Invalid date.';
   if (body.endDate   && !/^\d{4}-\d{2}-\d{2}$/.test(body.endDate))   errors.endDate   = 'Invalid date.';
@@ -2220,11 +2406,12 @@ app.put('/api/admin/posters/:id', adminAuth, async (req, res) => {
   const { errors, valid } = validatePoster(req.body, { isUpdate: true });
   if (!valid) return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
 
-  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).single();
+  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).maybeSingle();
 
   const { data, error } = await supabase.from('posters')
-    .update(toPosterDB(req.body)).eq('id', req.params.id).select().single();
+    .update(toPosterDB(req.body)).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Poster not found' });
 
   // Media was replaced: the old objects are now unreferenced. Removed after the
   // row is safely updated, so a failed write never destroys the live poster.
@@ -2238,7 +2425,7 @@ app.put('/api/admin/posters/:id', adminAuth, async (req, res) => {
 });
 
 app.patch('/api/admin/posters/:id/toggle', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('posters').select('is_active').eq('id', req.params.id).single();
+  const { data: cur } = await supabase.from('posters').select('is_active').eq('id', req.params.id).maybeSingle();
   if (!cur) return res.status(404).json({ error: 'Poster not found' });
   const { data, error } = await supabase.from('posters').update({ is_active: !cur.is_active }).eq('id', req.params.id).select().single();
   if (error) return handleError(res, error);
@@ -2246,7 +2433,11 @@ app.patch('/api/admin/posters/:id/toggle', adminAuth, async (req, res) => {
 });
 
 app.delete('/api/admin/posters/:id', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).single();
+  const { data: cur } = await supabase.from('posters').select('storage_path, thumb_path').eq('id', req.params.id).maybeSingle();
+  // Report a poster that is not there as not there. Reporting success for a
+  // delete that deleted nothing hides the fact that the dashboard's list is
+  // stale, so the manager keeps clicking a row that is already gone.
+  if (!cur) return res.status(404).json({ error: 'Poster not found' });
   const { error } = await supabase.from('posters').delete().eq('id', req.params.id);
   if (error) return handleError(res, error);
   // Delete the row first: an object without a row is invisible clutter, but a
@@ -2258,11 +2449,148 @@ app.delete('/api/admin/posters/:id', adminAuth, async (req, res) => {
 
 // ==================== ADMIN — BOOKINGS ====================
 app.get('/api/admin/bookings', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+  // Ordered by enquired_at, not created_at. A booking entered today for an
+  // enquiry that came in three months ago belongs three months back in the
+  // list — sorting by row creation would float every backfilled job to the
+  // top and make the pipeline unreadable the first week Quick Add is used.
+  // COALESCE via the fallback ordering: rows written before the provenance
+  // migration have a NULL enquired_at and fall back to created_at in the map.
+  const { data, error } = await supabase.from('bookings').select('*')
+    .order('enquired_at', { ascending: false, nullsFirst: false })
+    .order('created_at',  { ascending: false });
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.booking) });
 });
+
+// The arrival paths a booking can have. Kept in one place because the
+// dashboard's Quick Add form, the CHECK constraint in
+// 2026-08-30_booking_provenance.sql and any future import all have to agree —
+// free text here would be fatal to the analytics within a month, since
+// 'WhatsApp', 'whatsapp' and 'Whats app' are three channels to a GROUP BY and
+// one channel to a person.
+const BOOKING_CHANNELS = ['web-form', 'whatsapp', 'phone', 'walk-in', 'referral', 'repeat', 'instagram', 'other'];
 const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
+
+/**
+ * QUICK ADD — the bookings the system never sees.
+ *
+ * Most of this business arrives by phone, by WhatsApp, and by somebody's
+ * cousin. Until this endpoint existed none of it was recorded, so every figure
+ * computed from the bookings table described the website rather than the
+ * business — and pointed the marketing budget at the only channel that could
+ * be measured.
+ *
+ * Four required fields, deliberately: name, phone, event date, channel.
+ * Everything else is fillable later from the normal edit form. Coverage only
+ * climbs if entering a booking is easier than not entering it, and every extra
+ * required field is a reason to do it after the event, which means never.
+ */
+app.post('/api/admin/bookings', adminAuth, async (req, res) => {
+  const errors = {};
+  const name  = String(req.body.name  || '').trim();
+  const phone = String(req.body.phone || '').trim();
+
+  if (name.length < 2)   errors.name = 'Enter the client\'s name.';
+  if (name.length > 120) errors.name = 'Name is too long.';
+
+  const phoneDigits = phone.replace(/[\s()-]/g, '');
+  if (!/^(?:\+?254|0)[17]\d{8}$/.test(phoneDigits)) {
+    errors.phone = 'Enter a valid Kenyan number, e.g. 0712 345 678.';
+  }
+  const normalisedPhone = phoneDigits.replace(/^\+/, '').replace(/^0/, '254');
+
+  // Backdating is allowed here, unlike the public form — the whole point is to
+  // record events that already happened. What is not allowed is a date so far
+  // out that it is obviously a typo in the year.
+  const eventDate = req.body.eventDate || null;
+  if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) errors.eventDate = 'Invalid date.';
+
+  const channel = String(req.body.channel || '').trim();
+  if (!BOOKING_CHANNELS.includes(channel)) {
+    errors.channel = `How did they get in touch? One of: ${BOOKING_CHANNELS.join(', ')}.`;
+  }
+
+  const status = req.body.status || 'confirmed';
+  if (!BOOKING_STATUSES.includes(status)) errors.status = 'Unknown status.';
+
+  // enquired_at defaults to now, but a job being typed up from a WhatsApp
+  // thread should carry the date of the message, not the date of the typing.
+  const now = new Date();
+  let enquiredAt = now;
+  if (req.body.enquiredAt) {
+    const parsed = new Date(req.body.enquiredAt);
+    if (Number.isNaN(parsed.getTime())) errors.enquiredAt = 'Invalid date.';
+    else if (parsed > new Date(now.getTime() + 60000)) errors.enquiredAt = 'They cannot have got in touch in the future.';
+    else enquiredAt = parsed;
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  // Duplicate check on the phone number. Two people entering the same phoned
+  // enquiry — or one person entering it twice because they were not sure it
+  // saved — is the failure mode that quietly doubles the arrival rate. Warn
+  // rather than refuse: a repeat client genuinely does book twice, so the
+  // decision belongs to the person looking at both rows.
+  if (!req.body.confirmDuplicate) {
+    const since = new Date(Date.now() - 90 * 86400000).toISOString();
+    const { data: dupes } = await supabase.from('bookings')
+      .select('id, name, event_date, status, created_at')
+      .eq('phone', normalisedPhone)
+      .gte('created_at', since)
+      .limit(3);
+    if (dupes && dupes.length) {
+      return res.status(409).json({
+        error: 'There is already a recent enquiry from this number.',
+        duplicates: dupes.map(map.booking),
+        hint: 'Send confirmDuplicate: true to add it anyway.',
+      });
+    }
+  }
+
+  const row = {
+    name,
+    phone:            normalisedPhone,
+    email:            String(req.body.email || '').trim() || null,
+    event_date:       eventDate,
+    event_type:       req.body.eventType || null,
+    venue:            req.body.venue     || null,
+    guest_count:      req.body.guestCount || null,
+    budget:           req.body.budget     || null,
+    services:         toTextArray(req.body.services),
+    event_details:    req.body.specialRequests || null,
+    notes:            req.body.notes || null,
+    source:           req.body.source || null,
+    channel,
+    status,
+    enquired_at:      enquiredAt.toISOString(),
+    // When a human typed it in — always now, never backdated. This is the
+    // column that measures how far behind the record-keeping is running, and
+    // it can only do that if it is never allowed to lie.
+    entered_at:       now.toISOString(),
+    entry_mode:       'staff-entered',
+    handled_by:       req.admin?.username || req.admin?.role || null,
+  };
+
+  // A booking entered as anything other than pending has, by definition,
+  // already been responded to — someone spoke to this client before typing
+  // it up. Stamping it keeps the response-time figures honest instead of
+  // showing a months-old enquiry as still unanswered.
+  if (status !== 'pending') row.responded_at = now.toISOString();
+
+  const { data, error } = await insertBooking(row);
+  if (error) return handleError(res, error);
+
+  await createNotification(
+    'booking',
+    'Booking added by hand',
+    `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}, via ${channel}`,
+    data.id, 'bookings',
+  );
+
+  res.status(201).json({ success: true, data: map.booking(data) });
+});
 
 app.patch('/api/admin/bookings/:id/status', adminAuth, async (req, res) => {
   const { status } = req.body;
@@ -2275,7 +2603,7 @@ app.patch('/api/admin/bookings/:id/status', adminAuth, async (req, res) => {
   // Stamp the first move off 'pending' as the first response, so the 2-hour
   // promise on the public site becomes a measurable number.
   if (status !== 'pending') {
-    const { data: cur } = await supabase.from('bookings').select('responded_at').eq('id', req.params.id).single();
+    const { data: cur } = await supabase.from('bookings').select('responded_at').eq('id', req.params.id).maybeSingle();
     if (!cur?.responded_at) {
       patch.responded_at = new Date().toISOString();
       patch.handled_by   = req.admin?.username || req.admin?.role || null;
@@ -2329,8 +2657,9 @@ app.post('/api/admin/employees', adminAuth, adminOnly, async (req, res) => {
   res.status(201).json({ success: true, data: map.employee(data) });
 });
 app.put('/api/admin/employees/:id', adminAuth, adminOnly, async (req, res) => {
-  const { data, error } = await supabase.from('employees').update(toEmployeeDB(req.body)).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('employees').update(toEmployeeDB(req.body)).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Employee not found' });
   res.json({ success: true, data: map.employee(data) });
 });
 app.delete('/api/admin/employees/:id', adminAuth, adminOnly, async (req, res) => {
@@ -2349,13 +2678,26 @@ app.get('/api/admin/payroll', adminAuth, adminOnly, async (req, res) => {
 app.post('/api/admin/payroll', adminAuth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.from('payroll').insert(toPayrollDB(req.body)).select().single();
   if (error) return handleError(res, error);
-  await syncEmployeeStats(req.body.employeeId);
+  // The stored row, not the payload — they agree today, but the row is the one
+  // the stats are actually computed from.
+  await syncEmployeeStats(data.employee_id);
   res.status(201).json({ success: true, data: map.payroll(data) });
 });
 app.put('/api/admin/payroll/:id', adminAuth, adminOnly, async (req, res) => {
-  const { data, error } = await supabase.from('payroll').update(toPayrollDB(req.body)).eq('id', req.params.id).select().single();
+  // Read the employee this row pointed at BEFORE the update. Moving a payment
+  // from one employee to another has to resync both, or the person it left
+  // keeps the event count and rating average of work that is no longer theirs.
+  const { data: prev } = await supabase.from('payroll')
+    .select('employee_id').eq('id', req.params.id).maybeSingle();
+
+  const { data, error } = await supabase.from('payroll').update(toPayrollDB(req.body)).eq('id', req.params.id).select().maybeSingle();
   if (error) return handleError(res, error);
-  await syncEmployeeStats(req.body.employeeId);
+  if (!data) return res.status(404).json({ error: 'Payment not found' });
+
+  await syncEmployeeStats(data.employee_id);
+  if (prev?.employee_id && prev.employee_id !== data.employee_id) {
+    await syncEmployeeStats(prev.employee_id);
+  }
   res.json({ success: true, data: map.payroll(data) });
 });
 app.delete('/api/admin/payroll/:id', adminAuth, adminOnly, async (req, res) => {
@@ -2397,8 +2739,9 @@ app.get('/api/admin/settings', adminAuth, async (req, res) => {
 app.patch('/api/admin/settings/:key', adminAuth, async (req, res) => {
   const { value } = req.body;
   if (value === undefined) return res.status(400).json({ error: 'value is required' });
-  const { data, error } = await supabase.from('settings').update({ value }).eq('key', req.params.key).select().single();
+  const { data, error } = await supabase.from('settings').update({ value }).eq('key', req.params.key).select().maybeSingle();
   if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: `There is no setting called "${req.params.key}".` });
   res.json({ success: true, data: map.setting(data) });
 });
 

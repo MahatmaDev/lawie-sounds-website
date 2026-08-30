@@ -425,7 +425,10 @@
         // caller fell back to a generic "Could not save" popup and the manager
         // had to guess which field the server objected to. Affects packages,
         // offers, reviews and gallery alike.
-        if (!res.ok) return { _error: true, status: res.status, message: json?.error || res.statusText, fields: json?.fields || null };
+        // `duplicates` rides along for the same reason `fields` does: the Quick
+        // Add form answers a 409 by showing the rows it clashed with, and it
+        // cannot do that if the only thing that survives is the message.
+        if (!res.ok) return { _error: true, status: res.status, message: json?.error || res.statusText, fields: json?.fields || null, duplicates: json?.duplicates || null };
         return json;
       } catch(e) { return { _error: true, status: 0, message: 'Network error — cannot reach API' }; }
     }
@@ -959,6 +962,44 @@
     // ==================== REVAMPED EVENTS MANAGEMENT ====================
     let eventViewMode = 'upcoming'; // upcoming, past, all
 
+    // Seats sold is derived, not stored, so it inherits any inconsistency
+    // between capacity and seats remaining. Live rows had seats_left above
+    // total_seats, and this figure went straight onto the Events tab as
+    // "Tickets Sold -130" and "Revenue Generated KES -435,000" — numbers that
+    // are not merely wrong but impossible, which is worse, because the manager
+    // has no way to tell which of the four tiles to believe.
+    //
+    // The write path now clamps the two together, but a dashboard must not
+    // depend on its data being clean to show a sane number. One helper, used
+    // everywhere the figure appears, so the tiles, the progress bar and the
+    // export can never disagree with each other again.
+    function capacityFor(event) {
+      const total = Number(event?.totalSeats);
+      if (Number.isFinite(total) && total > 0) return total;
+      const left = Number(event?.seatsLeft);
+      return Number.isFinite(left) && left > 0 ? left : 0;
+    }
+
+    function seatsSoldFor(event) {
+      const capacity = capacityFor(event);
+      const left = Number(event?.seatsLeft);
+      if (!capacity) return 0;
+      const sold = capacity - (Number.isFinite(left) ? left : capacity);
+      // Bounded by the capacity at both ends: you cannot sell a negative ticket,
+      // and you cannot sell more seats than the room holds.
+      return Math.min(Math.max(sold, 0), capacity);
+    }
+
+    function percentSoldFor(event) {
+      const capacity = capacityFor(event);
+      return capacity ? Math.round((seatsSoldFor(event) / capacity) * 100) : 0;
+    }
+
+    // What the manager should see as remaining, regardless of what is stored.
+    function seatsLeftFor(event) {
+      return capacityFor(event) - seatsSoldFor(event);
+    }
+
     function renderEvents() {
       const container = document.getElementById('sectionContent');
       if (!container) return;
@@ -979,8 +1020,8 @@
       // Calculate stats
       const upcomingCount = store.events.filter(e => e.date >= now && e.status !== 'cancelled').length;
       const pastCount = store.events.filter(e => e.date < now).length;
-      const totalSeatsSold = store.events.reduce((sum, e) => sum + ((e.totalSeats || e.seatsLeft || 0) - (e.seatsLeft || 0)), 0);
-      const totalRevenue = store.events.reduce((sum, e) => sum + (((e.totalSeats || e.seatsLeft || 0) - (e.seatsLeft || 0)) * (e.price || 0)), 0);
+      const totalSeatsSold = store.events.reduce((sum, e) => sum + seatsSoldFor(e), 0);
+      const totalRevenue = store.events.reduce((sum, e) => sum + (seatsSoldFor(e) * (e.price || 0)), 0);
       
       container.innerHTML = `
         <!-- Stats Cards -->
@@ -1060,10 +1101,10 @@
                   <div class="mt-4">
                     <div class="flex justify-between text-sm mb-1">
                       <span class="text-gray-400">Ticket Sales</span>
-                      <span class="text-gray-400">${((((event.totalSeats || event.seatsLeft || 100) - (event.seatsLeft || 0)) / (event.totalSeats || event.seatsLeft || 100)) * 100).toFixed(0)}% Sold</span>
+                      <span class="text-gray-400">${percentSoldFor(event)}% Sold</span>
                     </div>
                     <div class="w-full bg-gray-700 rounded-full h-2">
-                      <div class="bg-purple-600 h-2 rounded-full" style="width: ${(((event.totalSeats || event.seatsLeft || 100) - (event.seatsLeft || 0)) / (event.totalSeats || event.seatsLeft || 100)) * 100}%"></div>
+                      <div class="bg-purple-600 h-2 rounded-full" style="width: ${percentSoldFor(event)}%"></div>
                     </div>
                   </div>
                   
@@ -1075,7 +1116,7 @@
                     </div>
                     <div>
                       <p class="text-xs text-gray-500">Seats Available</p>
-                      <p class="text-lg font-bold ${event.seatsLeft < 10 ? 'text-red-400' : 'text-white'}">${event.seatsLeft}</p>
+                      <p class="text-lg font-bold ${seatsLeftFor(event) < 10 ? 'text-red-400' : 'text-white'}">${seatsLeftFor(event)}</p>
                     </div>
                     <div>
                       <p class="text-xs text-gray-500">Total Enquiries</p>
@@ -1101,7 +1142,7 @@
       const now = new Date().toISOString().split('T')[0];
       if (event.status === 'cancelled') return 'bg-red-600/20 text-red-400';
       if (event.date < now) return 'bg-gray-600/20 text-gray-400';
-      if (event.seatsLeft === 0) return 'bg-orange-600/20 text-orange-400';
+      if (seatsLeftFor(event) <= 0) return 'bg-orange-600/20 text-orange-400';
       if (event.isActive === false) return 'bg-yellow-600/20 text-yellow-400';
       return 'bg-green-600/20 text-green-400';
     }
@@ -1110,7 +1151,7 @@
       const now = new Date().toISOString().split('T')[0];
       if (event.status === 'cancelled') return 'Cancelled';
       if (event.date < now) return 'Completed';
-      if (event.seatsLeft === 0) return 'Sold Out';
+      if (seatsLeftFor(event) <= 0) return 'Sold Out';
       if (event.isActive === false) return 'Draft';
       return 'Published';
     }
@@ -1164,8 +1205,8 @@
         ['Venue', event.venue],
         ['Ticket Price', `KES ${event.price.toLocaleString()}`],
         ['Total Seats', event.totalSeats || 'N/A'],
-        ['Seats Sold', (event.totalSeats || event.seatsLeft || 0) - (event.seatsLeft || 0)],
-        ['Revenue', `KES ${((event.totalSeats || event.seatsLeft || 0) - (event.seatsLeft || 0)) * event.price}`],
+        ['Seats Sold', seatsSoldFor(event)],
+        ['Revenue', `KES ${(seatsSoldFor(event) * (event.price || 0)).toLocaleString()}`],
         ['Status', event.status || (event.isActive ? 'Active' : 'Inactive')],
         [''],
         ['Booking Details'],
@@ -1290,8 +1331,17 @@
         return;
       }
       
-      const seatsSold = currentEditId ? (store.events.find(e => e.id === currentEditId)?.totalSeats || totalSeats) - (store.events.find(e => e.id === currentEditId)?.seatsLeft || totalSeats) : 0;
-      const seatsLeft = totalSeats - seatsSold;
+      // Seats already sold are preserved across an edit — the manager is
+      // changing capacity, not un-selling tickets. seatsSoldFor bounds that
+      // figure, so an edit to a row whose stored numbers had drifted repairs it
+      // instead of carrying the drift forward: the old expression derived a
+      // negative "sold" and then subtracted it, pushing seats remaining further
+      // above capacity on every save.
+      const existing = currentEditId ? store.events.find(e => e.id === currentEditId) : null;
+      const seatsSold = existing ? seatsSoldFor(existing) : 0;
+      // Reducing capacity below what is already sold reads as sold out, never as
+      // negative stock.
+      const seatsLeft = Math.max(totalSeats - seatsSold, 0);
 
       const payload = {
         title, date, venue, price, totalSeats, seatsLeft,
@@ -4007,7 +4057,7 @@ function marketingBanners(banners) {
             </div>
 
             <p class="text-xs text-gray-500">
-              <i class="fas fa-hand-pointer mr-1"></i>${escapeHtml(b.ctaText || 'Learn more')} → ${escapeHtml(b.ctaLink || '/booking.html')}
+              <i class="fas fa-hand-pointer mr-1"></i>${escapeHtml(b.ctaText || 'Learn more')} → ${escapeHtml(b.ctaLink || '/book')}
               · <i class="far fa-calendar-alt ml-1 mr-1"></i>${b.startDate || 'now'} → ${b.endDate || 'no end'}
             </p>
 
@@ -4382,7 +4432,7 @@ function openMarketingForm(id) {
         <div><label for="bannerName" class="block text-sm mb-1">Banner Name (internal)</label><input type="text" id="bannerName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g., April Special" value="${escapeHtml(banner?.name || '')}"></div>
         <div><label for="bannerMessage" class="block text-sm mb-1">Message *</label><textarea id="bannerMessage" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" rows="2" required placeholder="🎉 Special offer...">${escapeHtml(banner?.message || '')}</textarea></div>
         <div><label for="bannerCtaText" class="block text-sm mb-1">CTA Button Text</label><input type="text" id="bannerCtaText" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(banner?.ctaText || 'Learn More')}"></div>
-        <div><label for="bannerCtaLink" class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(banner?.ctaLink || '/booking.html')}"></div>
+        <div><label for="bannerCtaLink" class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(banner?.ctaLink || '/book')}"></div>
         <div><label for="bannerStartDate" class="block text-sm mb-1">Start Date</label><input type="date" id="bannerStartDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${banner?.startDate || new Date().toISOString().split('T')[0]}"></div>
         <div><label for="bannerEndDate" class="block text-sm mb-1">End Date (optional)</label><input type="date" id="bannerEndDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${banner?.endDate || ''}"></div>
         <div><label class="flex items-center gap-2"><input type="checkbox" id="bannerActive" ${(banner ? banner.isActive : true) ? 'checked' : ''}> <span class="text-sm">Active</span></label></div>
@@ -4398,7 +4448,7 @@ async function saveMarketingBanner() {
         name: document.getElementById('bannerName').value || 'Unnamed',
         message: msg,
         ctaText: document.getElementById('bannerCtaText').value || 'Learn More',
-        ctaLink: document.getElementById('bannerCtaLink').value || '/booking.html',
+        ctaLink: document.getElementById('bannerCtaLink').value || '/book',
         isActive: document.getElementById('bannerActive').checked,
         startDate: document.getElementById('bannerStartDate').value || null,
         endDate: document.getElementById('bannerEndDate').value || null,
@@ -4472,9 +4522,43 @@ function duplicateMarketingBanner(id) {
     const SLA_HOURS = 2;   // the response time promised on the public site
 
     // ---- derived helpers ----
+    // Age of the ENQUIRY, not of the database row. For a web enquiry the two
+    // are the same instant. For one typed in from a WhatsApp thread they are
+    // not, and using createdAt would restart the 2-hour clock at the moment of
+    // typing — telling the team a three-week-old job was answered on time.
     function enquiryAgeMs(b) {
-      const t = new Date(b.createdAt || b.eventDate || Date.now()).getTime();
+      const t = new Date(b.enquiredAt || b.createdAt || b.eventDate || Date.now()).getTime();
       return isNaN(t) ? 0 : Date.now() - t;
+    }
+
+    // True when a human typed this in after the fact, rather than the client
+    // filling in the form. Anything more than a couple of minutes between the
+    // two timestamps is a backfill, however it was flagged.
+    function wasBackfilled(b) {
+      if (b.entryMode && b.entryMode !== 'self-serve') return true;
+      const enq = new Date(b.enquiredAt || 0).getTime();
+      const ent = new Date(b.enteredAt  || 0).getTime();
+      return Boolean(enq && ent && ent - enq > 120000);
+    }
+
+    const CHANNEL_LABEL = {
+      'web-form': 'Website form', whatsapp: 'WhatsApp', phone: 'Phone call',
+      'walk-in': 'Walk-in', referral: 'Referral', repeat: 'Repeat client',
+      instagram: 'Instagram', other: 'Other',
+    };
+    const CHANNEL_ICON = {
+      'web-form': 'fa-globe', whatsapp: 'fa-whatsapp', phone: 'fa-phone',
+      'walk-in': 'fa-person-walking', referral: 'fa-user-group', repeat: 'fa-rotate-right',
+      instagram: 'fa-instagram', other: 'fa-circle-question',
+    };
+
+    // Full, unambiguous rendering for tooltips. A relative age is easy to read
+    // and impossible to verify; the exact instant belongs one hover away.
+    function fullStamp(iso) {
+      if (!iso) return 'not recorded';
+      const d = new Date(iso);
+      return isNaN(d) ? 'not recorded'
+        : d.toLocaleString('en-KE', { weekday:'short', day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
     }
 
     function humanAge(ms) {
@@ -4519,8 +4603,11 @@ function duplicateMarketingBanner(id) {
       });
 
       const by = {
-        newest:    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
-        oldest:    (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+        // Sorted by when the client got in touch, not when the row was made.
+        // Otherwise every booking typed up from an old WhatsApp thread jumps
+        // to the top of "newest" and the list stops reflecting the business.
+        newest:    (a, b) => new Date(b.enquiredAt || b.createdAt || 0) - new Date(a.enquiredAt || a.createdAt || 0),
+        oldest:    (a, b) => new Date(a.enquiredAt || a.createdAt || 0) - new Date(b.enquiredAt || b.createdAt || 0),
         eventDate: (a, b) => (a.eventDate || '9999').localeCompare(b.eventDate || '9999'),
         name:      (a, b) => (a.name || '').localeCompare(b.name || ''),
       };
@@ -4565,8 +4652,12 @@ function duplicateMarketingBanner(id) {
                      <i class="fas fa-triangle-exclamation mr-1"></i>${overdue.length} past the ${SLA_HOURS}h promise
                    </span>` : ''}
             </div>
+            ${coverageLine(all)}
           </div>
           <div class="flex gap-2">
+            <button type="button" onclick="quickAddBooking()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-yellow-500 hover:bg-yellow-400 text-black transition" title="Record a booking that came in by phone, WhatsApp or in person">
+              <i class="fas fa-plus mr-1"></i> Add booking
+            </button>
             <button type="button" onclick="exportEnquiriesCsv()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition" title="Download the filtered list as a spreadsheet">
               <i class="fas fa-file-csv mr-1"></i> Export
             </button>
@@ -4617,6 +4708,175 @@ function duplicateMarketingBanner(id) {
 
     function setEnquiryStatus(status) { enquiryStatus = status; renderBookings(); }
 
+    // ── Coverage ──────────────────────────────────────────────────────
+    // The share of what we know about that the client entered themselves.
+    // It is shown permanently, and deliberately: every conversion figure on
+    // this dashboard is computed over enquiries this system can see, and if
+    // a third of the real jobs never got typed in then those figures describe
+    // the website rather than the business. Saying so is the honest caveat —
+    // and it is also the nudge that makes "Add booking" get used.
+    function coverageLine(all) {
+      if (!all.length) return '';
+      const backfilled = all.filter(wasBackfilled).length;
+      if (!backfilled) {
+        return `<p class="text-xs text-gray-500 mt-1.5">
+                  <i class="fas fa-circle-info mr-1"></i>Every enquiry here came through the website form.
+                  Phone and WhatsApp jobs are invisible to these numbers until someone adds them.
+                </p>`;
+      }
+      const pct = Math.round((backfilled / all.length) * 100);
+      return `<p class="text-xs text-gray-500 mt-1.5">
+                <i class="fas fa-chart-pie mr-1"></i>
+                <strong class="text-gray-400">${pct}%</strong> of these (${backfilled} of ${all.length}) were added by hand
+                rather than coming through the website.
+                <span class="text-gray-600">Compare conversion within a group, never across the two.</span>
+              </p>`;
+    }
+
+    // ── Quick Add ─────────────────────────────────────────────────────
+    // Four fields. Everything else is fillable later from the enquiry itself.
+    // Coverage only climbs if entering a booking is easier than not entering
+    // it, and every extra required field here is a reason to do it after the
+    // event — which means never.
+    async function quickAddBooking(prefill = {}) {
+      const today = new Date().toISOString().split('T')[0];
+      const channelOptions = Object.entries(CHANNEL_LABEL)
+        .filter(([k]) => k !== 'web-form')   // the form fills that one in itself
+        .map(([k, label]) => `<option value="${k}" ${prefill.channel === k ? 'selected' : ''}>${label}</option>`)
+        .join('');
+
+      const html = `
+        <div class="text-left space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaName">Client name <span class="text-yellow-500">*</span></label>
+            <input id="qaName" class="swal2-input !mt-0 !w-full" placeholder="Jane Wanjiru" value="${escapeHtml(prefill.name || '')}">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaPhone">Phone <span class="text-yellow-500">*</span></label>
+            <input id="qaPhone" class="swal2-input !mt-0 !w-full" placeholder="0712 345 678" inputmode="tel" value="${escapeHtml(prefill.phone || '')}">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaChannel">How did they reach us? <span class="text-yellow-500">*</span></label>
+            <select id="qaChannel" class="swal2-select !mt-0 !w-full">${channelOptions}</select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaEventDate">Event date</label>
+            <input id="qaEventDate" type="date" class="swal2-input !mt-0 !w-full" value="${escapeHtml(prefill.eventDate || '')}">
+          </div>
+          <details class="text-xs text-gray-400">
+            <summary class="cursor-pointer py-1 select-none">More detail (optional)</summary>
+            <div class="space-y-3 pt-2">
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaEnquiredAt">When did they get in touch?</label>
+                <input id="qaEnquiredAt" type="date" max="${today}" value="${today}" class="swal2-input !mt-0 !w-full">
+                <p class="text-[11px] text-gray-500 mt-1">
+                  Set this to the day they actually called or messaged, not today — it is what the arrival-rate
+                  and response-time figures are built on.
+                </p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaEventType">Event type</label>
+                <input id="qaEventType" class="swal2-input !mt-0 !w-full" placeholder="Wedding, Ruracio, Corporate…">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaVenue">Venue</label>
+                <input id="qaVenue" class="swal2-input !mt-0 !w-full" placeholder="Where is it?">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaStatus">Status</label>
+                <select id="qaStatus" class="swal2-select !mt-0 !w-full">
+                  <option value="confirmed" selected>Confirmed — already won</option>
+                  <option value="pending">Still deciding</option>
+                  <option value="completed">Done and delivered</option>
+                  <option value="cancelled">Fell through</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1" for="qaNotes">Internal note</label>
+                <textarea id="qaNotes" class="swal2-textarea !mt-0 !w-full" rows="2" placeholder="Anything worth remembering"></textarea>
+              </div>
+            </div>
+          </details>
+        </div>`;
+
+      const { value: form } = await Swal.fire({
+        title: 'Add a booking',
+        html,
+        width: 520,
+        background: '#1e1e2a', color: '#fff',
+        showCancelButton: true,
+        confirmButtonText: 'Save booking',
+        confirmButtonColor: '#eab308',
+        focusConfirm: false,
+        didOpen: () => document.getElementById('qaName')?.focus(),
+        preConfirm: () => {
+          const v = (id) => (document.getElementById(id)?.value || '').trim();
+          const payload = {
+            name: v('qaName'), phone: v('qaPhone'), channel: v('qaChannel'),
+            eventDate: v('qaEventDate') || null, eventType: v('qaEventType') || null,
+            venue: v('qaVenue') || null, notes: v('qaNotes') || null,
+            status: v('qaStatus') || 'confirmed',
+          };
+          const when = v('qaEnquiredAt');
+          // Sent as a full instant, not a bare date: midnight local is what
+          // the person meant by "that day", and the server stores UTC.
+          if (when) payload.enquiredAt = new Date(when + 'T12:00:00').toISOString();
+          if (!payload.name)    { Swal.showValidationMessage('Who is the client?'); return false; }
+          if (!payload.phone)   { Swal.showValidationMessage('A phone number is what makes this findable later.'); return false; }
+          if (!payload.channel) { Swal.showValidationMessage('How did they reach us?'); return false; }
+          return payload;
+        },
+      });
+      if (!form) return;
+
+      await submitQuickAdd(form);
+    }
+
+    async function submitQuickAdd(payload) {
+      const res = await apiRequest('POST', '/api/admin/bookings', payload);
+
+      // 409 — a recent enquiry already exists on this number. Not an error:
+      // a repeat client genuinely does book twice. Show what it clashed with
+      // and let the person looking at both rows decide.
+      if (res?._error && res.status === 409 && res.duplicates?.length) {
+        const rows = res.duplicates.map(d => `
+          <li class="text-left text-sm border border-gray-700 rounded-lg px-3 py-2 mb-2">
+            <strong>${escapeHtml(d.name)}</strong>
+            <span class="text-gray-400">— ${escapeHtml(d.eventDate || 'no date')} · ${escapeHtml(d.status)}</span><br>
+            <span class="text-xs text-gray-500">added ${humanAge(Date.now() - new Date(d.createdAt || 0).getTime())}</span>
+          </li>`).join('');
+        const again = await Swal.fire({
+          icon: 'warning',
+          title: 'Already have this number',
+          html: `<p class="text-sm text-gray-300 mb-3">There ${res.duplicates.length === 1 ? 'is' : 'are'}
+                   already ${res.duplicates.length} recent enquir${res.duplicates.length === 1 ? 'y' : 'ies'} from this phone:</p>
+                 <ul class="list-none p-0 m-0">${rows}</ul>
+                 <p class="text-xs text-gray-500 mt-2">Add it anyway only if this is a genuinely separate job.</p>`,
+          background: '#1e1e2a', color: '#fff',
+          showCancelButton: true,
+          confirmButtonText: 'Add it anyway',
+          confirmButtonColor: '#eab308',
+          cancelButtonText: 'Never mind',
+        });
+        if (!again.isConfirmed) return;
+        return submitQuickAdd({ ...payload, confirmDuplicate: true });
+      }
+
+      if (res?._error) {
+        const detail = res.fields ? Object.values(res.fields).join(' ') : res.message;
+        Swal.fire({ icon: 'error', title: 'Could not save', text: detail, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+
+      if (res?.data) store.bookings.unshift(res.data);
+      renderBookings();
+      Swal.fire({
+        icon: 'success', title: 'Booking added',
+        text: `${res.data?.name || 'The booking'} is now in the pipeline and counted in your numbers.`,
+        background: '#1e1e2a', color: '#fff', timer: 2600, showConfirmButton: false,
+      });
+    }
+
     function emptyState(hasAnyAtAll) {
       // A blank table is ambiguous — it could mean "no results" or "broken".
       // Say which, and offer the way out.
@@ -4629,8 +4889,16 @@ function duplicateMarketingBanner(id) {
         <div class="text-center py-16">
           <i class="fas fa-inbox text-4xl text-gray-700 mb-3"></i>
           <p class="text-gray-300 font-medium">No enquiries yet</p>
-          <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">When someone submits the booking form on your website, it will appear here instantly.</p>
-          <a href="../booking.html" target="_blank" rel="noopener" class="inline-block mt-4 text-purple-400 text-sm hover:underline">Open the booking form →</a>
+          <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
+            When someone submits the booking form on your website, it will appear here instantly.
+            Jobs that came by phone or WhatsApp will not — add those yourself, or they stay invisible to every figure on this dashboard.
+          </p>
+          <div class="flex items-center justify-center gap-3 mt-4">
+            <button type="button" onclick="quickAddBooking()" class="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold transition">
+              <i class="fas fa-plus mr-1"></i> Add a booking
+            </button>
+            <a href="/book" target="_blank" rel="noopener" class="text-purple-400 text-sm hover:underline">Open the booking form →</a>
+          </div>
         </div>`;
     }
 
@@ -4668,7 +4936,12 @@ function duplicateMarketingBanner(id) {
           </td>
           <td class="px-4 py-3 text-sm text-gray-300">${escapeHtml(b.budget || '—')}</td>
           <td class="px-4 py-3">
-            <span class="text-xs ${sla === 'overdue' ? 'text-red-400 font-semibold' : 'text-gray-500'}">${humanAge(enquiryAgeMs(b))}</span>
+            <span class="text-xs ${sla === 'overdue' ? 'text-red-400 font-semibold' : 'text-gray-500'}"
+                  title="Client got in touch: ${escapeHtml(fullStamp(b.enquiredAt))}">${humanAge(enquiryAgeMs(b))}</span>
+            <span class="block text-[11px] text-gray-600 mt-0.5">
+              <i class="fa${b.channel === 'whatsapp' || b.channel === 'instagram' ? 'b' : 's'} ${CHANNEL_ICON[b.channel] || 'fa-globe'} mr-1"></i>${escapeHtml(CHANNEL_LABEL[b.channel] || 'Website form')}
+            </span>
+            ${wasBackfilled(b) ? `<span class="block text-[10px] text-gray-600 mt-0.5" title="Typed in on ${escapeHtml(fullStamp(b.enteredAt))}, after the fact"><i class="fas fa-pen-to-square mr-1"></i>added by hand</span>` : ''}
           </td>
           <td class="px-4 py-3">
             <select onchange="updateBookingStatus('${b.id}', this.value)" aria-label="Status for ${escapeHtml(b.name)}"
@@ -4726,7 +4999,11 @@ function duplicateMarketingBanner(id) {
         ['Reference','bookingReference'], ['Name','name'], ['Phone','phone'], ['Email','email'],
         ['Event type','eventType'], ['Event date','eventDate'], ['Guests','guestCount'],
         ['Budget','budget'], ['Venue','venue'], ['Status','status'], ['Heard via','source'],
-        ['Came from','channel'], ['Received','createdAt'],
+        // The three timestamps go out separately and keep their own names, so
+        // a spreadsheet built on this export cannot quietly confuse when the
+        // client got in touch with when somebody typed it up.
+        ['Came from','channel'], ['Entry mode','entryMode'],
+        ['Enquired at','enquiredAt'], ['Entered at','enteredAt'], ['Row created','createdAt'],
       ];
       // Prefix formula characters — a cell starting with = or + is executed by
       // Excel on open, which is a real injection vector for user-supplied text.
@@ -5241,7 +5518,26 @@ function duplicateMarketingBanner(id) {
 
     // ==================== EMPLOYEE MANAGEMENT ====================
     function calculateLeaderboard(period = 'month') { const now = new Date(); return store.employees.map(emp => { const employeePayments = store.payroll.filter(p => p.employeeId === emp.id); let filteredPayments = employeePayments; if (period === 'month') filteredPayments = employeePayments.filter(p => { const paymentDate = new Date(p.paymentDate); return paymentDate.getMonth() === now.getMonth() && paymentDate.getFullYear() === now.getFullYear(); }); const totalRatings = filteredPayments.reduce((sum, p) => sum + (p.rating || 0), 0); const avgRating = filteredPayments.length > 0 ? totalRatings / filteredPayments.length : 0; const eventCount = filteredPayments.length; const score = (avgRating * 20) + (eventCount * 2); return { ...emp, score, avgRating, eventCount }; }).sort((a, b) => b.score - a.score); }
-    function renderEmployees() { const container = document.getElementById('sectionContent'); const leaderboard = calculateLeaderboard('month'); const employeeOfMonth = leaderboard[0]; container.innerHTML = `${employeeOfMonth ? `<div class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-6 mb-8"><div class="flex flex-col md:flex-row items-center justify-between gap-4"><div class="flex items-center gap-4"><div class="w-20 h-20 bg-white rounded-full flex items-center justify-center"><i class="fas fa-crown text-4xl text-yellow-500"></i></div><div><p class="text-black/70 text-sm font-semibold">🏆 EMPLOYEE OF THE MONTH</p><h2 class="text-3xl font-bold text-black">${employeeOfMonth.name}</h2><p class="text-black/70">${employeeOfMonth.role} • ⭐ ${employeeOfMonth.avgRating.toFixed(1)} rating • ${employeeOfMonth.eventCount} events</p></div></div><div class="bg-black/20 rounded-xl px-6 py-3 text-center"><p class="text-2xl font-bold text-black">KES ${(employeeOfMonth.score * 1000).toLocaleString()}</p><p class="text-xs text-black/70">Bonus Reward</p></div></div></div>` : ''}
+    // Reachable by URL (?tab=employees) even when the tab is hidden, so the
+    // refusal is stated here too rather than relying on the chrome. Without it
+    // an account the API answers 403 for saw an empty table, which reads as
+    // "this company has no staff" instead of "this is not your data".
+    function renderNoAccess(what) {
+      const container = document.getElementById('sectionContent');
+      if (!container) return;
+      container.innerHTML = `
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+          <i class="fas fa-lock text-3xl text-gray-600 mb-3"></i>
+          <h3 class="font-bold text-white mb-1">Not available for this account</h3>
+          <p class="text-sm text-gray-500">${what} is visible to the business owner only.</p>
+        </div>`;
+    }
+
+    function isOwner() {
+      return (window._adminRole || sessionStorage.getItem('adminRole') || 'admin') === 'admin';
+    }
+
+    function renderEmployees() { if (!isOwner()) return renderNoAccess('Staff records'); const container = document.getElementById('sectionContent'); const leaderboard = calculateLeaderboard('month'); const employeeOfMonth = leaderboard[0]; container.innerHTML = `${employeeOfMonth ? `<div class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-6 mb-8"><div class="flex flex-col md:flex-row items-center justify-between gap-4"><div class="flex items-center gap-4"><div class="w-20 h-20 bg-white rounded-full flex items-center justify-center"><i class="fas fa-crown text-4xl text-yellow-500"></i></div><div><p class="text-black/70 text-sm font-semibold">🏆 EMPLOYEE OF THE MONTH</p><h2 class="text-3xl font-bold text-black">${employeeOfMonth.name}</h2><p class="text-black/70">${employeeOfMonth.role} • ⭐ ${employeeOfMonth.avgRating.toFixed(1)} rating • ${employeeOfMonth.eventCount} events</p></div></div><div class="bg-black/20 rounded-xl px-6 py-3 text-center"><p class="text-2xl font-bold text-black">KES ${(employeeOfMonth.score * 1000).toLocaleString()}</p><p class="text-xs text-black/70">Bonus Reward</p></div></div></div>` : ''}
       <div class="grid md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Employees</p><p class="text-2xl font-bold text-white">${store.employees.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-users text-purple-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Active Technicians</p><p class="text-2xl font-bold text-white">${store.employees.filter(e => e.status === 'active').length}</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.employees.reduce((sum, e) => sum + e.totalEvents, 0)}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-check text-blue-400"></i></div></div></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Avg Rating</p><p class="text-2xl font-bold text-white">${store.employees.length ? (store.employees.reduce((sum, e) => sum + (e.avgRating || 0), 0) / store.employees.length).toFixed(1) : '—'} ⭐</p></div><div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div></div></div></div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 mb-8"><div class="px-6 py-4 border-b border-gray-800"><h3 class="font-semibold">🏆 Monthly Leaderboard</h3><p class="text-xs text-gray-400 mt-1">Top performers based on ratings and events</p></div><div class="divide-y divide-gray-800">${leaderboard.slice(0, 5).map((emp, idx) => `<div class="leaderboard-item p-4 flex items-center justify-between"><div class="flex items-center gap-4"><div class="w-8 text-center">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}th`}</div><div><p class="font-medium">${emp.name}</p><p class="text-xs text-gray-400">${emp.role}</p></div></div><div class="flex items-center gap-6"><div class="text-center"><p class="text-sm font-semibold">${emp.eventCount}</p><p class="text-xs text-gray-400">Events</p></div><div class="text-center"><p class="text-sm font-semibold text-yellow-400">${emp.avgRating.toFixed(1)} ⭐</p><p class="text-xs text-gray-400">Rating</p></div><div class="text-center"><p class="text-sm font-semibold text-green-400">${emp.score.toFixed(0)}</p><p class="text-xs text-gray-400">Score</p></div></div></div>`).join('')}</div></div>
       <div class="flex justify-end mb-4"><button type="button" onclick="openEmployeeForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add employee</button></div>
@@ -5252,7 +5548,7 @@ function duplicateMarketingBanner(id) {
     function editEmployee(id) { openEmployeeForm(id); }
 
     // ==================== PAYROLL MANAGEMENT ====================
-    function renderPayroll() { const container = document.getElementById('sectionContent'); const totalPaid = store.payroll.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0); const totalPending = store.payroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0); container.innerHTML = `<div class="grid md:grid-cols-3 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Paid</p><p class="text-2xl font-bold text-green-400">KES ${totalPaid.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Pending Payments</p><p class="text-2xl font-bold text-yellow-400">KES ${totalPending.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Transactions</p><p class="text-2xl font-bold text-white">${store.payroll.length}</p></div></div><div class="flex justify-end mb-4"><button type="button" onclick="openPayrollForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add payment</button></div><div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full payroll-table"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Employee</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.payroll.map(p => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(p.employeeName)}</td><td class="px-4 py-3">${escapeHtml(p.eventName)}</td><td class="px-4 py-3">${new Date(p.eventDate).toLocaleDateString()}</td><td class="px-4 py-3">KES ${p.amount.toLocaleString()}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${p.status}</span></td><td class="px-4 py-3"><span class="text-yellow-400">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td class="px-4 py-3"><button type="button" onclick="editPayroll('${p.id}')" class="text-purple-400 mr-2">Edit</button><button type="button" onclick="deletePayroll('${p.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
+    function renderPayroll() { if (!isOwner()) return renderNoAccess('Payroll'); const container = document.getElementById('sectionContent'); const totalPaid = store.payroll.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0); const totalPending = store.payroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0); container.innerHTML = `<div class="grid md:grid-cols-3 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Paid</p><p class="text-2xl font-bold text-green-400">KES ${totalPaid.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Pending Payments</p><p class="text-2xl font-bold text-yellow-400">KES ${totalPending.toLocaleString()}</p></div><div class="bg-gray-900 rounded-xl p-4 border border-gray-800"><p class="text-gray-400 text-sm">Total Transactions</p><p class="text-2xl font-bold text-white">${store.payroll.length}</p></div></div><div class="flex justify-end mb-4"><button type="button" onclick="openPayrollForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"><i class="fas fa-plus mr-2"></i>Add payment</button></div><div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div class="overflow-x-auto table-responsive"><table class="w-full payroll-table"><thead class="bg-gray-800/50"><tr><th class="px-4 py-3 text-left">Employee</th><th class="px-4 py-3 text-left">Event</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Rating</th><th class="px-4 py-3 text-left">Actions</th></tr></thead><tbody>${store.payroll.map(p => `<tr class="table-row border-t border-gray-800"><td class="px-4 py-3">${escapeHtml(p.employeeName)}</td><td class="px-4 py-3">${escapeHtml(p.eventName)}</td><td class="px-4 py-3">${new Date(p.eventDate).toLocaleDateString()}</td><td class="px-4 py-3">KES ${p.amount.toLocaleString()}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-400'}">${p.status}</span></td><td class="px-4 py-3"><span class="text-yellow-400">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td class="px-4 py-3"><button type="button" onclick="editPayroll('${p.id}')" class="text-purple-400 mr-2">Edit</button><button type="button" onclick="deletePayroll('${p.id}')" class="text-red-400">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`; }
     function openPayrollForm(id = null) { currentEditId = id; const payroll = id ? store.payroll.find(p => p.id === id) : null; document.getElementById('modalTitle').textContent = id ? 'Edit payment' : 'New payment'; document.getElementById('modalForm').innerHTML = `<div><label for="payrollEmployee" class="block text-sm mb-1">Employee *</label><select id="payrollEmployee" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" required><option value="">Select an employee</option>${store.employees.map(emp => `<option value="${emp.id}|${emp.name}" ${payroll?.employeeId === emp.id ? 'selected' : ''}>${emp.name} (${emp.role})</option>`).join('')}</select></div><div><label for="payrollEvent" class="block text-sm mb-1">Event name *</label><input type="text" id="payrollEvent" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(payroll?.eventName || '')}" required></div><div><label for="payrollDate" class="block text-sm mb-1">Event date *</label><input type="date" id="payrollDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.eventDate || ''}" required></div><div><label for="payrollAmount" class="block text-sm mb-1">Amount (KES) *</label><input type="number" id="payrollAmount" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${payroll?.amount || ''}" required></div><div><label for="payrollRating" class="block text-sm mb-1">Rating (1-5)</label><select id="payrollRating" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.rating === 5 ? 'selected' : ''}>5 - Excellent</option><option ${payroll?.rating === 4 ? 'selected' : ''}>4 - Very Good</option><option ${payroll?.rating === 3 ? 'selected' : ''}>3 - Good</option><option ${payroll?.rating === 2 ? 'selected' : ''}>2 - Fair</option><option ${payroll?.rating === 1 ? 'selected' : ''}>1 - Poor</option></select></div><div><label for="payrollStatus" class="block text-sm mb-1">Status</label><select id="payrollStatus" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700"><option ${payroll?.status === 'paid' ? 'selected' : ''}>paid</option><option ${payroll?.status === 'pending' ? 'selected' : ''}>pending</option></select></div>`; document.getElementById('formModal').classList.remove('hidden'); }
     function savePayroll() { const employeeSelect = document.getElementById('payrollEmployee').value; const [empId, empName] = employeeSelect.split('|'); const ratingMap = { '5 - Excellent': 5, '4 - Very Good': 4, '3 - Good': 3, '2 - Fair': 2, '1 - Poor': 1 }; const ratingValue = ratingMap[document.getElementById('payrollRating').value] || 0; const newPayroll = { id: currentEditId || Date.now().toString(), employeeId: empId, employeeName: empName, eventName: document.getElementById('payrollEvent').value, eventDate: document.getElementById('payrollDate').value, amount: parseInt(document.getElementById('payrollAmount').value), status: document.getElementById('payrollStatus').value, paymentDate: document.getElementById('payrollStatus').value === 'paid' ? new Date().toISOString().split('T')[0] : null, rating: ratingValue }; if (currentEditId) store.payroll = store.payroll.map(p => p.id === currentEditId ? newPayroll : p); else store.payroll.push(newPayroll); const employeePayments = store.payroll.filter(p => p.employeeId === empId && p.rating > 0); const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0); const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0; const totalEvents = employeePayments.length; store.employees = store.employees.map(e => e.id === empId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e); const _payPath = currentEditId ? `/api/admin/payroll/${currentEditId}` : '/api/admin/payroll'; apiRequest(currentEditId ? 'PUT' : 'POST', _payPath, newPayroll); closeModal(); renderPayroll(); Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); }
     async function deletePayroll(id) { const result = await Swal.fire({ title: 'Delete payment record?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' }); if (result.isConfirmed) { const deleted = store.payroll.find(p => p.id === id); store.payroll = store.payroll.filter(p => p.id !== id); const employeePayments = store.payroll.filter(p => p.employeeId === deleted.employeeId && p.rating > 0); const totalRatings = employeePayments.reduce((sum, p) => sum + p.rating, 0); const avgRating = employeePayments.length > 0 ? totalRatings / employeePayments.length : 0; const totalEvents = employeePayments.length; store.employees = store.employees.map(e => e.id === deleted.employeeId ? { ...e, totalEvents, avgRating: parseFloat(avgRating.toFixed(1)) } : e); await apiRequest('DELETE', `/api/admin/payroll/${id}`); renderPayroll(); Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); } }
@@ -7073,18 +7369,30 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
         subtitle.innerHTML = `<span class="${tone} font-semibold">${who}</span> <span class="text-gray-600">·</span> ${label}`;
       }
 
-      if (role === 'manager') {
-        // Hide every tab the manager has no access to, not just some of them —
-        // offering a tab and then refusing it is worse than not offering it.
-        //
-        // Analytics is no longer in this list. A manager marketing the company
-        // needs to see enquiry volume, conversion and reply times to do the job;
-        // what they must not see is the owner's financial position. That split
-        // is made by the server, which sends this account the operational
-        // figures only, so the tab can be open without disclosing revenue.
-        ['tabEmployees', 'tabPayroll', 'tabUpdates']
-          .forEach(id => document.getElementById(id)?.classList.add('hidden'));
-      }
+      // Hide every tab the role has no access to, not just some of them —
+      // offering a tab and then refusing it is worse than not offering it.
+      //
+      // Driven off the same rules the server enforces, rather than a single
+      // `if (role === 'manager')`. When the developer role was added it
+      // inherited the admin layout by omission, so Employees and Payroll were
+      // offered to an account the API answers 403 for. Nothing errored: the
+      // tables simply rendered "Total Employees 0" and "Total Paid KES 0",
+      // which reads as a company with no staff rather than as no access.
+      //
+      // Analytics is in nobody's list. A manager marketing the company needs to
+      // see enquiry volume, conversion and reply times to do the job; what they
+      // must not see is the owner's financial position. That split is made by
+      // the server, which sends those accounts the operational figures only, so
+      // the tab can be open without disclosing revenue.
+      const HIDDEN_TABS_BY_ROLE = {
+        // adminOnly on the server: employees, payroll. workLogAccess: the log.
+        manager:   ['tabEmployees', 'tabPayroll', 'tabUpdates'],
+        // The developer keeps the work log — recording deliverables is the point
+        // of that account — but staff records and payroll are the owner's alone.
+        developer: ['tabEmployees', 'tabPayroll'],
+      };
+      (HIDDEN_TABS_BY_ROLE[role] || [])
+        .forEach(id => document.getElementById(id)?.classList.add('hidden'));
     }
 
     async function init() {

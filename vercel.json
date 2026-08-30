@@ -29,10 +29,48 @@
       "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400"
     }},
 
+    { "src": "/(?:book|services|gallery|review|withdraw|s/[^/]+)/?", "continue": true, "headers": {
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400"
+    }},
+
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/health", "dest": "/api/index.js" },
     { "src": "/IMAGES/(.*)", "dest": "/IMAGES/$1" },
     { "src": "/Gallery/(.*)", "dest": "/Gallery/$1" },
+
+    { "src": "/wa/?", "status": 302, "headers": {
+      "Location": "https://wa.me/254703925826?text=Hi%20Lawie%20Sounds%2C%20I%27d%20like%20to%20book%20an%20event.",
+      "Cache-Control": "public, max-age=600"
+    }},
+    { "src": "/call/?", "status": 302, "headers": {
+      "Location": "tel:+254703925826",
+      "Cache-Control": "public, max-age=600"
+    }},
+
+    { "src": "/latest/?",  "status": 301, "headers": { "Location": "/#latest",   "Cache-Control": "public, max-age=86400" }},
+    { "src": "/work/?",    "status": 301, "headers": { "Location": "/#work",     "Cache-Control": "public, max-age=86400" }},
+    { "src": "/how/?",     "status": 301, "headers": { "Location": "/#how",      "Cache-Control": "public, max-age=86400" }},
+    { "src": "/reviews/?", "status": 301, "headers": { "Location": "/#reviews",  "Cache-Control": "public, max-age=86400" }},
+    { "src": "/about/?",   "status": 301, "headers": { "Location": "/#about",    "Cache-Control": "public, max-age=86400" }},
+    { "src": "/faq/?",     "status": 301, "headers": { "Location": "/#faq",      "Cache-Control": "public, max-age=86400" }},
+    { "src": "/contact/?", "status": 301, "headers": { "Location": "/#contact",  "Cache-Control": "public, max-age=86400" }},
+
+    { "src": "/quote/?",   "status": 301, "headers": { "Location": "/book",   "Cache-Control": "public, max-age=86400" }},
+    { "src": "/booking/?", "status": 301, "headers": { "Location": "/book",   "Cache-Control": "public, max-age=86400" }},
+
+    { "src": "/index\\.html",          "status": 301, "headers": { "Location": "/",        "Cache-Control": "public, max-age=86400" }},
+    { "src": "/booking\\.html",        "status": 301, "headers": { "Location": "/book",    "Cache-Control": "public, max-age=86400" }},
+    { "src": "/services\\.html",       "status": 301, "headers": { "Location": "/services","Cache-Control": "public, max-age=86400" }},
+    { "src": "/gallery\\.html",        "status": 301, "headers": { "Location": "/gallery", "Cache-Control": "public, max-age=86400" }},
+    { "src": "/leave-review\\.html",   "status": 301, "headers": { "Location": "/review",  "Cache-Control": "public, max-age=86400" }},
+
+    { "src": "/book/?",     "dest": "/frontend/booking.html" },
+    { "src": "/services/?", "dest": "/frontend/services.html" },
+    { "src": "/gallery/?",  "dest": "/frontend/gallery.html" },
+    { "src": "/review/?",   "dest": "/frontend/leave-review.html" },
+    { "src": "/withdraw/?", "dest": "/frontend/review-withdraw.html" },
+    { "src": "/s/([^/]+)/?", "dest": "/frontend/service-detail.html?service=$1" },
+
     { "src": "/", "dest": "/frontend/index.html" },
     { "src": "/admin/?", "dest": "/frontend/admin/login.html" },
     { "src": "/(.*)", "dest": "/frontend/$1", "continue": true },

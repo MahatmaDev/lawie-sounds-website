@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const banners = [
-  { id: '1', message: '🎉 Special Offer: 15% off!', ctaText: 'Claim Offer', ctaLink: '/booking.html', isActive: true }
+  { id: '1', message: '🎉 Special Offer: 15% off!', ctaText: 'Claim Offer', ctaLink: '/book', isActive: true }
 ];
 
 router.get('/', (req, res) => {

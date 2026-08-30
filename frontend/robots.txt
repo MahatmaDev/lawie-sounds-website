@@ -1,0 +1,22 @@
+# Lawie Sounds — https://lawiesounds.com
+#
+# The admin area and the API are functional surfaces, not content. Keeping
+# them out of the index is not a security control (both are protected on the
+# server) — it stops the dashboard's login page competing with the marketing
+# pages for the brand's own search results.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+# Review-withdrawal links carry a single-use token in the query string. They
+# are e-mailed to one person and must never be crawled or cached. Both the
+# short path and the file it serves are listed, because a crawler that finds
+# either one has found the same page.
+Disallow: /withdraw
+Disallow: /review-withdraw.html
+Disallow: /*token=
+
+Sitemap: https://lawiesounds.com/sitemap.xml

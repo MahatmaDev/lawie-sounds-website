@@ -52,7 +52,7 @@ let mockData = {
     { id: '2', clientName: 'Tech Corp', rating: 5, comment: 'Professional and reliable.', eventType: 'Corporate', isApproved: false, createdAt: new Date().toISOString() }
   ],
   marketing: [
-    { id: '1', type: 'banner', message: '🎉 Special Offer: 15% off April bookings!', ctaText: 'Claim Offer', ctaLink: '/booking.html', isActive: true, startDate: '2025-04-01', endDate: '2025-04-30' }
+    { id: '1', type: 'banner', message: '🎉 Special Offer: 15% off April bookings!', ctaText: 'Claim Offer', ctaLink: '/book', isActive: true, startDate: '2025-04-01', endDate: '2025-04-30' }
   ],
   bookings: [
     { id: '1', name: 'John Doe', email: 'john@example.com', phone: '0712345678', eventDate: '2025-06-01', eventType: 'Wedding', guestCount: '101-250', budget: '100k-200k', venue: 'Nairobi', status: 'pending', createdAt: new Date().toISOString() }
@@ -542,7 +542,7 @@ function openMarketingForm() {
   document.getElementById('modalForm').innerHTML = `
     <div><label class="block text-sm mb-1">Message *</label><textarea id="bannerMessage" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" rows="2" required placeholder="🎉 Special offer..."></textarea></div>
     <div><label class="block text-sm mb-1">CTA Text</label><input type="text" id="bannerCtaText" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="Learn More"></div>
-    <div><label class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="/booking.html"></div>
+    <div><label class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="/book"></div>
     <div><label class="block text-sm mb-1">Start Date</label><input type="date" id="bannerStartDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${new Date().toISOString().split('T')[0]}"></div>
     <div><label class="block text-sm mb-1">End Date</label><input type="date" id="bannerEndDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${new Date(Date.now() + 30*86400000).toISOString().split('T')[0]}"></div>
   `;

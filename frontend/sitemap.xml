@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap for the pages that always exist.
+
+  Only canonical short URLs appear here. The legacy .html paths now 301 to
+  these, and listing both would ask Google to index two addresses for one
+  page and split the ranking between them.
+
+  The homepage section shorts (/how, /faq, /reviews, …) are deliberately
+  ABSENT: they are 301 redirects to anchors on the homepage, not pages. A
+  sitemap listing redirects is a sitemap that tells a crawler to do work
+  and then throw the answer away.
+
+  Service pages live at /s/<slug> and are generated from the database, so
+  they are listed here for the nine services that have been live since
+  launch; when a service is added or renamed in the dashboard this file
+  needs the matching line. A generated sitemap is the eventual fix.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+    <loc>https://lawiesounds.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://lawiesounds.com/book</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://lawiesounds.com/services</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://lawiesounds.com/gallery</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lawiesounds.com/review</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url><loc>https://lawiesounds.com/s/dj-mc-services</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/public-address</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/power-lighting</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/led-screens</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/photography</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/live-streaming</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/360-booth</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/drone-services</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lawiesounds.com/s/pyrotechnics</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+
+</urlset>

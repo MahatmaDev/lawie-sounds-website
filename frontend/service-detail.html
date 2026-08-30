@@ -3,225 +3,247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <link rel="canonical" href="https://lawiesounds.com/service-detail.html">
+  <link rel="canonical" id="canonicalLink" href="https://lawiesounds.com/services">
   <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
   <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
-  <meta name="theme-color" content="#facc15">
   <title id="pageTitle">Service | LAWIE SOUNDS</title>
   <meta id="metaDesc" name="description" content="Professional event entertainment services in Kenya.">
   <meta property="og:type" content="website">
   <meta id="ogTitle"  property="og:title"       content="Lawie Sounds">
   <meta id="ogDesc"   property="og:description" content="Professional event entertainment — Kenya.">
+  <meta id="ogUrl"    property="og:url"         content="https://lawiesounds.com/services">
+  <meta property="og:image" content="https://lawiesounds.com/IMAGES/LOGO/2.jpg">
+  <meta property="og:site_name" content="Lawie Sounds">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#08080f">
+
+  <script type="application/ld+json" id="ldService"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-zoom.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-thumbnail.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <link rel="stylesheet" href="/css/app.css">
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    * { font-family: 'Inter', sans-serif; }
-
-    :root {
-      --bg:      #08080f;
-      --surface: #0f0f1a;
-      --card:    #111120;
-      --border:  rgba(255,255,255,0.07);
-      --yellow:  #facc15;
-      --yellow-dim: rgba(250,204,21,0.12);
-      --purple:  #7c4dff;
+    /* ══════════════════════════════════════════════════════════════
+       SERVICE PAGE ONLY
+       The full-bleed hero and the package cards. Everything else —
+       header, footer, FAQ, reviews, buttons, timestamps — comes from
+       /css/app.css.
+       ══════════════════════════════════════════════════════════════ */
+    .svc-hero { position: relative; min-height: min(74vh, 620px); display: flex; align-items: flex-end; overflow: hidden; }
+    .svc-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+    .svc-hero::after {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background:
+        radial-gradient(110% 80% at 10% 100%, rgba(250,204,21,.14), transparent 60%),
+        linear-gradient(180deg, rgba(8,8,15,.55) 0%, rgba(8,8,15,.72) 45%, rgba(8,8,15,.97) 100%);
     }
+    .svc-hero .inner { position: relative; z-index: 2; width: 100%; padding: 120px 0 44px; }
+    .svc-hero h1 { font-size: clamp(32px, 6vw, 60px); font-weight: 800; line-height: 1.02; margin: 14px 0 0; }
 
-    body { background: var(--bg); color: #fff; margin: 0; }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--yellow); border-radius: 4px; }
-
-    /* Skeleton */
-    .skeleton {
-      background: linear-gradient(90deg,#111122 25%,#1a1a2e 50%,#111122 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.6s infinite;
-    }
-    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
-
-    /* Hero */
-    .hero-img { position:relative; height:420px; overflow:hidden; }
-    @media(max-width:640px) { .hero-img { height:260px; } }
-    .hero-img img { width:100%; height:100%; object-fit:cover; }
-    .hero-img::after {
-      content:'';
-      position:absolute;
-      inset:0;
-      background:linear-gradient(to right, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.3) 100%);
-    }
-    .hero-text { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; padding:2.5rem; }
-    @media(max-width:640px) { .hero-text { padding:1.25rem; } }
-
-    /* Package cards */
+    /* Packages. Cheapest first, and the entry option is what a visitor
+       meets — a client with a small event who sees a large figure first
+       leaves without asking, and that loss leaves no trace anywhere. */
+    .pkg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; max-width: 1000px; margin-inline: auto; }
     .pkg-card {
-      background: var(--card);
-      border: 1.5px solid var(--border);
-      border-radius: 18px;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+      display: flex; flex-direction: column; padding: 26px 24px;
+      border-radius: var(--r-lg); background: var(--card); border: 1.5px solid var(--line);
+      transition: transform .3s cubic-bezier(.2,.8,.3,1), border-color .3s, box-shadow .3s;
     }
-    .pkg-card:hover { transform: translateY(-5px); border-color: rgba(250,204,21,0.3); box-shadow: 0 20px 40px -12px rgba(0,0,0,0.5); }
-    .pkg-card.popular { border-color: var(--yellow); background: linear-gradient(145deg,#111120,#1a1a08); }
+    .pkg-card:hover { transform: translateY(-6px); border-color: var(--gold-line); box-shadow: var(--sh-3); }
+    .pkg-card.popular { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), var(--sh-gold); }
+    .pkg-card h3 { font-size: 18.5px; font-weight: 700; margin: 0; }
+    .pkg-price { font-family: 'Sora', sans-serif; font-size: 27px; font-weight: 800; color: var(--gold); margin: 14px 0 18px; line-height: 1; }
+    .pkg-price small { font-size: 13px; font-weight: 500; color: var(--text-faint); font-family: 'Inter', sans-serif; }
+    .pkg-feats { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 9px; flex: 1; }
+    .pkg-feats li { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+    .pkg-feats i { color: var(--live); font-size: 12px; margin-top: 3px; flex: none; }
 
-    /* Feature pill */
-    .feat-card {
-      background: var(--card);
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 1.25rem;
-      text-align: center;
-      transition: border-color 0.2s, transform 0.2s;
+    .budget-note {
+      max-width: 640px; margin: 0 auto 32px; padding: 14px 20px; text-align: center;
+      border-radius: var(--r-md); background: var(--gold-soft); border: 1px solid var(--gold-line);
     }
-    .feat-card:hover { border-color: rgba(124,77,255,0.4); transform: translateY(-3px); }
 
-    /* Gallery masonry */
-    .masonry { columns: 2; column-gap: 10px; }
-    @media(min-width:640px)  { .masonry { columns: 3; column-gap: 12px; } }
-    @media(min-width:1024px) { .masonry { columns: 4; column-gap: 14px; } }
-    .masonry-item { break-inside:avoid; margin-bottom:10px; display:block; }
+    .feat-card { padding: 24px; border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); }
+    .feat-card .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--gold-soft); border: 1px solid var(--gold-line); color: var(--gold); font-size: 18px; }
+    .feat-card h3 { font-size: 16px; font-weight: 700; margin: 16px 0 6px; }
+    .feat-card p { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
 
-    .gallery-card { position:relative; border-radius:10px; overflow:hidden; display:block; cursor:zoom-in; }
-    .gallery-card img { width:100%; height:auto; display:block; transition:transform 0.5s cubic-bezier(.4,0,.2,1); }
-    .gallery-card:hover img { transform:scale(1.07); }
-
-    /* FAQ accordion */
-    .faq-item { border-bottom:1px solid var(--border); }
-    .faq-btn  { width:100%; text-align:left; padding:1rem 0; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-weight:600; background:none; border:none; color:#fff; }
-    .faq-btn i { transition:transform 0.25s; flex-shrink:0; color:var(--yellow); }
-    .faq-item.open .faq-btn i { transform:rotate(180deg); }
-    .faq-answer { max-height:0; overflow:hidden; transition:max-height 0.35s cubic-bezier(0,1,0,1); }
-    .faq-item.open .faq-answer { max-height:400px; transition:max-height 0.5s ease; }
-    .faq-answer p { padding-bottom:1rem; color:rgba(255,255,255,0.55); font-size:.9rem; line-height:1.7; }
-
-    /* Review stars */
-    .stars { color:var(--yellow); letter-spacing:1px; }
-
-    /* Reveal */
-    .reveal { opacity:0; transform:translateY(18px); transition:opacity .5s ease,transform .5s ease; }
-    .reveal.visible { opacity:1; transform:none; }
-
-    /* Touch targets */
-    .btn-touch { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
-
-    /* Logo hover */
-    .logo-img { transition:transform .3s; }
-    .logo-img:hover { transform:scale(1.06); }
-
-    html { scroll-behavior:smooth; }
-    *:focus-visible { outline:2px solid var(--yellow); outline-offset:2px; border-radius:6px; }
-
-    @media(prefers-reduced-motion:reduce) {
-      .reveal, .pkg-card, .feat-card, .gallery-card img { transition:none !important; animation:none !important; }
-    }
+    .masonry { columns: 4; column-gap: 12px; }
+    @media (max-width: 1024px) { .masonry { columns: 3; } }
+    @media (max-width: 640px)  { .masonry { columns: 2; } }
+    .masonry a { display: block; break-inside: avoid; margin-bottom: 12px; border-radius: var(--r-md); overflow: hidden; background: #0a0a13; position: relative; }
+    .masonry img { width: 100%; display: block; transition: transform .6s; }
+    .masonry a:hover img { transform: scale(1.05); }
   </style>
 </head>
 <body>
 
-  <!-- ==================== HEADER ==================== -->
-  <header class="sticky top-0 z-40 border-b" style="background:rgba(0,0,0,0.88);backdrop-filter:blur(16px);border-color:var(--border)">
-    <div class="container mx-auto px-4 py-3.5">
-      <div class="flex items-center justify-between gap-3">
-        <a href="index.html" class="flex items-center gap-3 flex-shrink-0">
-          <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
-          <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
-        </a>
-        <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
-          <a href="index.html"         class="text-gray-400 hover:text-yellow-400 transition">Home</a>
-          <a href="services.html"      class="text-yellow-400 border-b-2 border-yellow-400 pb-0.5">Services</a>
-          <a href="gallery.html"       class="text-gray-400 hover:text-yellow-400 transition">Gallery</a>
-          <a href="booking.html"       class="text-gray-400 hover:text-yellow-400 transition">Booking</a>
-          <a href="index.html#contact" class="text-gray-400 hover:text-yellow-400 transition">Contact</a>
-        </nav>
-        <div class="flex items-center gap-2">
-          <a href="booking.html" id="headerBookBtn" class="btn-touch bg-yellow-400 text-black px-5 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg">
-            <i class="fas fa-calendar-check mr-1.5"></i><span class="hidden sm:inline">Book Now</span><span class="sm:hidden">Book</span>
-          </a>
-          <button id="mobile-menu-btn" class="btn-touch md:hidden text-white p-2" aria-label="Menu">
-            <i class="fas fa-bars text-lg"></i>
-          </button>
-        </div>
-      </div>
-      <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t space-y-1" style="border-color:var(--border)">
-        <a href="index.html"         class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Home</a>
-        <a href="services.html"      class="block py-2.5 text-yellow-400 text-sm font-bold">Services</a>
-        <a href="gallery.html"       class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Gallery</a>
-        <a href="booking.html"       class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Booking</a>
-        <a href="index.html#contact" class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Contact</a>
-      </div>
+<!-- ══════════════ ANNOUNCEMENT BAR (admin-controlled) ══════════════ -->
+<div id="announce" class="announce" hidden>
+  <div class="wrap" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:11px">
+    <span style="font-size:18px" aria-hidden="true">🎉</span>
+    <p id="announceMsg" style="margin:0;flex:1;min-width:200px;font-size:14.5px;font-weight:700;line-height:1.4"></p>
+    <span id="announceEnds" style="font-size:12px;font-weight:800;letter-spacing:.04em;opacity:.75"></span>
+    <a id="announceCta" href="/book" class="btn btn-sm cta">Claim offer <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
+    <button id="announceClose" aria-label="Dismiss this announcement" style="background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:inherit;opacity:.6;padding:0 4px">&times;</button>
+  </div>
+</div>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Lawie Sounds — home">
+      <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="" fetchpriority="high">
+      <span>
+        <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
+        <span class="brand-sub">Nyeri · Kenya</span>
+      </span>
+    </a>
+
+    <!-- Every entry is a real, shareable URL. /how and /faq 301 to the
+         matching homepage anchor on the server; here on the homepage
+         site.js turns them back into a smooth scroll and leaves the short
+         URL in the address bar. That is what lets this exact markup be
+         the header on every page. -->
+    <nav class="hidden lg:flex" style="gap:30px" aria-label="Main navigation">
+      <a class="nav-link" href="/services">Services</a>
+      <a class="nav-link" href="/latest" id="navLatest" style="position:relative">What's new<span class="new-dot" id="navNewDot" hidden></span></a>
+      <a class="nav-link" href="/gallery">Our work</a>
+      <a class="nav-link" href="/how">How it works</a>
+      <a class="nav-link" href="/reviews">Reviews</a>
+      <a class="nav-link" href="/faq">FAQ</a>
+    </nav>
+
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="tel:+254703925826" class="hidden xl:inline-flex" style="color:var(--text-muted);font-size:13.5px;font-weight:600;text-decoration:none;gap:8px;align-items:center">
+        <i class="fas fa-phone-alt gold"></i>+254 703 925 826
+      </a>
+      <a href="/book" class="btn btn-primary btn-sm hidden sm:inline-flex"><i class="fas fa-calendar-check"></i>Get a quote</a>
+      <button id="menuBtn" class="lg:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav"
+              style="background:rgba(255,255,255,.06);border:1px solid var(--line);color:#fff;width:44px;height:44px;border-radius:12px;cursor:pointer">
+        <i class="fas fa-bars"></i>
+      </button>
     </div>
-  </header>
+  </div>
+
+  <nav id="mobileNav" class="lg:hidden" hidden aria-label="Mobile navigation" style="border-top:1px solid var(--line);background:rgba(8,8,15,.98)">
+    <div class="wrap" style="padding-block:12px;display:grid;gap:2px">
+      <a class="mnav" href="/services">Services</a>
+      <a class="mnav" href="/latest">What's new</a>
+      <a class="mnav" href="/gallery">Our work</a>
+      <a class="mnav" href="/how">How it works</a>
+      <a class="mnav" href="/reviews">Reviews</a>
+      <a class="mnav" href="/faq">FAQ</a>
+      <a class="mnav" href="/contact">Contact</a>
+      <a href="/book" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+    </div>
+  </nav>
+</header>
 
   <!-- ==================== MAIN CONTENT ==================== -->
   <main id="pageContent">
-    <!-- Skeleton while loading -->
-    <div id="skeletonHero" class="skeleton" style="height:420px"></div>
-    <div class="container mx-auto px-4 py-10 space-y-8" id="skeletonBody">
-      <div class="skeleton rounded-2xl" style="height:220px"></div>
-      <div class="grid md:grid-cols-3 gap-4">
-        <div class="skeleton rounded-2xl" style="height:260px"></div>
-        <div class="skeleton rounded-2xl" style="height:260px"></div>
-        <div class="skeleton rounded-2xl" style="height:260px"></div>
+    <!-- Skeleton while loading. Sized close to the real thing so the page
+         does not jump when the content arrives. -->
+    <div id="skeletonHero" class="skel" style="height:min(74vh,620px);border-radius:0"></div>
+    <div class="wrap" style="padding-block:56px;display:grid;gap:22px" id="skeletonBody">
+      <div class="skel" style="height:120px"></div>
+      <div class="pkg-grid">
+        <div class="skel" style="height:340px"></div>
+        <div class="skel" style="height:340px"></div>
+        <div class="skel" style="height:340px"></div>
       </div>
     </div>
   </main>
 
-  <!-- ==================== FOOTER ==================== -->
-  <footer class="border-t" style="background:#000;border-color:var(--border)">
-    <div class="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
       <div>
-        <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
-        <p class="text-sm text-gray-500 leading-relaxed">
-          &copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>
-          Professional Event Entertainment · Kenya<br>
-          Site by <a rel="noopener noreferrer author" href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" class="text-yellow-400 hover:underline">Kelvin Ndegwa</a> &middot; FullStack Engineer
+        <a href="/" class="brand" style="margin-bottom:14px">
+          <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" loading="lazy" alt="">
+          <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+        </a>
+        <p style="font-size:13.5px;color:var(--text-faint);line-height:1.7;margin:14px 0 0;max-width:34ch">
+          Event entertainment, sound, lighting and live media across Nyeri, Mount Kenya and Kenya at large.
         </p>
-      </div>
-      <div>
-        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Navigation</h3>
-        <ul class="space-y-2.5 text-sm">
-          <li><a href="index.html"    class="text-gray-400 hover:text-yellow-400 transition">Home</a></li>
-          <li><a href="services.html" class="text-gray-400 hover:text-yellow-400 transition">Services</a></li>
-          <li><a href="gallery.html"  class="text-gray-400 hover:text-yellow-400 transition">Gallery</a></li>
-          <li><a href="booking.html"  class="text-gray-400 hover:text-yellow-400 transition">Booking</a></li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Connect</h3>
-        <div class="flex gap-4 text-2xl mb-5">
-          <a rel="noopener noreferrer" href="https://instagram.com/lawie_sounds"  target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a rel="noopener noreferrer" href="https://facebook.com/lawie.sounds"   target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a rel="noopener noreferrer" href="https://wa.me/254703925826"          target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-          <a rel="noopener noreferrer" href="https://tiktok.com/@lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+        <div class="foot-social">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://tiktok.com/@lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
+          <a href="/wa" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp"></i></a>
         </div>
-        <p class="text-sm text-gray-500"><i class="fas fa-phone mr-2 text-yellow-400"></i><a href="tel:+254703925826" class="hover:text-yellow-400 transition">+254 703 925 826</a></p>
-        <p class="text-sm text-gray-500 mt-1.5"><i class="fas fa-map-marker-alt mr-2 text-yellow-400"></i>Nyeri, Kenya</p>
+      </div>
+
+      <div>
+        <h4>Pages</h4>
+        <div class="foot-links">
+          <a href="/services">All services</a>
+          <a href="/gallery">Gallery</a>
+          <a href="/book">Get a quote</a>
+          <a href="/review">Leave a review</a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Popular</h4>
+        <!-- The homepage replaces this with the live list from the API.
+             Everywhere else the nine standing services are the truth and a
+             fetch would be a round trip for a footer. -->
+        <div class="foot-links" id="footerServices">
+          <a href="/s/dj-mc-services">DJ &amp; MC Services</a>
+          <a href="/s/public-address">Public Address Systems</a>
+          <a href="/s/power-lighting">Power &amp; Lighting</a>
+          <a href="/s/led-screens">LED Screens</a>
+          <a href="/s/photography">Photography</a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Contact</h4>
+        <div class="foot-links">
+          <a href="tel:+254703925826"><i class="fas fa-phone-alt gold" style="width:18px"></i>+254 703 925 826</a>
+          <a href="tel:+254733925826"><i class="fas fa-mobile-screen gold" style="width:18px"></i>+254 733 925 826</a>
+          <a href="mailto:Lawiesounds@gmail.com"><i class="fas fa-envelope gold" style="width:18px"></i>Lawiesounds@gmail.com</a>
+          <span style="color:var(--text-muted);font-size:14px"><i class="fas fa-location-dot gold" style="width:18px"></i>Nyeri, Kenya</span>
+        </div>
       </div>
     </div>
-  </footer>
 
-  <!-- Floating Action Buttons -->
-  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-    <a href="tel:+254703925826" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#22c55e;color:#fff" aria-label="Call"><i class="fas fa-phone-alt"></i></a>
-    <a rel="noopener noreferrer" href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#16a34a;color:#fff" aria-label="WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
-    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#facc15;color:#000" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+    <div class="foot-bottom">
+      <p style="margin:0">&copy; <span id="year">2026</span> Lawie Sounds. All rights reserved.</p>
+      <p style="margin:0">Site by <a href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" rel="noopener noreferrer author" class="gold" style="text-decoration:none">Kelvin Ndegwa</a> · FullStack Engineer</p>
+    </div>
   </div>
+</footer>
+
+<!-- Desktop floating actions -->
+<div class="fab">
+  <a href="/call" style="background:#22c55e;color:#fff" aria-label="Call Lawie Sounds"><i class="fas fa-phone-alt"></i></a>
+  <a href="/wa" style="background:var(--wa);color:#04220f" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp" style="font-size:20px"></i></a>
+  <button id="toTop" style="background:var(--gold);color:#14110a" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+</div>
+
+<!-- Mobile thumb-zone action bar. The three things anyone actually wants
+     from a phone, in the part of the screen a thumb reaches. -->
+<div class="mobile-bar">
+  <a href="/call" style="background:rgba(255,255,255,.07);color:#fff;border:1px solid var(--line)"><i class="fas fa-phone-alt"></i>Call</a>
+  <a href="/wa" style="background:var(--wa);color:#04220f"><i class="fab fa-whatsapp" style="font-size:17px"></i>WhatsApp</a>
+  <a href="/book" style="background:var(--gold);color:#14110a"><i class="fas fa-calendar-check"></i>Get a quote</a>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.min.js"></script>
+  <script src="/js/site.js"></script>
 
   <script>
   // ============================================================
@@ -350,14 +372,11 @@
     return [];
   }
 
-  // ── Intersection Observer for reveal animations ──
-  const revealObserver = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
-  }, { threshold: 0.06 });
-
-  function observeReveal() {
-    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-  }
+  // ── Shared helpers ────────────────────────────────────────────────
+  // The header, footer, reveals, announcement bar and every "how long
+  // ago" come from /js/site.js, so this file is only the service page.
+  const LSx = window.LS;
+  const observeReveal = () => LSx.observeReveals();
 
   // ── Render the full page ──
   function render(service, galleryItems, reviews) {
@@ -365,219 +384,239 @@
     const name       = service.name || 'Service';
     const shortDesc  = service.shortDesc  || service.short_desc  || '';
     const longDesc   = service.longDesc   || service.long_desc   || shortDesc;
-    const icon       = service.icon || 'fa-star';
     const packages   = service.packages  || [];
     const features   = service.features  || [];
     const faqs       = service.faqs      || [];
     const category   = service.category  || 'Service';
     const mainImage  = (service.mainImage && !service.mainImage.includes('placehold')) ? service.mainImage : (IMG_FALLBACK[slug] || '/IMAGES/LOGO/2.jpg');
-    const waMsg      = encodeURIComponent(`Hi Lawie Sounds! I'm interested in the "${name}" service. Can you send me a quote?`);
-    const bookUrl    = `booking.html?service=${slug}`;
+    const bookUrl    = `/book?service=${encodeURIComponent(slug)}`;
 
     // Update head meta
-    document.getElementById('pageTitle').textContent = `${name} | LAWIE SOUNDS`;
+    document.getElementById('pageTitle').textContent = `${name} in Nyeri & Across Kenya | Lawie Sounds`;
     document.getElementById('metaDesc').setAttribute('content', shortDesc);
     document.getElementById('ogTitle').setAttribute('content', `${name} | Lawie Sounds`);
     document.getElementById('ogDesc').setAttribute('content', shortDesc);
-    document.getElementById('headerBookBtn').href = bookUrl;
 
-    // ── Drone-specific trust badge ──
+    // Every "Get a quote" on this page carries the service with it, so the
+    // booking form opens with it already ticked and the client never
+    // re-enters what they have just spent two minutes reading about.
+    document.querySelectorAll('a[href="/book"]').forEach(a => { a.href = bookUrl; });
+
+    // Every service is reachable at two URLs — the readable /s/<slug> and
+    // the query form the page is actually served from. Point the canonical
+    // at the short one so search engines index a single address per
+    // service instead of splitting the ranking between two.
+    const canonical = `https://lawiesounds.com/s/${encodeURIComponent(slug)}`;
+    document.getElementById('canonicalLink').setAttribute('href', canonical);
+    document.getElementById('ogUrl')?.setAttribute('content', canonical);
+    if (history.replaceState && location.pathname !== `/s/${slug}`) {
+      // Keeps the address bar shareable without a reload, so a client who
+      // copies the URL from here gets the short form too.
+      history.replaceState(null, '', `/s/${encodeURIComponent(slug)}`);
+    }
+
+    // ── Drone-specific trust badges ──
     const droneCallout = slug === 'drone-services' ? `
-      <div class="flex flex-wrap gap-2 mt-4 reveal">
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style="background:var(--yellow-dim);border:1px solid rgba(250,204,21,0.3);color:var(--yellow)"><i class="fas fa-id-card"></i> KCAA Licensed Pilot</span>
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#22c55e"><i class="fas fa-shield-alt"></i> Fully Insured</span>
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);color:#60a5fa"><i class="fas fa-video"></i> 4K Ultra HD</span>
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);color:#c084fc"><i class="fas fa-file-alt"></i> Permits Handled</span>
+      <div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:22px">
+        <span class="chip chip-gold"><i class="fas fa-id-card"></i>KCAA licensed pilot</span>
+        <span class="chip chip-live"><i class="fas fa-shield-halved"></i>Fully insured</span>
+        <span class="chip"><i class="fas fa-video gold"></i>4K Ultra HD</span>
+        <span class="chip"><i class="fas fa-file-lines gold"></i>Permits handled</span>
       </div>` : '';
 
-    // ── Build packages HTML ──
+    // ── Packages ──
     //
-    // Ordered cheapest first, and the entry option is what a visitor meets. The
-    // concern this addresses is a client with a small event seeing a large
-    // figure and leaving — so the page never opens with the expensive tier, and
-    // the invitation to name a smaller budget sits directly beside the prices
-    // rather than at the bottom of the page.
+    // Ordered cheapest first, and the entry option is what a visitor meets.
+    // A client with a small event who sees a large figure first leaves
+    // without ever asking — a loss that leaves no trace anywhere. So the
+    // page never opens with the expensive tier, and the invitation to name
+    // a smaller budget sits directly beside the prices rather than at the
+    // bottom of the page.
     const priceMode  = service.priceDisplay || 'from';
     const budgetNote = service.budgetNote || 'Smaller event? Tell us your budget and we will build something that fits.';
 
     let packagesHtml = '';
     if (packages.length) {
-      // Cheapest first. A priced package always precedes a quote-only one, so
-      // the lowest concrete number is the first thing read.
+      // A priced package always precedes a quote-only one, so the lowest
+      // concrete number is the first thing read.
       const ordered = [...packages].sort((a, b) => {
         const ap = a.price == null ? Infinity : Number(a.price);
         const bp = b.price == null ? Infinity : Number(b.price);
         return ap - bp;
       });
 
-      const cards = ordered.map((pkg, i) => `
-        <div class="pkg-card ${pkg.isPopular || pkg.popular ? 'popular' : ''} reveal">
-          ${pkg.isPopular || pkg.popular ? '<div class="mb-3 text-center"><span class="text-xs font-bold text-black bg-yellow-400 px-3 py-1 rounded-full">🔥 MOST POPULAR</span></div>' : ''}
-          ${i === 0 && priceMode !== 'on_request' && pkg.price != null && !(pkg.isPopular || pkg.popular)
-            ? '<div class="mb-3 text-center"><span class="text-xs font-bold text-green-400 border border-green-700/40 px-3 py-1 rounded-full">BEST FOR SMALLER EVENTS</span></div>' : ''}
-          <h3 class="text-lg font-bold text-white mb-1">${escHtml(pkg.name)}</h3>
-          ${pkg.duration ? `<p class="text-xs text-gray-400 mb-3"><i class="fas fa-clock mr-1"></i>${escHtml(pkg.duration)}</p>` : ''}
+      const cards = ordered.map((pkg, i) => {
+        const popular = Boolean(pkg.isPopular || pkg.popular);
+        const entry = i === 0 && priceMode !== 'on_request' && pkg.price != null && !popular;
+        return `
+        <div class="pkg-card reveal${popular ? ' popular' : ''}">
+          ${popular ? '<span class="stamp-new" style="align-self:flex-start;margin-bottom:12px;background:var(--gold);color:#14110a">🔥 Most popular</span>' : ''}
+          ${entry   ? '<span class="chip chip-live" style="align-self:flex-start;margin-bottom:12px;font-size:11px">Best for smaller events</span>' : ''}
+          <h3>${escHtml(pkg.name)}</h3>
+          ${pkg.duration ? `<p class="stamp" style="margin:7px 0 0"><i class="fas fa-clock"></i>${escHtml(pkg.duration)}</p>` : ''}
           ${priceMode === 'on_request' || pkg.price == null
-            ? '<p class="text-sm font-semibold text-gray-400 mb-4">Price on request</p>'
-            : `<p class="text-2xl font-black mb-4" style="color:var(--yellow)">KES ${fmtKES(pkg.price)}<span class="text-sm font-normal text-gray-400"> / event</span></p>`}
-          <ul class="space-y-2 flex-1 mb-5">
-            ${(pkg.features || []).map(f => `<li class="flex items-start gap-2 text-sm text-gray-300"><i class="fas fa-check-circle text-green-400 mt-0.5 flex-shrink-0"></i>${escHtml(f)}</li>`).join('')}
+            ? '<p class="pkg-price" style="font-size:19px">Priced per event</p>'
+            : `<p class="pkg-price">KES ${fmtKES(pkg.price)}<small> / event</small></p>`}
+          <ul class="pkg-feats">
+            ${(pkg.features || []).map(f => `<li><i class="fas fa-check"></i>${escHtml(f)}</li>`).join('')}
           </ul>
-          <a href="${bookUrl}&package=${encodeURIComponent(pkg.name)}"
-            class="btn-touch block text-center py-2.5 rounded-xl font-bold text-sm transition ${pkg.isPopular || pkg.popular ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-gray-800 text-white hover:bg-gray-700'}">
-            Request This Package <i class="fas fa-arrow-right ml-1"></i>
+          <a href="${escHtml(bookUrl)}&package=${encodeURIComponent(pkg.name)}" class="btn ${popular ? 'btn-primary' : 'btn-ghost'}">
+            Request this package <i class="fas fa-arrow-right" style="font-size:12px"></i>
           </a>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       packagesHtml = `
-        <section class="py-16 reveal" style="background:var(--surface)">
-          <div class="container mx-auto px-4">
-            <div class="text-center mb-6">
-              <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Pricing</p>
-              <h2 class="text-2xl md:text-3xl font-black">
-                ${priceMode === 'on_request' ? 'What We Offer' : 'Options To Suit Your Event'}
-              </h2>
+        <section id="packages" style="padding:80px 0;background:var(--ink-raised);border-block:1px solid var(--line)">
+          <div class="wrap">
+            <div class="reveal" style="text-align:center;max-width:640px;margin-inline:auto">
+              <span class="eyebrow" style="justify-content:center">Pricing</span>
+              <h2 class="section-title">${priceMode === 'on_request' ? 'What we offer' : 'Options to suit your event'}</h2>
             </div>
 
-            <!-- Placed above the prices, not below them. Someone whose budget is
-                 smaller than the entry tier should meet the invitation before
-                 they conclude they cannot afford us and close the page. -->
-            <div class="max-w-2xl mx-auto mb-8 rounded-xl px-4 py-3 text-center"
-                 style="background:rgba(250,204,21,0.07);border:1px solid rgba(250,204,21,0.22)">
-              <p class="text-sm text-gray-200">${escHtml(budgetNote)}</p>
-              <a href="${bookUrl}" class="inline-block mt-2 text-sm font-bold text-yellow-400 hover:underline">
-                Tell us your budget →
-              </a>
+            <!-- Above the prices, not below them. Someone whose budget is
+                 smaller than the entry tier should meet the invitation
+                 before they conclude they cannot afford us and close the
+                 page. -->
+            <div class="budget-note reveal" style="margin-top:32px">
+              <p style="margin:0;font-size:14.5px;color:var(--text-soft)">${escHtml(budgetNote)}</p>
+              <a href="${escHtml(bookUrl)}" class="gold" style="display:inline-block;margin-top:8px;font-size:14px;font-weight:700;text-decoration:none">Tell us your budget →</a>
             </div>
 
-            <div class="grid md:grid-cols-${Math.min(ordered.length, 3)} gap-5 max-w-5xl mx-auto">
-              ${cards}
-            </div>
+            <div class="pkg-grid">${cards}</div>
           </div>
         </section>`;
     } else {
-      // No packages yet. Still ask for the budget rather than showing nothing —
-      // silence is what makes a visitor assume the answer is "too expensive".
       packagesHtml = `
-        <section class="py-14 reveal" style="background:var(--surface)">
-          <div class="container mx-auto px-4 text-center max-w-xl">
-            <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Pricing</p>
-            <h2 class="text-2xl font-black mb-3">Priced Around Your Event</h2>
-            <p class="text-gray-400 text-sm mb-6">${escHtml(budgetNote)}</p>
-            <a href="${bookUrl}" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-7 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
-              <i class="fas fa-file-invoice"></i> Get a quote
-            </a>
+        <section id="packages" style="padding:72px 0;background:var(--ink-raised);border-block:1px solid var(--line)">
+          <div class="wrap reveal" style="text-align:center;max-width:620px">
+            <span class="eyebrow" style="justify-content:center">Pricing</span>
+            <h2 class="section-title">Priced around your event</h2>
+            <p class="section-lead" style="margin-inline:auto">${escHtml(budgetNote)}</p>
+            <a href="${escHtml(bookUrl)}" class="btn btn-primary" style="margin-top:26px"><i class="fas fa-calendar-check"></i>Get a free quote</a>
           </div>
         </section>`;
     }
 
-    // ── Features grid ──
+    // ── Features ──
     let featuresHtml = '';
     if (features.length) {
       featuresHtml = `
-        <section class="py-14">
-          <div class="container mx-auto px-4">
-            <div class="text-center mb-10 reveal">
-              <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">What's Included</p>
-              <h2 class="text-2xl md:text-3xl font-black">Why Clients Choose This Service</h2>
+        <section style="padding:80px 0">
+          <div class="wrap">
+            <div class="reveal" style="max-width:660px">
+              <span class="eyebrow">What you get</span>
+              <h2 class="section-title">Why clients choose <span class="gold">this service</span></h2>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              ${features.map((f,i) => `
-                <div class="feat-card reveal" style="animation-delay:${i*0.07}s">
-                  <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style="background:var(--yellow-dim)">
-                    <i class="fas ${escHtml(f.icon || 'fa-star')} text-yellow-400 text-xl"></i>
-                  </div>
-                  <h3 class="font-bold text-sm mb-1">${escHtml(f.title)}</h3>
-                  <p class="text-xs text-gray-400 leading-relaxed">${escHtml(f.desc || '')}</p>
-                </div>`).join('')}
+            <div class="reveal" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:36px">
+              ${features.map(f => {
+                // Features arrive either as objects from the local fallback
+                // or as plain strings from the database. Both render.
+                const title = typeof f === 'string' ? f : (f.title || '');
+                const desc  = typeof f === 'string' ? '' : (f.desc || '');
+                const icon  = typeof f === 'string' ? 'fa-check' : (f.icon || 'fa-check');
+                return `<div class="feat-card">
+                          <span class="ic"><i class="fas ${escHtml(icon)}"></i></span>
+                          <h3>${escHtml(title)}</h3>
+                          ${desc ? `<p>${escHtml(desc)}</p>` : ''}
+                        </div>`;
+              }).join('')}
             </div>
           </div>
         </section>`;
     }
 
-    // ── Gallery grid ──
+    // ── Gallery ──
     let galleryHtml = '';
     if (galleryItems.length) {
+      // Newest photograph in this set, so the section can say how recent
+      // the work is rather than looking like an archive.
+      const newest = galleryItems.map(g => g.eventDate || g.createdAt).filter(Boolean).sort().pop();
       galleryHtml = `
-        <section class="py-14" style="background:var(--surface)">
-          <div class="container mx-auto px-4">
-            <div class="flex items-end justify-between mb-8 reveal">
-              <div>
-                <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-1">Our Work</p>
-                <h2 class="text-2xl md:text-3xl font-black">Moments <span class="text-yellow-400">Captured</span></h2>
-                <p class="text-gray-400 text-sm mt-1">Real events, real setups, real impact.</p>
-              </div>
-              <a href="gallery.html" class="text-yellow-400 text-sm font-bold hover:text-yellow-300 transition flex-shrink-0">View all <i class="fas fa-arrow-right text-xs ml-1"></i></a>
+        <section style="padding:80px 0;background:var(--ink-raised);border-block:1px solid var(--line)">
+          <div class="wrap">
+            <div class="reveal" style="max-width:660px">
+              <span class="eyebrow">From real events</span>
+              <h2 class="section-title">Moments <span class="gold">captured</span></h2>
+              <p class="section-lead">Photographs from jobs where we actually supplied this.</p>
+              ${newest ? `<p class="freshline" style="margin-top:14px"><span class="orb"></span>Most recent ${escHtml(LSx.timeAgo(newest))}</p>` : ''}
             </div>
-            <div class="masonry" id="serviceGalleryGrid">
-              ${galleryItems.filter(g => g.type !== 'video').map((g,i) => `
-                <a href="${escHtml(g.imageUrl)}" class="masonry-item gallery-card reveal" style="animation-delay:${(i%4)*0.06}s">
-                  <img src="${escHtml(g.imageUrl)}" alt="${escHtml(g.title || name)}" loading="lazy"
-                    onerror="this.closest('a').style.display='none'">
-                </a>`).join('')}
+            <div class="masonry" id="serviceGalleryGrid" style="margin-top:32px">
+              ${galleryItems.slice(0, 12).map(g => {
+                const when = g.eventDate || g.createdAt;
+                return `<a href="${escHtml(g.imageUrl)}" aria-label="${escHtml(g.title || name)}">
+                  <img src="${escHtml(g.imageUrl)}" alt="${escHtml(g.altText || g.title || name)}" loading="lazy"
+                       onerror="this.closest('a').style.display='none'">
+                  ${when ? `<span style="position:absolute;inset:auto 0 0 0;padding:20px 10px 8px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent)">${LSx.stamp(when, { icon: 'fa-calendar' })}</span>` : ''}
+                </a>`;
+              }).join('')}
+            </div>
+            <div style="text-align:center;margin-top:22px">
+              <a href="/gallery" class="btn btn-ghost btn-sm">See the full gallery <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
             </div>
           </div>
         </section>`;
     }
 
-    // ── Reviews section ──
+    // ── Reviews ──
+    // Real or absent. There is deliberately no fallback anywhere on this
+    // site for social proof.
     let reviewsHtml = '';
     if (reviews.length) {
       reviewsHtml = `
-        <section class="py-14">
-          <div class="container mx-auto px-4">
-            <div class="text-center mb-10 reveal">
-              <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Client Love</p>
-              <h2 class="text-2xl md:text-3xl font-black">What Our Clients Say</h2>
+        <section id="reviews" style="padding:80px 0">
+          <div class="wrap">
+            <div class="reveal" style="max-width:660px">
+              <span class="eyebrow">Client feedback</span>
+              <h2 class="section-title">What people say <span class="gold">afterwards</span></h2>
             </div>
-            <div class="grid md:grid-cols-${Math.min(reviews.length,3)} gap-5 max-w-5xl mx-auto">
-              ${reviews.map((r,i) => `
-                <div class="reveal" style="animation-delay:${i*0.07}s;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.25rem">
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="stars text-lg">${stars(r.rating)}</div>
-                    ${r.isVerified ? `<span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:rgba(34,197,94,.15);color:#4ade80" title="This client has a booking with us"><i class="fas fa-circle-check mr-1"></i>Verified</span>` : ''}
+            <div class="reveal" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:36px">
+              ${reviews.map(r => `
+                <article class="review">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                    <span class="stars" aria-label="${escHtml(r.rating)} out of 5">${stars(r.rating)}</span>
+                    ${r.isVerified ? '<span class="chip chip-live" style="font-size:11px"><i class="fas fa-circle-check"></i>Verified</span>' : ''}
                   </div>
-                  ${r.comment ? `<p class="text-gray-300 text-sm italic leading-relaxed mb-4">"${escHtml(r.comment)}"</p>` : ''}
-                  ${r.adminReply ? `<div class="mb-4 pl-3 border-l-2 border-yellow-400"><p class="text-xs font-bold text-yellow-400 mb-1">Lawie Sounds replied</p><p class="text-xs text-gray-400">${escHtml(r.adminReply)}</p></div>` : ''}
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 flex-shrink-0">
-                      <i class="fas fa-user text-gray-400 text-sm"></i>
-                    </div>
-                    <div>
-                      <!-- r.name is the minimised display name from the public
-                           API. clientName no longer exists in that payload: the
-                           full name is admin-only by design. (No backticks in
-                           here - this markup lives inside a template literal,
-                           where a backtick would close the string.) -->
-                      <p class="font-bold text-sm">${escHtml(r.name || 'A client')}</p>
-                      <p class="text-xs text-gray-500">${escHtml(r.eventType || '')}</p>
-                    </div>
+                  ${r.comment ? `<q>${escHtml(r.comment)}</q>` : ''}
+                  ${r.adminReply ? `<div style="border-left:2px solid var(--gold);padding:10px 14px;background:var(--gold-soft);border-radius:0 10px 10px 0">
+                      <p style="margin:0 0 4px;font-size:11.5px;font-weight:800;color:var(--gold)">Lawie Sounds replied</p>
+                      <p style="margin:0;font-size:13.5px;color:var(--text-muted)">${escHtml(r.adminReply)}</p>
+                    </div>` : ''}
+                  <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px">
+                    <span class="avatar">${escHtml((r.name || '?').trim().charAt(0).toUpperCase())}</span>
+                    <span style="min-width:0;flex:1">
+                      <b style="display:block;font-size:14.5px">${escHtml(r.name || 'A client')}</b>
+                      <span style="font-size:12px;color:var(--text-faint)">${escHtml(r.eventType || 'Event')}</span>
+                    </span>
+                    <!-- An undated testimonial is the oldest trick on the
+                         internet, and readers discount it accordingly. -->
+                    ${LSx.stamp(r.createdAt, { icon: 'fa-pen-nib' })}
                   </div>
-                </div>`).join('')}
+                </article>`).join('')}
+            </div>
+            <div style="text-align:center;margin-top:26px">
+              <a href="/review" class="btn btn-ghost btn-sm"><i class="fas fa-star"></i>Worked with us? Leave a review</a>
             </div>
           </div>
         </section>`;
     }
 
-    // ── FAQ accordion ──
+    // ── FAQ ──
     let faqHtml = '';
     if (faqs.length) {
       faqHtml = `
-        <section class="py-14" style="background:var(--surface)">
-          <div class="container mx-auto px-4 max-w-3xl">
-            <div class="text-center mb-10 reveal">
-              <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">Common Questions</p>
-              <h2 class="text-2xl md:text-3xl font-black">Frequently Asked</h2>
+        <section id="faq" style="padding:80px 0;background:var(--ink-raised);border-block:1px solid var(--line)">
+          <div class="wrap">
+            <div class="reveal" style="max-width:660px">
+              <span class="eyebrow">Before you ask</span>
+              <h2 class="section-title">Frequently <span class="gold">asked</span></h2>
             </div>
-            <div class="space-y-0 reveal">
-              ${faqs.map((faq,idx) => `
-                <div class="faq-item" data-idx="${idx}">
-                  <button class="faq-btn" onclick="toggleFaq(${idx})">
-                    <span>${escHtml(faq.q)}</span>
-                    <i class="fas fa-chevron-down ml-4 text-sm"></i>
-                  </button>
-                  <div class="faq-answer"><p>${escHtml(faq.a)}</p></div>
-                </div>`).join('')}
+            <div class="reveal" style="display:grid;gap:12px;margin-top:32px;max-width:820px">
+              ${faqs.map(faq => `
+                <details class="faq">
+                  <summary>${escHtml(faq.q || faq.question)}<i class="fas fa-chevron-down"></i></summary>
+                  <p class="faq-a">${escHtml(faq.a || faq.answer)}</p>
+                </details>`).join('')}
             </div>
           </div>
         </section>`;
@@ -585,70 +624,50 @@
 
     // ── Final CTA ──
     const ctaHtml = `
-      <section class="py-20 text-center" style="background:linear-gradient(135deg,rgba(250,204,21,0.1) 0%,rgba(234,179,8,0.04) 100%)">
-        <div class="container mx-auto px-4">
-          <div class="inline-flex items-center gap-2 text-xs font-bold px-4 py-1.5 rounded-full mb-6 reveal" style="background:var(--yellow-dim);border:1px solid rgba(250,204,21,0.3);color:var(--yellow)">
-            <span class="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
-            We respond within 2 hours — guaranteed
-          </div>
-          <h2 class="text-2xl md:text-3xl font-black mb-3 reveal">Ready to Book <span class="text-yellow-400">${escHtml(name)}?</span></h2>
-          <p class="text-gray-400 max-w-md mx-auto mb-8 text-sm leading-relaxed reveal">Get a personalised quote tailored to your event. No commitment required.</p>
-          <div class="flex flex-wrap justify-center gap-4 reveal">
-            <a href="${bookUrl}" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-8 py-3.5 rounded-full font-bold hover:bg-yellow-300 transition shadow-xl">
-              <i class="fas fa-calendar-check"></i> Request a Quote
-            </a>
-            <!-- Secondary by design: "Request a Quote" above is the primary path
-                 because it records the enquiry in the dashboard. WhatsApp stays
-                 available for people who prefer it, but no longer competes for
-                 attention with equal visual weight. -->
-            <a href="https://wa.me/254703925826?text=${waMsg}" target="_blank" rel="noopener"
-              class="btn-touch inline-flex items-center gap-2 bg-transparent border-2 border-green-600 text-green-400 px-8 py-3.5 rounded-full font-bold hover:bg-green-600 hover:text-white transition">
-              <i class="fab fa-whatsapp text-lg"></i> Or WhatsApp Us
-            </a>
+      <section style="padding:80px 0 88px">
+        <div class="wrap">
+          <div class="cta-slab reveal">
+            <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;margin:0;line-height:1.12;max-width:22ch">Ready to book ${escHtml(name)}?</h2>
+            <p style="margin:16px 0 0;max-width:52ch;font-size:16px;line-height:1.65;opacity:.85">
+              Tell us the date and the venue. Free, itemised quote back with you inside two hours during
+              working hours — no obligation.
+            </p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
+              <a href="${escHtml(bookUrl)}" class="btn btn-dark btn-lg"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+              <a href="/wa" class="btn btn-lg" style="background:rgba(0,0,0,.12);color:#17120a;border-color:rgba(0,0,0,.25)"><i class="fab fa-whatsapp" style="font-size:19px"></i>Ask on WhatsApp</a>
+            </div>
           </div>
         </div>
       </section>`;
 
     // ── Assemble ──
     document.getElementById('pageContent').innerHTML = `
-      <!-- HERO -->
-      <div class="hero-img">
-        <img src="${escHtml(mainImage)}" alt="${escHtml(name)}" onerror="this.src='/IMAGES/LOGO/2.jpg'">
-        <div class="hero-text">
-          <div class="mb-4">
-            <a href="services.html" class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-yellow-400 transition mb-3">
-              <i class="fas fa-arrow-left text-xs"></i> All Services
-            </a>
-            <span class="ml-3 text-xs text-gray-500">/</span>
-            <span class="ml-3 text-xs text-gray-300">${escHtml(category)}</span>
-          </div>
-          <h1 class="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-3 max-w-2xl">
-            <span class="text-yellow-400">${escHtml(name)}</span>
-          </h1>
-          <p class="text-gray-300 text-sm sm:text-base max-w-xl leading-relaxed mb-6">${escHtml(longDesc)}</p>
-          ${droneCallout}
-          <div class="flex flex-wrap gap-3 mt-6">
-            <a href="${bookUrl}" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition shadow-lg text-sm">
-              <i class="fas fa-calendar-check"></i> Get a Quote
-            </a>
-            <a href="https://wa.me/254703925826?text=${waMsg}" target="_blank" rel="noopener"
-              class="btn-touch inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white px-6 py-3 rounded-full font-bold hover:bg-white/20 transition text-sm">
-              <i class="fab fa-whatsapp text-green-400"></i> WhatsApp
-            </a>
+      <section class="svc-hero">
+        <img src="${escHtml(mainImage)}" alt="${escHtml(name)} by Lawie Sounds" onerror="this.src='/IMAGES/LOGO/2.jpg'">
+        <div class="inner">
+          <div class="wrap">
+            <nav class="crumbs" aria-label="Breadcrumb">
+              <a href="/">Home</a><i class="fas fa-chevron-right"></i>
+              <a href="/services">Services</a><i class="fas fa-chevron-right"></i>
+              <span>${escHtml(name)}</span>
+            </nav>
+            <span class="eyebrow" style="margin-top:18px">${escHtml(category)}</span>
+            <h1>${escHtml(name)}</h1>
+            <p class="section-lead" style="max-width:62ch">${escHtml(longDesc)}</p>
+            ${droneCallout}
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px">
+              <a href="${escHtml(bookUrl)}" class="btn btn-primary btn-lg"><i class="fas fa-calendar-check"></i>Get a quote</a>
+              <a href="/wa" class="btn btn-ghost btn-lg"><i class="fab fa-whatsapp" style="font-size:19px;color:var(--wa)"></i>WhatsApp us</a>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Trust bar -->
-      <div class="border-y py-4" style="border-color:var(--border);background:var(--surface)">
-        <div class="container mx-auto px-4">
-          <div class="flex flex-wrap justify-center items-center gap-6 sm:gap-10 text-xs font-semibold text-gray-400">
-            <span><i class="fas fa-star text-yellow-400 mr-1.5"></i>500+ Events</span>
-            <span><i class="fas fa-thumbs-up text-green-400 mr-1.5"></i>98% Satisfaction</span>
-            <span><i class="fas fa-clock text-blue-400 mr-1.5"></i>Quote in 2 Hours</span>
-            <span><i class="fas fa-shield-alt text-purple-400 mr-1.5"></i>Fully Insured</span>
-          </div>
-        </div>
+      <div class="trust-bar">
+        <div class="trust-cell"><i class="fas fa-star"></i><span><b>500+ events</b><span>Delivered across Kenya</span></span></div>
+        <div class="trust-cell"><i class="fas fa-stopwatch"></i><span><b>Quote in 2 hours</b><span>In working hours</span></span></div>
+        <div class="trust-cell"><i class="fas fa-shield-halved"></i><span><b>Licensed &amp; insured</b><span>Cover for every event</span></span></div>
+        <div class="trust-cell"><i class="fas fa-file-invoice"></i><span><b>One invoice</b><span>No chasing five suppliers</span></span></div>
       </div>
 
       ${packagesHtml}
@@ -659,16 +678,34 @@
       ${ctaHtml}
     `;
 
-    // Init lightGallery on service gallery
+    // Machine-readable service record. Without it this page is body text to
+    // a crawler; with it the service, its area and its provider are facts.
+    const ld = document.getElementById('ldService');
+    if (ld) {
+      ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name,
+        description: shortDesc || longDesc,
+        serviceType: category,
+        url: canonical,
+        image: mainImage.startsWith('http') ? mainImage : `https://lawiesounds.com${mainImage}`,
+        areaServed: { '@type': 'Country', name: 'Kenya' },
+        provider: { '@type': 'LocalBusiness', name: 'Lawie Sounds', telephone: '+254703925826', address: { '@type': 'PostalAddress', addressLocality: 'Nyeri', addressCountry: 'KE' } },
+      });
+    }
+
+    // Init lightGallery on the service gallery
     const lgEl = document.getElementById('serviceGalleryGrid');
     if (lgEl && typeof lightGallery !== 'undefined') {
-      lightGallery(lgEl, { plugins:[lgZoom, lgThumbnail], speed:380, thumbnail:true, zoom:true, download:false });
+      lightGallery(lgEl, { plugins: [lgZoom, lgThumbnail], speed: 380, thumbnail: true, zoom: true, download: false });
 
-      // lightGallery injects thumbnail and slide images with no alt attribute.
-      // A missing alt makes a screen reader read out the file name; an empty one
-      // correctly marks them as decorative duplicates of images already
-      // described in the grid above. Observed rather than hooked to an event,
-      // because the library adds these nodes on its own schedule.
+      // lightGallery injects thumbnail and slide images with no alt
+      // attribute. A missing alt makes a screen reader read out the file
+      // name; an empty one correctly marks them as decorative duplicates of
+      // images already described in the grid above. Observed rather than
+      // hooked to an event, because the library adds these nodes on its own
+      // schedule.
       if (!window._lgAltObserver) {
         const fix = (root = document) =>
           root.querySelectorAll?.('img:not([alt])').forEach(i => i.setAttribute('alt', ''));
@@ -685,13 +722,8 @@
     }
 
     observeReveal();
+    LSx.hydrateStamps(document.getElementById('pageContent'));
   }
-
-  function toggleFaq(idx) {
-    const item = document.querySelector(`.faq-item[data-idx="${idx}"]`);
-    if (item) item.classList.toggle('open');
-  }
-  window.toggleFaq = toggleFaq;
 
   // Shown when the page cannot build itself. Previously there was nothing: any
   // failure in init() left the visitor looking at a header and a footer with an
@@ -707,27 +739,21 @@
 
     const el = document.createElement('section');
     el.id = 'svcErrorState';
-    el.className = 'py-24';
+    el.style.padding = '96px 0';
     el.innerHTML = `
-      <div class="container mx-auto px-4 text-center max-w-lg">
-        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style="background:rgba(239,68,68,0.1)">
-          <i class="fas fa-triangle-exclamation text-2xl text-red-400/80"></i>
-        </div>
-        <h1 class="text-2xl font-black mb-3">We could not load this service</h1>
-        <p class="text-gray-400 text-sm mb-7">
-          Something went wrong on our side. Your connection is probably fine.
-          You can still reach us directly and we will answer within 2 hours.
-        </p>
-        <div class="flex flex-wrap justify-center gap-3">
-          <button onclick="location.reload()" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
-            <i class="fas fa-rotate-right"></i> Try again
-          </button>
-          <a href="services.html" class="btn-touch inline-flex items-center gap-2 border px-6 py-3 rounded-full font-bold transition" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.8)">
-            All services
-          </a>
-          <a href="https://wa.me/254703925826" target="_blank" rel="noopener noreferrer" class="btn-touch inline-flex items-center gap-2 border px-6 py-3 rounded-full font-bold transition" style="border-color:rgba(34,197,94,0.4);color:#4ade80">
-            <i class="fab fa-whatsapp"></i> WhatsApp us
-          </a>
+      <div class="wrap">
+        <div class="empty" style="max-width:560px;margin-inline:auto">
+          <i class="fas fa-triangle-exclamation" style="color:var(--warn)"></i>
+          <h3>We could not load this service</h3>
+          <p>
+            Something went wrong on our side — your connection is probably fine.
+            You can still reach us directly, and we answer within two hours.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:20px">
+            <button type="button" onclick="location.reload()" class="btn btn-primary btn-sm"><i class="fas fa-rotate-right"></i>Try again</button>
+            <a href="/services" class="btn btn-ghost btn-sm">All services</a>
+            <a href="/wa" class="btn btn-ghost btn-sm"><i class="fab fa-whatsapp" style="color:var(--wa)"></i>WhatsApp us</a>
+          </div>
         </div>
       </div>`;
     host.appendChild(el);
@@ -760,7 +786,7 @@
     // Merge with fallback to fill any gaps (e.g. packages missing from DB)
     const fallback = SERVICES_DATA[slug];
     if (!service) {
-      if (!fallback) { window.location.href = 'services.html'; return; }
+      if (!fallback) { window.location.href = '/services'; return; }
       service = fallback;
     } else {
       // If DB service is missing packages/features/faqs, fill from fallback
@@ -782,11 +808,8 @@
     document.getElementById('skeletonBody')?.remove();
 
     render(service, galleryItems, reviews);
-
-    // Mobile menu
-    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-      document.getElementById('mobile-menu')?.classList.toggle('hidden');
-    });
+    // The header, mobile menu, announcement bar and reveals are wired by
+    // /js/site.js — there is nothing page-specific left to bind here.
   }
 
   // Handles the case where DOMContentLoaded has already fired by the time this

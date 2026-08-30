@@ -1,0 +1,570 @@
+/* ══════════════════════════════════════════════════════════════════════
+   LAWIE SOUNDS — SHARED DESIGN SYSTEM
+
+   One palette, one type scale, one shadow scale, one header, one footer.
+   Every public page links this file and adds only what is genuinely its
+   own. Before this existed the same token block was pasted into each
+   page and drifted: services.html and index.html disagreed about what
+   "card" meant, and changing the brand gold meant editing eight files
+   and missing two.
+
+   Load order on every page:
+     1. Google Fonts (Inter + Sora)
+     2. Font Awesome
+     3. Tailwind CDN  — layout utilities only (grid / flex / hidden / lg:)
+     4. THIS FILE     — last, so it wins over Tailwind's preflight
+     5. the page's own <style>, for what is unique to that page
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --gold:        #facc15;
+  --gold-deep:   #eab308;
+  --gold-ink:    #78600a;
+  --gold-soft:   rgba(250, 204, 21, 0.12);
+  --gold-line:   rgba(250, 204, 21, 0.28);
+
+  /* Stage — the dark ground the whole site sits on */
+  --ink:         #08080f;
+  --ink-raised:  #0f0f1a;
+  --ink-deep:    #05050a;
+  --card:        #12121f;
+  --card-hi:     #17172a;
+  --line:        rgba(255, 255, 255, 0.08);
+  --line-hi:     rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text:        #f8fafc;
+  --text-soft:   #d9d9e6;
+  --text-muted:  #a1a1b5;
+  --text-faint:  #6c6c82;
+
+  /* Signals */
+  --live:        #22c55e;
+  --wa:          #25d366;
+  --warn:        #fb923c;
+  --bad:         #f87171;
+
+  /* Elevation */
+  --sh-1: 0 2px 8px rgba(0,0,0,.35);
+  --sh-2: 0 12px 32px rgba(0,0,0,.45);
+  --sh-3: 0 28px 70px rgba(0,0,0,.55);
+  --sh-gold: 0 18px 50px rgba(250,204,21,.22);
+
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+
+  --header-h: 72px;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+h1, h2, h3, .display {
+  font-family: 'Sora', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.022em;
+}
+section { scroll-margin-top: calc(var(--header-h) + 12px); }
+img { max-width: 100%; }
+
+/* Focus is never removed — only restyled. Keyboard users have to be able
+   to see where they are (WCAG 2.4.7). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: fixed; top: 12px; left: 12px; z-index: 99;
+  background: var(--gold); color: #000; padding: 12px 18px;
+  border-radius: 10px; font-weight: 800; text-decoration: none;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: #2a2a40; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-deep); }
+::selection { background: var(--gold); color: #000; }
+
+/* ── Shared atoms ───────────────────────────────────────────────────── */
+.wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 20px; }
+.wrap-narrow { width: 100%; max-width: 780px; margin-inline: auto; padding-inline: 20px; }
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--gold);
+}
+.eyebrow::before {
+  content: ''; width: 26px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.section-title { font-size: clamp(28px, 4.6vw, 46px); font-weight: 800; line-height: 1.1; margin: 14px 0 0; }
+.section-lead  { color: var(--text-muted); max-width: 62ch; margin-top: 14px; line-height: 1.7; }
+.gold  { color: var(--gold); }
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+
+/* Compact hero for the inner pages — the same orientation the homepage
+   gives, without the same 92vh of scrolling, because someone landing on
+   /services from a search result wants the grid, not a curtain. */
+.page-head {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, var(--ink-raised), var(--ink));
+  border-bottom: 1px solid var(--line);
+  padding: clamp(44px, 7vw, 78px) 0 clamp(36px, 5vw, 58px);
+}
+.page-head::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 12% 0%, rgba(250,204,21,.13), transparent 58%);
+}
+.page-head > * { position: relative; z-index: 1; }
+.page-head h1 { font-size: clamp(32px, 5.4vw, 56px); font-weight: 800; line-height: 1.05; margin: 14px 0 0; }
+.page-head p.lead { color: var(--text-muted); max-width: 64ch; margin-top: 16px; line-height: 1.7; font-size: clamp(15px, 1.7vw, 17.5px); }
+
+/* Orientation for people who arrived from a search result rather than
+   from the homepage — which is most of them. */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-faint); }
+.crumbs a { color: var(--text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--gold); }
+.crumbs i { font-size: 9px; opacity: .6; }
+
+/* Minimum 48px hit area everywhere a finger goes (Fitts, WCAG 2.5.5) */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 48px; padding: 0 24px; border-radius: 999px;
+  font-weight: 700; font-size: 15px; text-decoration: none; cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform .18s, box-shadow .25s, background-color .2s, border-color .2s, color .2s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+/* One gold button per view. Isolation is what makes it read as THE next
+   step rather than one option among several (Von Restorff). */
+.btn-primary { background: var(--gold); color: #14110a; box-shadow: var(--sh-gold); }
+.btn-primary:hover { background: #fde047; box-shadow: 0 22px 60px rgba(250,204,21,.34); }
+.btn-ghost { border-color: var(--line-hi); color: var(--text); background: rgba(255,255,255,.04); }
+.btn-ghost:hover { background: rgba(255,255,255,.1); border-color: var(--gold-line); }
+.btn-wa { background: var(--wa); color: #04220f; }
+.btn-wa:hover { background: #38e07a; }
+.btn-dark { background: #101018; color: var(--text); border-color: var(--line); }
+.btn-dark:hover { background: #1a1a28; }
+.btn-sm { min-height: 40px; padding: 0 16px; font-size: 13.5px; }
+.btn-lg { min-height: 56px; padding: 0 32px; font-size: 16.5px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text-muted);
+}
+.chip-gold { background: var(--gold-soft); border-color: var(--gold-line); color: var(--gold); }
+.chip-live { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color: #86efac; }
+
+.card { border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); padding: 24px; }
+
+/* ── Reveal on scroll ───────────────────────────────────────────────── */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* ── Timestamps ─────────────────────────────────────────────────────── */
+/* Every dated thing on the site wears the same stamp, so "2 days ago" on
+   a review and "2 days ago" on an announcement mean the same thing and
+   look the same. `.stamp` is deliberately quiet — it is provenance, not
+   a headline. `.stamp-new` is the one allowed to shout, and only for
+   something genuinely recent. */
+.stamp {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-faint); font-weight: 600;
+  letter-spacing: .01em; white-space: nowrap;
+}
+.stamp i { font-size: 10px; opacity: .8; }
+.stamp-new, .stamp-soon {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.stamp-new  { background: var(--live); color: #04220f; }
+.stamp-soon { background: rgba(251,146,60,.16); border: 1px solid rgba(251,146,60,.4); color: var(--warn); }
+
+/* A freshness line for a whole list rather than one item. It answers the
+   question a static-looking site always raises: is anyone still running
+   this? */
+.freshline { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-faint); }
+.freshline .orb { width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: ping 2s infinite; flex: none; }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.site-header {
+  position: sticky; top: 0; z-index: 60;
+  background: rgba(8,8,15,.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid transparent;
+  transition: background-color .3s, border-color .3s, box-shadow .3s;
+}
+.site-header.stuck { background: rgba(8,8,15,.94); border-bottom-color: var(--line); box-shadow: var(--sh-2); }
+.site-header .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: var(--header-h); transition: height .3s; }
+.site-header.stuck .bar { height: 62px; }
+
+.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: inherit; }
+.brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex: none; }
+.brand-name { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 19px; line-height: 1.05; letter-spacing: -.01em; }
+.brand-sub { font-size: 10.5px; color: var(--text-faint); letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+
+.nav-link {
+  position: relative; font-size: 14.5px; font-weight: 600; color: var(--text-muted);
+  text-decoration: none; padding: 8px 2px; transition: color .2s;
+}
+.nav-link:hover, .nav-link.active { color: var(--text); }
+.nav-link::after {
+  content: ''; position: absolute; left: 0; right: 100%; bottom: 2px; height: 2px;
+  background: var(--gold); border-radius: 2px; transition: right .28s cubic-bezier(.2,.8,.3,1);
+}
+.nav-link:hover::after, .nav-link.active::after { right: 0; }
+
+.mnav { display: block; padding: 13px 4px; font-size: 15px; font-weight: 600; color: var(--text-muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+.mnav:hover, .mnav.active { color: var(--gold); }
+
+/* A dot on "What's new" is the cheapest possible way to make an update
+   noticeable — it borrows the notification pattern people already scan
+   for. It only appears when there is genuinely something new. */
+.new-dot {
+  position: absolute; top: 2px; right: -9px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--live); box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: ping 2s infinite;
+}
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+  70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+
+/* ── Announcement bar ───────────────────────────────────────────────── */
+.announce { background: linear-gradient(100deg, #facc15, #fb923c 55%, #f97316); color: #1a1204; }
+.announce a.cta { background: #14110a; color: var(--gold); }
+.announce a.cta:hover { background: #241d06; }
+
+/* ── Marquee ────────────────────────────────────────────────────────── */
+.marquee { overflow: hidden; border-block: 1px solid var(--line); background: var(--ink-raised); padding: 15px 0; }
+.marquee-track { display: flex; gap: 42px; width: max-content; animation: slide 34s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes slide { to { transform: translateX(-50%); } }
+.marquee-item { display: inline-flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 700; color: var(--text-muted); letter-spacing: .02em; white-space: nowrap; }
+.marquee-item i { color: var(--gold); }
+.marquee-item::after { content: '◆'; color: var(--gold-line); margin-left: 42px; font-size: 8px; }
+
+/* ── Horizontal rail (news, related items) ──────────────────────────── */
+.rail {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(290px, 340px);
+  gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 4px 4px 22px; scrollbar-width: thin;
+}
+.rail > * { scroll-snap-align: start; }
+
+.news-card {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--card);
+  text-decoration: none; color: inherit; min-height: 250px;
+  transition: transform .3s cubic-bezier(.2,.8,.3,1), border-color .3s, box-shadow .3s;
+}
+.news-card:hover { transform: translateY(-6px); border-color: var(--gold-line); box-shadow: var(--sh-3); }
+.news-media { position: relative; height: 150px; background: #0a0a13; overflow: hidden; }
+.news-media img, .news-media video { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
+.news-card:hover .news-media img { transform: scale(1.06); }
+.news-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.news-kind {
+  position: absolute; top: 12px; left: 12px; z-index: 2;
+  padding: 5px 11px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase;
+  background: rgba(8,8,15,.75); backdrop-filter: blur(8px); color: var(--gold); border: 1px solid var(--gold-line);
+}
+.news-new {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  padding: 5px 10px; border-radius: 999px; font-size: 10px; font-weight: 800;
+  letter-spacing: .08em; background: var(--live); color: #04220f;
+}
+
+/* ── Trust bar ──────────────────────────────────────────────────────── */
+.trust-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 2px; background: var(--line); border-block: 1px solid var(--line); }
+.trust-cell { background: var(--ink); padding: 24px 20px; display: flex; align-items: center; gap: 13px; }
+.trust-cell i { color: var(--gold); font-size: 19px; flex: none; width: 24px; text-align: center; }
+.trust-cell b { display: block; font-size: 14px; font-weight: 700; }
+.trust-cell span { font-size: 12.5px; color: var(--text-faint); }
+
+/* ── Filters ────────────────────────────────────────────────────────── */
+.filters { display: flex; gap: 9px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filter-btn {
+  flex: none; min-height: 42px; padding: 0 18px; border-radius: 999px; cursor: pointer;
+  font-size: 13.5px; font-weight: 700; color: var(--text-muted);
+  background: rgba(255,255,255,.04); border: 1px solid var(--line);
+  transition: background-color .2s, color .2s, border-color .2s, transform .15s;
+}
+.filter-btn:hover { color: var(--text); border-color: var(--line-hi); }
+.filter-btn[aria-pressed="true"] { background: var(--gold); color: #14110a; border-color: var(--gold); }
+.filter-btn .n { opacity: .55; font-size: 11.5px; margin-left: 6px; }
+
+/* Search box, shared by /services and /gallery */
+.searchbox { position: relative; flex: 1; min-width: 220px; }
+.searchbox i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
+.searchbox input {
+  width: 100%; min-height: 48px; padding: 0 44px 0 44px; border-radius: 999px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--text);
+  font-size: 14.5px; font-family: inherit; transition: border-color .2s, background-color .2s;
+}
+.searchbox input::placeholder { color: var(--text-faint); }
+.searchbox input:focus { border-color: var(--gold-line); background: rgba(255,255,255,.07); }
+.searchbox .clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: var(--text-muted); cursor: pointer; }
+.searchbox .clear:hover { background: rgba(255,255,255,.16); color: var(--text); }
+
+/* ── Service cards ──────────────────────────────────────────────────── */
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.svc {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--r-lg); background: var(--card); border: 1.5px solid var(--line);
+  transition: transform .32s cubic-bezier(.2,.8,.3,1), border-color .28s, box-shadow .32s, background-color .28s;
+}
+.svc:hover { transform: translateY(-8px); border-color: var(--gold-line); background: var(--card-hi); box-shadow: var(--sh-3); }
+.svc.picked { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), var(--sh-gold); }
+
+.svc-media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #0a0a13; }
+.svc-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.8,.3,1); }
+.svc:hover .svc-media img { transform: scale(1.08); }
+.svc-media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,15,.1) 35%, rgba(18,18,31,.96) 100%); }
+.svc-cat {
+  position: absolute; top: 12px; left: 12px; z-index: 2;
+  padding: 5px 11px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text);
+  background: rgba(8,8,15,.7); backdrop-filter: blur(8px); border: 1px solid var(--line-hi);
+}
+.svc-icon {
+  position: absolute; right: 14px; bottom: -22px; z-index: 3;
+  width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
+  background: var(--gold); color: #14110a; font-size: 20px; box-shadow: var(--sh-2);
+  transition: transform .3s cubic-bezier(.2,.9,.3,1.4);
+}
+.svc:hover .svc-icon { transform: rotate(-8deg) scale(1.08); }
+
+.svc-body { padding: 20px 20px 0; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.svc-body h3 { font-size: 19px; font-weight: 700; margin: 0; padding-right: 56px; }
+.svc-desc { font-size: 13.8px; line-height: 1.6; color: var(--text-muted); margin: 0; }
+.svc-feats { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 6px; }
+.svc-feats li { font-size: 12.8px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; }
+.svc-feats i { color: var(--live); font-size: 11px; margin-top: 3.5px; flex: none; }
+
+/* A visible entry price is the single biggest driver of enquiries here:
+   with no figure at all a client assumes we are out of reach and leaves
+   without ever asking. Where the price is deliberately withheld we say so
+   plainly instead of leaving a gap to interpret. */
+.svc-price { margin-top: auto; padding-top: 14px; font-size: 13.5px; color: var(--text-muted); border-top: 1px solid var(--line); }
+.svc-price strong { color: var(--gold); font-size: 17px; font-weight: 800; font-family: 'Sora', sans-serif; }
+.svc-price .note { display: block; font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+
+.svc-actions { display: flex; gap: 9px; padding: 14px 20px 18px; }
+.svc-pick {
+  flex: 1; min-height: 44px; border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 700;
+  background: rgba(250,204,21,.1); color: var(--gold); border: 1.5px solid var(--gold-line);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color .2s, color .2s, border-color .2s;
+}
+.svc-pick:hover { background: rgba(250,204,21,.2); }
+.svc.picked .svc-pick { background: var(--gold); color: #14110a; border-color: var(--gold); }
+.svc-more {
+  min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  color: var(--text-muted); background: rgba(255,255,255,.05); border: 1.5px solid var(--line);
+  display: inline-flex; align-items: center; gap: 7px; text-decoration: none; transition: all .2s;
+}
+.svc-more:hover { color: var(--text); border-color: var(--line-hi); background: rgba(255,255,255,.1); }
+
+/* ── Skeletons ──────────────────────────────────────────────────────── */
+.skel { border-radius: var(--r-lg); border: 1.5px solid var(--line); background: linear-gradient(100deg, #101020 30%, #1a1a2e 50%, #101020 70%); background-size: 220% 100%; animation: shimmer 1.5s linear infinite; }
+.svc-skel { height: 420px; }
+@keyframes shimmer { to { background-position: -220% 0; } }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty { text-align: center; padding: 64px 20px; border: 1px dashed var(--line-hi); border-radius: var(--r-lg); background: rgba(255,255,255,.02); }
+.empty i { font-size: 34px; color: var(--text-faint); }
+.empty h3 { margin: 16px 0 6px; font-size: 19px; }
+.empty p { margin: 0 auto; color: var(--text-muted); font-size: 14px; max-width: 44ch; line-height: 1.65; }
+
+/* ── Quote tray ─────────────────────────────────────────────────────── */
+/* Once someone has ticked one service they have made a small commitment
+   to the plan, and finishing it is easier than abandoning it. The tray
+   keeps that progress visible instead of losing it the moment they
+   scroll away. */
+.tray {
+  position: fixed; left: 50%; bottom: 22px; z-index: 70;
+  width: min(660px, calc(100vw - 32px)); transform: translate(-50%, 150%);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: var(--r-lg);
+  background: rgba(15,15,26,.94); backdrop-filter: blur(20px);
+  border: 1px solid var(--gold-line); box-shadow: var(--sh-3);
+  transition: transform .42s cubic-bezier(.2,.9,.3,1.15);
+}
+.tray.up { transform: translate(-50%, 0); }
+.tray-count { width: 38px; height: 38px; border-radius: 12px; background: var(--gold); color: #14110a; display: grid; place-items: center; font-weight: 800; font-family: 'Sora', sans-serif; flex: none; }
+@media (max-width: 640px) { .tray { bottom: 78px; } }
+
+/* ── Steps ──────────────────────────────────────────────────────────── */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; counter-reset: step; }
+.step { position: relative; padding: 30px 24px 26px; border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); }
+.step::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; top: -18px; left: 24px;
+  width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--gold); color: #14110a; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 18px;
+  box-shadow: var(--sh-2);
+}
+.step h3 { margin: 14px 0 8px; font-size: 17.5px; }
+.step p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Gallery ────────────────────────────────────────────────────────── */
+.gal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.gal-card {
+  position: relative; border: 0; padding: 0; cursor: pointer; overflow: hidden;
+  border-radius: var(--r-md); aspect-ratio: 4/3; background: #0a0a13;
+  transition: transform .3s cubic-bezier(.2,.8,.3,1), box-shadow .3s;
+}
+.gal-grid.featured-first .gal-card:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: 8/7; }
+.gal-card:hover { transform: translateY(-5px); box-shadow: var(--sh-3); }
+.gal-card img, .gal-card video { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .7s; }
+.gal-card:hover img { transform: scale(1.07); }
+.gal-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.6)); }
+.gal-tag { position: absolute; left: 12px; bottom: 12px; z-index: 2; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #fff; }
+.gal-date { position: absolute; right: 12px; bottom: 12px; z-index: 2; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.75); }
+.gal-zoom { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; opacity: 0; background: rgba(250,204,21,.14); transition: opacity .28s; }
+.gal-card:hover .gal-zoom { opacity: 1; }
+.gal-zoom i { width: 46px; height: 46px; border-radius: 50%; background: var(--gold); color: #14110a; display: grid; place-items: center; box-shadow: var(--sh-2); }
+@media (max-width: 640px) {
+  .gal-grid { grid-template-columns: repeat(2, 1fr); }
+  .gal-grid.featured-first .gal-card:first-child { grid-column: span 2; grid-row: auto; aspect-ratio: 4/3; }
+}
+
+/* ── Reviews ────────────────────────────────────────────────────────── */
+.review { padding: 24px; border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; transition: border-color .25s, transform .25s; }
+.review:hover { border-color: var(--gold-line); transform: translateY(-4px); }
+.review q { font-style: normal; font-size: 15px; line-height: 1.7; color: var(--text-soft); }
+.review q::before { content: '\201C'; font-family: Georgia, serif; font-size: 44px; line-height: 0; color: var(--gold-line); vertical-align: -14px; margin-right: 4px; }
+.avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--gold-soft); border: 1px solid var(--gold-line); color: var(--gold); display: grid; place-items: center; font-weight: 800; flex: none; }
+.stars { color: var(--gold); font-size: 13px; letter-spacing: 1px; }
+
+/* ── FAQ ────────────────────────────────────────────────────────────── */
+.faq { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); overflow: hidden; transition: border-color .25s; }
+.faq[open] { border-color: var(--gold-line); }
+.faq summary { list-style: none; cursor: pointer; padding: 18px 22px; font-weight: 700; font-size: 15.5px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary i { color: var(--gold); transition: transform .3s; flex: none; }
+.faq[open] summary i { transform: rotate(180deg); }
+.faq-a { padding: 0 22px 20px; color: var(--text-muted); font-size: 14.4px; line-height: 1.75; margin: 0; }
+
+/* ── Forms ──────────────────────────────────────────────────────────── */
+/* Shared by /book, /review and the admin Quick Add form, so a field looks
+   and behaves the same wherever someone types into this site. */
+.field { display: grid; gap: 7px; }
+.label { font-size: 13px; font-weight: 700; color: var(--text-soft); display: flex; align-items: center; gap: 7px; }
+.label .req { color: var(--gold); }
+.hint { font-size: 12px; color: var(--text-faint); line-height: 1.5; }
+.input, .select, .textarea {
+  width: 100%; min-height: 50px; padding: 13px 16px; border-radius: var(--r-sm);
+  background: rgba(255,255,255,.04); border: 1.5px solid var(--line); color: var(--text);
+  font-size: 15px; font-family: inherit; line-height: 1.5;
+  transition: border-color .2s, background-color .2s, box-shadow .2s;
+}
+.textarea { min-height: 120px; resize: vertical; }
+.input::placeholder, .textarea::placeholder { color: var(--text-faint); }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--gold-line); background: rgba(255,255,255,.07); box-shadow: 0 0 0 4px rgba(250,204,21,.08); }
+.input[aria-invalid="true"], .textarea[aria-invalid="true"], .select[aria-invalid="true"] { border-color: var(--bad); }
+.select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%); background-position: calc(100% - 20px) 22px, calc(100% - 14px) 22px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding-right: 42px; }
+.select option { background: var(--card); color: var(--text); }
+.err { font-size: 12.5px; color: var(--bad); display: flex; align-items: center; gap: 6px; }
+
+/* ── Final CTA ──────────────────────────────────────────────────────── */
+.cta-slab {
+  position: relative; overflow: hidden; border-radius: var(--r-xl);
+  background: linear-gradient(120deg, #facc15 0%, #fbbf24 45%, #f59e0b 100%);
+  color: #17120a; padding: clamp(34px, 5vw, 60px);
+}
+.cta-slab::after { content: ''; position: absolute; right: -80px; top: -80px; width: 340px; height: 340px; border-radius: 50%; background: rgba(255,255,255,.24); pointer-events: none; }
+.cta-slab > * { position: relative; z-index: 1; }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.site-footer { border-top: 1px solid var(--line); background: var(--ink-deep); padding: 56px 0 30px; }
+.site-footer h4 { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 16px; }
+.site-footer a { color: var(--text-muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+.site-footer a:hover { color: var(--gold); }
+.foot-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 40px; }
+.foot-links { display: grid; gap: 11px; }
+.foot-social { display: flex; gap: 10px; margin-top: 18px; }
+.foot-social a { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text-muted); }
+.foot-social a:hover { background: var(--gold); color: #14110a; border-color: var(--gold); }
+.foot-bottom { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--text-faint); }
+@media (max-width: 860px) { .foot-grid { grid-template-columns: 1fr 1fr; gap: 32px; } }
+@media (max-width: 520px) { .foot-grid { grid-template-columns: 1fr; } }
+
+/* ── Mobile action bar (thumb zone) ─────────────────────────────────── */
+.mobile-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 65;
+  display: none; grid-template-columns: 1fr 1fr 1.5fr; gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(8,8,15,.95); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
+}
+.mobile-bar a { min-height: 46px; border-radius: 999px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; }
+@media (max-width: 640px) { .mobile-bar { display: grid; } body { padding-bottom: 72px; } .fab { display: none !important; } }
+
+.fab { position: fixed; right: 20px; bottom: 20px; z-index: 55; display: flex; flex-direction: column; gap: 11px; }
+.fab a, .fab button { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; box-shadow: var(--sh-2); transition: transform .2s; text-decoration: none; }
+.fab a:hover, .fab button:hover { transform: scale(1.1); }
+
+/* ── Lightbox ───────────────────────────────────────────────────────── */
+#lightbox { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: rgba(4,4,10,.94); backdrop-filter: blur(6px); padding: 20px; }
+#lightbox.open { display: grid; }
+.lb-shell { width: min(96vw, 1080px); max-height: 92vh; border-radius: var(--r-lg); overflow: hidden; background: #0a0a13; border: 1px solid var(--line); display: flex; flex-direction: column; }
+.lb-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+/* The frame is the positioned ancestor; the stage inside it is the only
+   part replaced when the viewer steps to the next item, which is why the
+   arrows are siblings of the stage rather than children of it. */
+.lb-frame { position: relative; flex: 1; min-height: 300px; display: grid; }
+.lb-stage { min-height: 300px; display: grid; place-items: center; background: #05050a; }
+.lb-stage img, .lb-stage video { max-width: 100%; max-height: 62vh; object-fit: contain; }
+.lb-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; pointer-events: none; }
+.lb-nav button { pointer-events: auto; width: 48px; height: 48px; border-radius: 50%; background: rgba(8,8,15,.86); border: 1px solid var(--line-hi); color: #fff; cursor: pointer; }
+.lb-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; border-top: 1px solid var(--line); }
+.lb-thumbs button { flex: none; width: 64px; height: 48px; border-radius: 9px; overflow: hidden; padding: 0; border: 2px solid transparent; cursor: pointer; background: none; }
+.lb-thumbs button.on { border-color: var(--gold); }
+.lb-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Toast ──────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 200%);
+  z-index: 95; max-width: min(460px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px; border-radius: 999px;
+  background: rgba(15,15,26,.96); backdrop-filter: blur(20px);
+  border: 1px solid var(--line-hi); box-shadow: var(--sh-3);
+  font-size: 14px; font-weight: 600;
+  transition: transform .38s cubic-bezier(.2,.9,.3,1.15);
+}
+.toast.up { transform: translate(-50%, 0); }
+.toast.good i { color: var(--live); }
+.toast.bad  i { color: var(--bad); }
+@media (max-width: 640px) { .toast { bottom: 84px; } }
+
+/* ── Motion sensitivity (WCAG 2.3.3) ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .reveal { opacity: 1; transform: none; }
+}

@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta property="og:image" content="https://lawiesounds.com/IMAGES/LOGO/2.jpg">
-  <meta property="og:url" content="https://lawiesounds.com/booking.html">
+  <meta property="og:url" content="https://lawiesounds.com/book">
   <meta property="og:site_name" content="Lawie Sounds">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="canonical" href="https://lawiesounds.com/booking.html">
+  <link rel="canonical" href="https://lawiesounds.com/book">
   <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
   <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
   <meta name="theme-color" content="#facc15">
@@ -21,81 +21,98 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
 
+  <link rel="stylesheet" href="/css/app.css">
+
   <style>
-    * { font-family: 'Inter', sans-serif; }
+    /* ══════════════════════════════════════════════════════════════
+       BOOKING FORM ONLY
 
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-fade-up { animation: fadeInUp 0.45s ease forwards; }
+       This page used to be the one light-theme page on the site — a
+       white form on a white card, reached from a black homepage. The
+       jolt between the two was the last thing a visitor saw before
+       deciding whether to fill it in.
+
+       Field styling now comes from .input/.select/.textarea in
+       app.css; what stays here is the four-step machinery: the
+       progress rail, the service picker and the success panel.
+       ══════════════════════════════════════════════════════════════ */
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .animate-fade-up { animation: fadeInUp .45s ease forwards; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spin { animation: spin 0.8s linear infinite; }
+    .spin { animation: spin .8s linear infinite; }
 
-    /* Visible focus ring on every interactive element — keyboard users must be
-       able to see where they are. Never remove this without a replacement. */
-    :where(input, select, textarea, button, a):focus-visible {
-      outline: 3px solid #eab308;
-      outline-offset: 2px;
-      border-radius: 6px;
-    }
-
+    /* The form's own fields inherit the shared control styling, so an
+       input looks the same here as in the review form and the dashboard. */
     .form-input, .form-select, .form-textarea {
-      background: #fff;
-      transition: border-color .15s, box-shadow .15s;
+      width: 100%; min-height: 50px; padding: 13px 16px; border-radius: var(--r-sm);
+      background: rgba(255,255,255,.04); border: 1.5px solid var(--line); color: var(--text);
+      font-size: 15px; font-family: inherit; line-height: 1.5;
+      transition: border-color .2s, background-color .2s, box-shadow .2s;
     }
+    .form-textarea { min-height: 120px; resize: vertical; }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-faint); }
     .form-input:focus, .form-select:focus, .form-textarea:focus {
-      border-color: #eab308;
-      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+      outline: none; border-color: var(--gold-line);
+      background: rgba(255,255,255,.07); box-shadow: 0 0 0 4px rgba(250,204,21,.08);
     }
-    /* Error state is signalled by colour AND an icon AND text — never colour
-       alone, which excludes colour-blind users (WCAG 1.4.1). */
-    .field-invalid { border-color: #dc2626 !important; background: #fef2f2; }
-    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); }
-    .field-error { display: none; color: #b91c1c; font-size: .8125rem; margin-top: .375rem; }
-    .field-error.show { display: flex; align-items: flex-start; gap: .375rem; }
+    .form-select { appearance: none; padding-right: 42px;
+      background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+      background-position: calc(100% - 20px) 22px, calc(100% - 14px) 22px;
+      background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
+    .form-select option { background: var(--card); color: var(--text); }
 
-    /* Service cards: the whole card is the click target, not just the checkbox */
+    /* An invalid field is marked by colour AND by an error message that
+       names the problem — colour alone fails for anyone who cannot see it
+       (WCAG 1.4.1). */
+    .field-invalid { border-color: var(--bad) !important; background: rgba(248,113,113,.07) !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 4px rgba(248,113,113,.16) !important; }
+    .field-error { display: none; color: var(--bad); font-size: 13px; margin-top: 6px; }
+    .field-error.show { display: flex; align-items: flex-start; gap: 6px; }
+
+    /* Service picker. The whole tile is the target, not just the box —
+       a 16px checkbox is a miss waiting to happen on a phone. */
     .service-card {
-      transition: border-color .15s, background-color .15s, transform .1s;
-      -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; gap: 12px; cursor: pointer;
+      padding: 14px 16px; border-radius: var(--r-md);
+      background: rgba(255,255,255,.03); border: 1.5px solid var(--line);
+      transition: background-color .2s, border-color .2s, transform .15s;
     }
-    .service-card:has(input:checked) {
-      border-color: #eab308;
-      background-color: #fefce8;
-      box-shadow: inset 0 0 0 1px #eab308;
-    }
+    .service-card:hover { background: rgba(255,255,255,.06); border-color: var(--line-hi); }
+    .service-card:has(input:checked) { background: var(--gold-soft); border-color: var(--gold); }
     .service-card:active { transform: scale(.985); }
-    .service-card:has(input:focus-visible) { outline: 3px solid #eab308; outline-offset: 2px; }
+    .service-card:has(input:focus-visible) { outline: 3px solid var(--gold); outline-offset: 2px; }
+    .service-card input { accent-color: var(--gold); width: 18px; height: 18px; flex: none; }
 
-    /* Progress rail */
-    .step-dot { transition: background-color .3s, color .3s, transform .3s; }
-    .step-active   { background-color: #eab308; color: #000; transform: scale(1.1); }
-    .step-complete { background-color: #16a34a; color: #fff; }
-    .step-pending  { background-color: #e5e7eb; color: #6b7280; }
-    .progress-fill { transition: width .4s cubic-bezier(.4,0,.2,1); }
+    /* Progress. Visibility of system status: the visitor always knows
+       where they are and how much is left. */
+    .step-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13.5px;
+      transition: background-color .3s, color .3s, transform .3s;
+    }
+    .step-active   { background: var(--gold); color: #14110a; transform: scale(1.1); }
+    .step-complete { background: var(--live); color: #04220f; }
+    .step-pending  { background: rgba(255,255,255,.07); color: var(--text-faint); border: 1px solid var(--line); }
+    .progress-track { height: 8px; background: rgba(255,255,255,.07); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--gold); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
 
-    /* Minimum 44px touch targets on mobile (WCAG 2.5.5 / Fitts's law) */
+    .panel { border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); }
+
+    .notice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-radius: var(--r-md); font-size: 14px; line-height: 1.55; }
+    .notice-gold { background: var(--gold-soft); border: 1px solid var(--gold-line); color: var(--text-soft); }
+    .notice-info { background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.28); color: var(--text-soft); }
+
     @media (max-width: 640px) {
       .btn-touch, .form-input, .form-select { min-height: 48px; }
     }
 
-    /* Respect users who get motion sickness from animation (WCAG 2.3.3) */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-    }
-
-    /* Screen-reader-only text */
-    .sr-only {
-      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-    }
-    /* Honeypot — hidden from humans, visible to naive bots. Not display:none,
-       which better bots detect and skip. */
-    .hp-field {
-      position: absolute !important; left: -9999px !important;
-      opacity: 0; height: 0; width: 0; pointer-events: none;
-    }
+    /* Bots fill this; humans never see it. Off-screen rather than
+       display:none, because some bots skip hidden fields. */
+    .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-[var(--ink-raised)] text-[var(--text)]">
 
   <!-- Skip link — first tab stop, lets keyboard users jump past the nav -->
   <a href="#booking-form" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:bg-yellow-400 focus:text-black focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold">
@@ -103,47 +120,85 @@
   </a>
 
   <!-- ==================== HEADER ==================== -->
-  <header class="bg-black text-white sticky top-0 z-40 shadow-lg">
-    <div class="container mx-auto px-4 py-4">
-      <div class="flex flex-wrap items-center justify-between">
-        <a href="index.html" class="flex items-center gap-3" aria-label="Lawie Sounds home">
-          <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-10 w-10 rounded-full object-cover border-2 border-yellow-400">
-          <span class="text-xl font-bold">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
-        </a>
+<!-- ══════════════ ANNOUNCEMENT BAR (admin-controlled) ══════════════ -->
+<div id="announce" class="announce" hidden>
+  <div class="wrap" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:11px">
+    <span style="font-size:18px" aria-hidden="true">🎉</span>
+    <p id="announceMsg" style="margin:0;flex:1;min-width:200px;font-size:14.5px;font-weight:700;line-height:1.4"></p>
+    <span id="announceEnds" style="font-size:12px;font-weight:800;letter-spacing:.04em;opacity:.75"></span>
+    <a id="announceCta" href="/book" class="btn btn-sm cta">Claim offer <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
+    <button id="announceClose" aria-label="Dismiss this announcement" style="background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:inherit;opacity:.6;padding:0 4px">&times;</button>
+  </div>
+</div>
 
-        <nav class="hidden md:flex gap-6 text-sm font-semibold" aria-label="Main">
-          <a href="index.html" class="hover:text-yellow-400 transition">Home</a>
-          <a href="services.html" class="hover:text-yellow-400 transition">Services</a>
-          <a href="gallery.html" class="hover:text-yellow-400 transition">Gallery</a>
-          <a href="booking.html" class="text-yellow-400 border-b-2 border-yellow-400 pb-1" aria-current="page">Booking</a>
-        </nav>
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Lawie Sounds — home">
+      <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="" fetchpriority="high">
+      <span>
+        <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
+        <span class="brand-sub">Nyeri · Kenya</span>
+      </span>
+    </a>
 
-        <div class="flex items-center gap-3">
-          <a href="tel:+254703925826" class="btn-touch bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition">
-            <i class="fas fa-phone-alt mr-1" aria-hidden="true"></i>Call Us
-          </a>
-          <button id="mobile-menu-btn" class="md:hidden text-white p-2" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
-            <i class="fas fa-bars text-xl" aria-hidden="true"></i>
-          </button>
-        </div>
-      </div>
+    <!-- Every entry is a real, shareable URL. /how and /faq 301 to the
+         matching homepage anchor on the server; here on the homepage
+         site.js turns them back into a smooth scroll and leaves the short
+         URL in the address bar. That is what lets this exact markup be
+         the header on every page. -->
+    <nav class="hidden lg:flex" style="gap:30px" aria-label="Main navigation">
+      <a class="nav-link" href="/services">Services</a>
+      <a class="nav-link" href="/latest" id="navLatest" style="position:relative">What's new<span class="new-dot" id="navNewDot" hidden></span></a>
+      <a class="nav-link" href="/gallery">Our work</a>
+      <a class="nav-link" href="/how">How it works</a>
+      <a class="nav-link" href="/reviews">Reviews</a>
+      <a class="nav-link" href="/faq">FAQ</a>
+    </nav>
 
-      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-2">
-        <a href="index.html" class="block py-2 hover:text-yellow-400">Home</a>
-        <a href="services.html" class="block py-2 hover:text-yellow-400">Services</a>
-        <a href="gallery.html" class="block py-2 hover:text-yellow-400">Gallery</a>
-        <a href="booking.html" class="block py-2 text-yellow-400" aria-current="page">Booking</a>
-      </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="tel:+254703925826" class="hidden xl:inline-flex" style="color:var(--text-muted);font-size:13.5px;font-weight:600;text-decoration:none;gap:8px;align-items:center">
+        <i class="fas fa-phone-alt gold"></i>+254 703 925 826
+      </a>
+      <a href="/book" class="btn btn-primary btn-sm hidden sm:inline-flex"><i class="fas fa-calendar-check"></i>Get a quote</a>
+      <button id="menuBtn" class="lg:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav"
+              style="background:rgba(255,255,255,.06);border:1px solid var(--line);color:#fff;width:44px;height:44px;border-radius:12px;cursor:pointer">
+        <i class="fas fa-bars"></i>
+      </button>
     </div>
-  </header>
+  </div>
+
+  <nav id="mobileNav" class="lg:hidden" hidden aria-label="Mobile navigation" style="border-top:1px solid var(--line);background:rgba(8,8,15,.98)">
+    <div class="wrap" style="padding-block:12px;display:grid;gap:2px">
+      <a class="mnav" href="/services">Services</a>
+      <a class="mnav" href="/latest">What's new</a>
+      <a class="mnav" href="/gallery">Our work</a>
+      <a class="mnav" href="/how">How it works</a>
+      <a class="mnav" href="/reviews">Reviews</a>
+      <a class="mnav" href="/faq">FAQ</a>
+      <a class="mnav" href="/contact">Contact</a>
+      <a href="/book" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+    </div>
+  </nav>
+</header>
 
   <!-- ==================== HERO ==================== -->
-  <section class="bg-gradient-to-r from-gray-900 to-black text-white py-10">
-    <div class="container mx-auto px-4 text-center">
-      <h1 class="text-3xl md:text-4xl font-bold mb-3">Book Your <span class="text-yellow-400">Event</span></h1>
-      <p class="text-gray-300 max-w-xl mx-auto">
-        Tell us about your event and we'll come back within <strong class="text-yellow-400">2 hours</strong> with a custom quote.
+  <section class="page-head">
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="/">Home</a><i class="fas fa-chevron-right"></i><span>Get a quote</span>
+      </nav>
+      <span class="eyebrow" style="margin-top:18px">Free, no obligation</span>
+      <h1>Tell us about <span class="gold">your event</span></h1>
+      <p class="lead">
+        Four short steps. We come back with an itemised quote inside two hours during working hours —
+        and if something on the list is not worth paying for, we will say so.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px">
+        <span class="chip"><i class="fas fa-stopwatch gold"></i>Reply in 2 hours</span>
+        <span class="chip"><i class="fas fa-lock gold"></i>Your details stay with us</span>
+        <span class="chip"><i class="fas fa-ban gold"></i>No obligation</span>
+      </div>
     </div>
   </section>
 
@@ -152,15 +207,15 @@
     <div class="container mx-auto max-w-3xl">
 
       <!-- Prefill notice, shown when arriving from a service page -->
-      <div id="prefillNotice" class="hidden mb-5 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3 flex items-start gap-3">
+      <div id="prefillNotice" class="hidden notice notice-gold mb-5">
         <i class="fas fa-circle-check text-yellow-500 mt-0.5" aria-hidden="true"></i>
-        <p class="text-sm text-gray-800">We've pre-selected <strong id="prefillName"></strong> for you. Add anything else you need below.</p>
+        <p class="text-sm text-[var(--text)]">We've pre-selected <strong id="prefillName"></strong> for you. Add anything else you need below.</p>
       </div>
 
       <!-- Draft restore notice -->
-      <div id="draftNotice" class="hidden mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm text-gray-800"><i class="fas fa-clock-rotate-left mr-2 text-blue-500" aria-hidden="true"></i>We restored your unfinished enquiry.</p>
-        <button type="button" id="discardDraftBtn" class="text-sm font-semibold text-blue-700 underline hover:text-blue-900">Start over</button>
+      <div id="draftNotice" class="hidden notice notice-info mb-5 flex-wrap items-center justify-between">
+        <p class="text-sm text-[var(--text)]"><i class="fas fa-clock-rotate-left mr-2 text-[#60a5fa]" aria-hidden="true"></i>We restored your unfinished enquiry.</p>
+        <button type="button" id="discardDraftBtn" class="text-sm font-semibold text-[#93c5fd] underline hover:text-blue-900">Start over</button>
       </div>
 
       <!-- ===== Progress ===== -->
@@ -168,20 +223,20 @@
            much is left. The bar is decorative; the live region announces it. -->
       <div class="mb-8" id="progressRail">
         <div class="flex items-center justify-between mb-2">
-          <p class="text-sm font-semibold text-gray-700">
-            Step <span id="stepNum">1</span> of 4 &middot; <span id="stepName" class="text-gray-500 font-normal">Your details</span>
+          <p class="text-sm font-semibold text-[var(--text-soft)]">
+            Step <span id="stepNum">1</span> of 4 &middot; <span id="stepName" class="text-[var(--text-muted)] font-normal">Your details</span>
           </p>
-          <p class="text-sm text-gray-400" id="stepPercent">25%</p>
+          <p class="text-sm text-[var(--text-muted)]" id="stepPercent">25%</p>
         </div>
-        <div class="h-2 bg-gray-200 rounded-full overflow-hidden" role="presentation">
-          <div id="progressFill" class="progress-fill h-full bg-yellow-400 rounded-full" style="width:25%"></div>
+        <div class="progress-track" role="presentation">
+          <div id="progressFill" class="progress-fill" style="width:25%"></div>
         </div>
 
         <ol class="flex justify-between mt-4" aria-label="Booking progress">
-          <li class="flex-1 text-center"><span class="step-dot step-active w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="1">1</span><span class="block text-xs text-gray-500 mt-1">Your details</span></li>
-          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="2">2</span><span class="block text-xs text-gray-500 mt-1">Event</span></li>
-          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="3">3</span><span class="block text-xs text-gray-500 mt-1">Services</span></li>
-          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="4">4</span><span class="block text-xs text-gray-500 mt-1">Confirm</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-active w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="1">1</span><span class="block text-xs text-[var(--text-muted)] mt-1">Your details</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="2">2</span><span class="block text-xs text-[var(--text-muted)] mt-1">Event</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="3">3</span><span class="block text-xs text-[var(--text-muted)] mt-1">Services</span></li>
+          <li class="flex-1 text-center"><span class="step-dot step-pending w-9 h-9 rounded-full inline-flex items-center justify-center font-bold text-sm" data-dot="4">4</span><span class="block text-xs text-[var(--text-muted)] mt-1">Confirm</span></li>
         </ol>
       </div>
 
@@ -189,7 +244,7 @@
            interrupting whatever the user is currently reading. -->
       <p id="stepAnnouncer" class="sr-only" role="status" aria-live="polite"></p>
 
-      <form id="booking-form" class="bg-white rounded-2xl shadow-xl p-6 md:p-8" novalidate>
+      <form id="booking-form" class="panel p-6 md:p-8" novalidate>
 
         <!-- Honeypot: bots fill this, humans never see it -->
         <div class="hp-field" aria-hidden="true">
@@ -202,34 +257,34 @@
           <legend class="text-xl font-bold mb-1 flex items-center gap-2">
             <i class="fas fa-user text-yellow-500" aria-hidden="true"></i> Your contact information
           </legend>
-          <p class="text-sm text-gray-500 mb-5">So we know who to send the quote to.</p>
+          <p class="text-sm text-[var(--text-muted)] mb-5">So we know who to send the quote to.</p>
 
           <div class="grid md:grid-cols-2 gap-5">
             <div>
-              <label for="name" class="block text-sm font-semibold text-gray-700 mb-1.5">Full name <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="name" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Full name <span class="text-red-600" aria-hidden="true">*</span></label>
               <input type="text" id="name" name="name" autocomplete="name" required aria-required="true" aria-describedby="err-name"
-                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="e.g. Jane Wanjiru">
+                     class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3" placeholder="e.g. Jane Wanjiru">
               <p class="field-error" id="err-name"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label for="phone" class="block text-sm font-semibold text-gray-700 mb-1.5">Phone number <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="phone" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Phone number <span class="text-red-600" aria-hidden="true">*</span></label>
               <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" required aria-required="true" aria-describedby="hint-phone err-phone"
-                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="0712 345 678">
-              <p id="hint-phone" class="text-xs text-gray-500 mt-1.5">We'll call or WhatsApp you on this number.</p>
+                     class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3" placeholder="0712 345 678">
+              <p id="hint-phone" class="text-xs text-[var(--text-muted)] mt-1.5">We'll call or WhatsApp you on this number.</p>
               <p class="field-error" id="err-phone"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
           </div>
 
           <div class="grid md:grid-cols-2 gap-5 mt-5">
             <div>
-              <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Email address <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="email" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Email address <span class="text-red-600" aria-hidden="true">*</span></label>
               <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required aria-required="true" aria-describedby="err-email"
-                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="you@example.com">
+                     class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3" placeholder="you@example.com">
               <p class="field-error" id="err-email"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label for="source" class="block text-sm font-semibold text-gray-700 mb-1.5">How did you hear about us? <span class="text-gray-400 font-normal">(optional)</span></label>
-              <select id="source" name="source" class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+              <label for="source" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">How did you hear about us? <span class="text-[var(--text-muted)] font-normal">(optional)</span></label>
+              <select id="source" name="source" class="form-select w-full border border-[var(--line)] rounded-lg px-4 py-3">
                 <option value="">Select…</option>
                 <option value="Instagram">Instagram</option>
                 <option value="Facebook">Facebook</option>
@@ -246,15 +301,15 @@
                see it accepted, and one who does not should not meet an empty
                discount box at the moment they commit. -->
           <div class="mt-5">
-            <label for="promoCode" class="block text-sm font-semibold text-gray-700 mb-1.5">
-              Promo code <span class="text-gray-400 font-normal">(optional)</span>
+            <label for="promoCode" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">
+              Promo code <span class="text-[var(--text-muted)] font-normal">(optional)</span>
             </label>
             <div class="flex gap-2">
               <input type="text" id="promoCode" name="promoCode" autocomplete="off" maxlength="40"
-                     class="form-input flex-1 border border-gray-300 rounded-lg px-4 py-3 uppercase tracking-wider"
+                     class="form-input flex-1 border border-[var(--line)] rounded-lg px-4 py-3 uppercase tracking-wider"
                      placeholder="e.g. AUG10" aria-describedby="promoFeedback">
               <button type="button" id="promoCheckBtn" onclick="checkPromoCode()"
-                      class="flex-none px-5 rounded-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 transition">
+                      class="flex-none px-5 rounded-lg font-semibold bg-[var(--ink-raised)] text-white hover:bg-[var(--card-hi)] transition">
                 Apply
               </button>
             </div>
@@ -267,19 +322,19 @@
           <legend class="text-xl font-bold mb-1 flex items-center gap-2">
             <i class="fas fa-calendar-alt text-yellow-500" aria-hidden="true"></i> Event details
           </legend>
-          <p class="text-sm text-gray-500 mb-5">This helps us check availability and size the setup.</p>
+          <p class="text-sm text-[var(--text-muted)] mb-5">This helps us check availability and size the setup.</p>
 
           <div class="grid md:grid-cols-2 gap-5">
             <div>
-              <label for="event_date" class="block text-sm font-semibold text-gray-700 mb-1.5">Event date <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="event_date" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Event date <span class="text-red-600" aria-hidden="true">*</span></label>
               <input type="date" id="event_date" name="event_date" required aria-required="true" aria-describedby="err-event_date"
-                     class="form-input w-full border border-gray-300 rounded-lg px-4 py-3">
+                     class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3">
               <p class="field-error" id="err-event_date"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label for="event_type" class="block text-sm font-semibold text-gray-700 mb-1.5">Event type <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="event_type" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Event type <span class="text-red-600" aria-hidden="true">*</span></label>
               <select id="event_type" name="event_type" required aria-required="true" aria-describedby="err-event_type"
-                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                      class="form-select w-full border border-[var(--line)] rounded-lg px-4 py-3">
                 <option value="">Select event type…</option>
                 <option value="Wedding">💍 Wedding</option>
                 <option value="Birthday Party">🎂 Birthday Party</option>
@@ -295,9 +350,9 @@
 
           <div class="grid md:grid-cols-2 gap-5 mt-5">
             <div>
-              <label for="guest_count" class="block text-sm font-semibold text-gray-700 mb-1.5">Expected guests <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="guest_count" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Expected guests <span class="text-red-600" aria-hidden="true">*</span></label>
               <select id="guest_count" name="guest_count" required aria-required="true" aria-describedby="err-guest_count"
-                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                      class="form-select w-full border border-[var(--line)] rounded-lg px-4 py-3">
                 <option value="">Select range…</option>
                 <option value="0-50">0 – 50 guests</option>
                 <option value="51-100">51 – 100 guests</option>
@@ -308,9 +363,9 @@
               <p class="field-error" id="err-guest_count"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
-              <label for="budget" class="block text-sm font-semibold text-gray-700 mb-1.5">Budget range <span class="text-red-600" aria-hidden="true">*</span></label>
+              <label for="budget" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Budget range <span class="text-red-600" aria-hidden="true">*</span></label>
               <select id="budget" name="budget" required aria-required="true" aria-describedby="hint-budget err-budget"
-                      class="form-select w-full border border-gray-300 rounded-lg px-4 py-3">
+                      class="form-select w-full border border-[var(--line)] rounded-lg px-4 py-3">
                 <option value="">Select budget…</option>
                 <option value="10k-30k">KES 10,000 – 30,000</option>
                 <option value="30k-50k">KES 30,000 – 50,000</option>
@@ -318,15 +373,15 @@
                 <option value="100k-200k">KES 100,000 – 200,000</option>
                 <option value="200k+">KES 200,000+</option>
               </select>
-              <p id="hint-budget" class="text-xs text-gray-500 mt-1.5">A range is fine — it helps us recommend the right package.</p>
+              <p id="hint-budget" class="text-xs text-[var(--text-muted)] mt-1.5">A range is fine — it helps us recommend the right package.</p>
               <p class="field-error" id="err-budget"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
           </div>
 
           <div class="mt-5">
-            <label for="venue" class="block text-sm font-semibold text-gray-700 mb-1.5">Venue or location <span class="text-red-600" aria-hidden="true">*</span></label>
+            <label for="venue" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Venue or location <span class="text-red-600" aria-hidden="true">*</span></label>
             <input type="text" id="venue" name="venue" required aria-required="true" aria-describedby="err-venue"
-                   class="form-input w-full border border-gray-300 rounded-lg px-4 py-3" placeholder="e.g. venue name, Nyeri">
+                   class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3" placeholder="e.g. venue name, Nyeri">
             <p class="field-error" id="err-venue"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
           </div>
         </fieldset>
@@ -336,7 +391,7 @@
           <legend class="text-xl font-bold mb-1 flex items-center gap-2">
             <i class="fas fa-microphone-alt text-yellow-500" aria-hidden="true"></i> What do you need?
           </legend>
-          <p class="text-sm text-gray-500 mb-5">Select everything that applies — you can change this later.</p>
+          <p class="text-sm text-[var(--text-muted)] mb-5">Select everything that applies — you can change this later.</p>
 
           <div id="servicesGroup" class="grid md:grid-cols-2 gap-3" role="group" aria-describedby="err-services">
             <!-- Rendered by JS from SERVICES so the list stays in one place -->
@@ -344,37 +399,60 @@
           <p class="field-error mt-3" id="err-services"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
 
           <div class="mt-6">
-            <label for="special_requests" class="block text-sm font-semibold text-gray-700 mb-1.5">
-              Anything else we should know? <span class="text-gray-400 font-normal">(optional)</span>
+            <label for="special_requests" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">
+              Anything else we should know? <span class="text-[var(--text-muted)] font-normal">(optional)</span>
             </label>
             <textarea id="special_requests" name="special_requests" rows="3" maxlength="1000" aria-describedby="count-requests"
-                      class="form-textarea w-full border border-gray-300 rounded-lg px-4 py-3"
+                      class="form-textarea w-full border border-[var(--line)] rounded-lg px-4 py-3"
                       placeholder="Setup times, song requests, access restrictions, specific equipment…"></textarea>
-            <p id="count-requests" class="text-xs text-gray-400 mt-1.5 text-right"><span id="reqCount">0</span> / 1000</p>
+            <p id="count-requests" class="text-xs text-[var(--text-muted)] mt-1.5 text-right"><span id="reqCount">0</span> / 1000</p>
           </div>
         </fieldset>
 
         <!-- ===== STEP 4 ===== -->
         <fieldset class="form-step hidden" data-step="4">
           <legend class="text-xl font-bold mb-1 flex items-center gap-2">
-            <i class="fas fa-clipboard-check text-green-600" aria-hidden="true"></i> Review your enquiry
+            <i class="fas fa-clipboard-check text-[var(--live)]" aria-hidden="true"></i> Review your enquiry
           </legend>
-          <p class="text-sm text-gray-500 mb-5">Check everything is right, then send. Use <strong>Edit</strong> to jump back.</p>
+          <p class="text-sm text-[var(--text-muted)] mb-5">Check everything is right, then send. Use <strong>Edit</strong> to jump back.</p>
 
           <div id="reviewPanel" class="space-y-3">
             <!-- Rendered by JS -->
           </div>
 
-          <div class="mt-5 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-            <p class="text-sm text-gray-800">
-              <i class="fas fa-clock mr-2 text-yellow-600" aria-hidden="true"></i>
+          <div class="mt-5 bg-[var(--gold-soft)] border-l-4 border-yellow-400 p-4 rounded-r-lg">
+            <p class="text-sm text-[var(--text)]">
+              <i class="fas fa-clock mr-2 gold" aria-hidden="true"></i>
               We reply within <strong>2 hours</strong> during business hours. You'll get a reference number as soon as you send this.
             </p>
           </div>
+
+          <!-- The WhatsApp hand-off, offered up front rather than buried on
+               the confirmation screen.
+               Nobody on our side opens the admin dashboard every day, but
+               everybody reads WhatsApp — so an enquiry that also lands in a
+               chat gets answered hours sooner than one that only sits in the
+               database. Checked by default because it is what the client
+               wants too, and stated plainly so it is a choice, not a trick.
+               Unticking it changes nothing about whether we receive the
+               enquiry: the form is still the record. -->
+          <label for="alsoWhatsapp" class="mt-4 flex items-start gap-3 p-4 rounded-xl border-2 border-[rgba(34,197,94,0.32)] bg-[rgba(34,197,94,0.10)] cursor-pointer hover:bg-[rgba(34,197,94,0.18)] transition">
+            <input type="checkbox" id="alsoWhatsapp" checked
+                   class="mt-0.5 w-5 h-5 accent-[var(--live)] flex-none cursor-pointer">
+            <span>
+              <span class="block text-sm font-bold text-green-900">
+                <i class="fab fa-whatsapp mr-1.5" aria-hidden="true"></i>Also open this in WhatsApp when I send it
+              </span>
+              <span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                Recommended — it is the fastest way to reach us, and it gives you the
+                conversation to refer back to. We receive your enquiry either way.
+              </span>
+            </span>
+          </label>
         </fieldset>
 
         <!-- Submission error banner (assertive: user must know it failed) -->
-        <div id="submitError" class="hidden mt-6 bg-red-50 border border-red-300 rounded-xl p-4" role="alert" aria-live="assertive">
+        <div id="submitError" class="hidden mt-6 bg-[rgba(248,113,113,0.10)] border border-red-300 rounded-xl p-4" role="alert" aria-live="assertive">
           <p class="font-semibold text-red-800 flex items-center gap-2">
             <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
             <span id="submitErrorTitle">We couldn't send your enquiry</span>
@@ -384,70 +462,105 @@
             <button type="button" id="retryBtn" class="btn-touch bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
               <i class="fas fa-rotate-right mr-1.5" aria-hidden="true"></i>Try again
             </button>
-            <a href="tel:+254703925826" class="btn-touch bg-white border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 transition">
+            <a href="tel:+254703925826" class="btn-touch bg-[var(--card)] border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 transition">
               <i class="fas fa-phone mr-1.5" aria-hidden="true"></i>Call us instead
             </a>
-            <a id="fallbackWa" href="#" target="_blank" rel="noopener" class="btn-touch bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition">
+            <a id="fallbackWa" href="#" target="_blank" rel="noopener" class="btn-touch bg-[var(--card)] border border-[rgba(34,197,94,0.35)] text-[#86efac] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[rgba(34,197,94,0.12)] transition">
               <i class="fab fa-whatsapp mr-1.5" aria-hidden="true"></i>Send on WhatsApp
             </a>
           </div>
         </div>
 
         <!-- Navigation -->
-        <div class="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-gray-200">
-          <button type="button" id="prevBtn" aria-label="Back to the previous step" class="btn-touch invisible px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition">
+        <div class="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-[var(--line)]">
+          <button type="button" id="prevBtn" aria-label="Back to the previous step" class="btn-touch invisible px-5 py-2.5 bg-[var(--card-hi)] text-[var(--text-soft)] rounded-full font-semibold hover:bg-[var(--line-hi)] transition">
             <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>Back
           </button>
           <button type="button" id="nextBtn" class="btn-touch px-6 py-2.5 bg-yellow-400 text-black rounded-full font-bold hover:bg-yellow-300 transition shadow">
             Next<i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
           </button>
-          <button type="submit" id="submitBtn" class="btn-touch hidden px-6 py-2.5 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 transition shadow disabled:opacity-60 disabled:cursor-not-allowed">
+          <button type="submit" id="submitBtn" class="btn-touch hidden px-6 py-2.5 bg-[var(--wa)] text-white rounded-full font-bold hover:bg-[#1eb955] transition shadow disabled:opacity-60 disabled:cursor-not-allowed">
             <i class="fas fa-paper-plane mr-2" aria-hidden="true"></i><span id="submitLabel">Send enquiry</span>
           </button>
         </div>
       </form>
 
       <!-- ===== SUCCESS PANEL (replaces the form on success) ===== -->
-      <section id="successPanel" class="hidden bg-white rounded-2xl shadow-xl p-8 text-center animate-fade-up" role="status" aria-live="polite" tabindex="-1">
-        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-          <i class="fas fa-check text-4xl text-green-600" aria-hidden="true"></i>
+      <section id="successPanel" class="hidden panel p-8 text-center animate-fade-up" role="status" aria-live="polite" tabindex="-1">
+        <div class="w-20 h-20 bg-[rgba(34,197,94,0.14)] rounded-full flex items-center justify-center mx-auto mb-5">
+          <i class="fas fa-check text-4xl text-[var(--live)]" aria-hidden="true"></i>
         </div>
         <h2 class="text-2xl font-bold mb-2">Enquiry received!</h2>
-        <p class="text-gray-600 max-w-md mx-auto">
-          Thanks <strong id="successName">there</strong> — your enquiry is with our team. We'll be in touch within <strong>2 hours</strong> during business hours.
+        <p class="text-[var(--text-soft)] max-w-md mx-auto">
+          Thanks <strong id="successName">there</strong> — your enquiry is with our team.
         </p>
+
+        <!-- The 2-hour promise, turned into an actual time.
+             "Within 2 hours" is a policy; "by 16:40 today" is something a
+             client can hold us to, and something they can decide to wait
+             for rather than ringing three other suppliers in the meantime. -->
+        <p class="mt-3 max-w-md mx-auto">
+          <span class="chip chip-live" id="replyBy"><i class="fas fa-stopwatch"></i>We reply within 2 hours</span>
+        </p>
+        <p class="stamp mt-3" id="sentAt" style="justify-content:center"></p>
 
         <!-- The reference is the client's proof of submission. Prominent and
              copyable so they can quote it when they call. -->
-        <div class="mt-6 inline-flex flex-col items-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl px-8 py-5">
-          <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Your reference</span>
-          <span id="successRef" class="text-2xl font-black text-gray-900 tracking-wide mt-1">—</span>
-          <button type="button" id="copyRefBtn" class="mt-2 text-sm text-yellow-700 font-semibold hover:text-yellow-800 underline">
+        <div class="mt-6 inline-flex flex-col items-center bg-[var(--ink-raised)] border-2 border-dashed border-[var(--line)] rounded-xl px-8 py-5">
+          <span class="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">Your reference</span>
+          <span id="successRef" class="text-2xl font-black text-[var(--text)] tracking-wide mt-1">—</span>
+          <button type="button" id="copyRefBtn" class="mt-2 text-sm gold font-semibold underline">
             <i class="fas fa-copy mr-1" aria-hidden="true"></i>Copy reference
           </button>
         </div>
 
-        <p class="text-sm text-gray-500 mt-6 max-w-md mx-auto">
+        <p class="text-sm text-[var(--text-muted)] mt-6 max-w-md mx-auto">
           Keep this number — quote it if you call or message us about this event.
         </p>
 
-        <!-- WhatsApp is now OPTIONAL and secondary. The enquiry is already
-             safely recorded; this is a convenience, not the delivery mechanism. -->
+        <!-- WhatsApp remains OPTIONAL and secondary. The enquiry is already
+             safely recorded; this is a convenience, not the delivery
+             mechanism. It is styled as the prominent action because it is
+             genuinely the fastest route to an answer — not because anything
+             depends on it. -->
         <div class="flex flex-wrap justify-center gap-3 mt-7">
           <a id="successWa" href="#" target="_blank" rel="noopener"
-             class="btn-touch inline-flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-full font-semibold hover:bg-green-700 transition shadow">
-            <i class="fab fa-whatsapp text-lg" aria-hidden="true"></i>Also send on WhatsApp
+             class="btn-touch inline-flex items-center gap-2 bg-[var(--wa)] text-white px-6 py-3.5 rounded-full font-bold hover:bg-[#1eb955] transition shadow-lg">
+            <i class="fab fa-whatsapp text-xl" aria-hidden="true"></i>Continue on WhatsApp
           </a>
-          <a href="index.html" class="btn-touch inline-flex items-center gap-2 bg-gray-100 text-gray-800 px-5 py-3 rounded-full font-semibold hover:bg-gray-200 transition">
+          <a href="/" class="btn-touch inline-flex items-center gap-2 bg-[var(--card-hi)] text-[var(--text)] px-5 py-3 rounded-full font-semibold hover:bg-[var(--line-hi)] transition">
             <i class="fas fa-house" aria-hidden="true"></i>Back to home
           </a>
         </div>
-        <p class="text-xs text-gray-400 mt-4">Sending on WhatsApp is optional — we already have your enquiry.</p>
+
+        <!-- Shown only when the browser refused the automatic hand-off, so
+             the client understands why nothing happened and what to tap. -->
+        <p id="waBlockedNote" class="hidden text-sm text-[#86efac] bg-[rgba(34,197,94,0.10)] border border-[rgba(34,197,94,0.32)] rounded-lg px-4 py-3 mt-4 max-w-md mx-auto">
+          <i class="fab fa-whatsapp mr-1.5" aria-hidden="true"></i>
+          Your browser blocked the WhatsApp pop-up. Tap <strong>Continue on WhatsApp</strong> above — your message is already written.
+        </p>
+
+        <p class="text-xs text-[var(--text-muted)] mt-4">WhatsApp is optional — your enquiry is already with our team either way.</p>
+
+        <!-- Turns a finished booking into a referral. The moment right after
+             a successful send is the one point in the whole journey where
+             somebody is most inclined to pass us on (peak-end), and the link
+             is short enough to read out loud. -->
+        <div class="mt-8 pt-6 border-t border-[var(--line)] max-w-md mx-auto">
+          <p class="text-sm text-[var(--text-muted)]">Know someone else planning an event?</p>
+          <div class="flex items-center justify-center gap-2 mt-2 flex-wrap">
+            <code class="text-sm font-bold text-[var(--text)] bg-[var(--card-hi)] px-3 py-2 rounded-lg">lawiesounds.com/book</code>
+            <button type="button" id="shareBookBtn"
+                    class="btn-touch inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[var(--line)] hover:bg-[var(--card-hi)] transition">
+              <i class="fas fa-share-nodes" aria-hidden="true"></i><span>Share</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- Trust badges -->
       <div class="text-center mt-6">
-        <p class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-gray-400">
+        <p class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
           <span><i class="fas fa-lock mr-1" aria-hidden="true"></i>Secure form</span>
           <span><i class="fas fa-clock mr-1" aria-hidden="true"></i>2-hour response</span>
           <span><i class="fas fa-shield-alt mr-1" aria-hidden="true"></i>No spam, ever</span>
@@ -457,42 +570,84 @@
   </main>
 
   <!-- ==================== FOOTER ==================== -->
-  <footer class="bg-gray-900 text-white mt-16">
-    <div class="container mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
       <div>
-        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-16 w-16 rounded-full mb-4 shadow-md border-2 border-yellow-400">
-        <p class="text-sm">&copy; 2026 <strong>LAWIE SOUNDS</strong><br>
-        Site by <a rel="noopener noreferrer author" href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" class="text-yellow-400 hover:underline">Kelvin Ndegwa</a> &middot; FullStack Engineer</p>
+        <a href="/" class="brand" style="margin-bottom:14px">
+          <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" loading="lazy" alt="">
+          <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+        </a>
+        <p style="font-size:13.5px;color:var(--text-faint);line-height:1.7;margin:14px 0 0;max-width:34ch">
+          Event entertainment, sound, lighting and live media across Nyeri, Mount Kenya and Kenya at large.
+        </p>
+        <div class="foot-social">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://tiktok.com/@lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
+          <a href="/wa" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        </div>
       </div>
+
       <div>
-        <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Quick Links</h2>
-        <ul class="space-y-2 text-sm">
-          <li><a href="index.html" class="hover:text-yellow-400">Home</a></li>
-          <li><a href="services.html" class="hover:text-yellow-400">Services</a></li>
-          <li><a href="gallery.html" class="hover:text-yellow-400">Gallery</a></li>
-        </ul>
+        <h4>Pages</h4>
+        <div class="foot-links">
+          <a href="/services">All services</a>
+          <a href="/gallery">Gallery</a>
+          <a href="/book">Get a quote</a>
+          <a href="/review">Leave a review</a>
+        </div>
       </div>
+
       <div>
-        <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Follow Us</h2>
-        <div class="flex space-x-6 text-2xl">
-          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
-          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a>
-          <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="hover:text-yellow-400" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a>
+        <h4>Popular</h4>
+        <!-- The homepage replaces this with the live list from the API.
+             Everywhere else the nine standing services are the truth and a
+             fetch would be a round trip for a footer. -->
+        <div class="foot-links" id="footerServices">
+          <a href="/s/dj-mc-services">DJ &amp; MC Services</a>
+          <a href="/s/public-address">Public Address Systems</a>
+          <a href="/s/power-lighting">Power &amp; Lighting</a>
+          <a href="/s/led-screens">LED Screens</a>
+          <a href="/s/photography">Photography</a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Contact</h4>
+        <div class="foot-links">
+          <a href="tel:+254703925826"><i class="fas fa-phone-alt gold" style="width:18px"></i>+254 703 925 826</a>
+          <a href="tel:+254733925826"><i class="fas fa-mobile-screen gold" style="width:18px"></i>+254 733 925 826</a>
+          <a href="mailto:Lawiesounds@gmail.com"><i class="fas fa-envelope gold" style="width:18px"></i>Lawiesounds@gmail.com</a>
+          <span style="color:var(--text-muted);font-size:14px"><i class="fas fa-location-dot gold" style="width:18px"></i>Nyeri, Kenya</span>
         </div>
       </div>
     </div>
-  </footer>
 
-  <!-- Floating actions -->
-  <div class="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
-    <a href="tel:+254703925826" class="btn-touch bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition" aria-label="Call Lawie Sounds">
-      <i class="fas fa-phone-alt" aria-hidden="true"></i>
-    </a>
-    <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="btn-touch bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition" aria-label="WhatsApp Lawie Sounds">
-      <i class="fab fa-whatsapp" aria-hidden="true"></i>
-    </a>
+    <div class="foot-bottom">
+      <p style="margin:0">&copy; <span id="year">2026</span> Lawie Sounds. All rights reserved.</p>
+      <p style="margin:0">Site by <a href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" rel="noopener noreferrer author" class="gold" style="text-decoration:none">Kelvin Ndegwa</a> · FullStack Engineer</p>
+    </div>
   </div>
+</footer>
 
+<!-- Desktop floating actions -->
+<div class="fab">
+  <a href="/call" style="background:#22c55e;color:#fff" aria-label="Call Lawie Sounds"><i class="fas fa-phone-alt"></i></a>
+  <a href="/wa" style="background:var(--wa);color:#04220f" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp" style="font-size:20px"></i></a>
+  <button id="toTop" style="background:var(--gold);color:#14110a" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+</div>
+
+<!-- Mobile thumb-zone action bar. The three things anyone actually wants
+     from a phone, in the part of the screen a thumb reaches. -->
+<div class="mobile-bar">
+  <a href="/call" style="background:rgba(255,255,255,.07);color:#fff;border:1px solid var(--line)"><i class="fas fa-phone-alt"></i>Call</a>
+  <a href="/wa" style="background:var(--wa);color:#04220f"><i class="fab fa-whatsapp" style="font-size:17px"></i>WhatsApp</a>
+  <a href="#booking-form" style="background:var(--gold);color:#14110a"><i class="fas fa-pen-to-square"></i>The form</a>
+</div>
+
+
+<script src="/js/site.js"></script>
 <script>
 (function () {
   'use strict';
@@ -534,11 +689,11 @@
   // Rendered from SERVICES so the list never drifts between the markup and the
   // prefill logic.
   $('servicesGroup').innerHTML = SERVICES.map(s => `
-    <label class="service-card flex items-center p-3.5 border border-gray-300 rounded-xl cursor-pointer hover:bg-yellow-50">
+    <label class="service-card flex items-center p-3.5 border border-[var(--line)] rounded-xl cursor-pointer ">
       <input type="checkbox" name="services" value="${s.name}" data-slug="${s.slug}"
              class="w-5 h-5 accent-yellow-500 rounded flex-shrink-0">
-      <span class="ml-3 flex items-center gap-2 text-sm font-medium text-gray-800">
-        <i class="fas ${s.icon} text-gray-400 w-4 text-center" aria-hidden="true"></i>${s.name}
+      <span class="ml-3 flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+        <i class="fas ${s.icon} text-[var(--text-muted)] w-4 text-center" aria-hidden="true"></i>${s.name}
       </span>
     </label>`).join('');
 
@@ -756,8 +911,8 @@
         input.value = j.data.code;
         out.innerHTML = '<i class="fas fa-circle-check mr-1"></i>'
           + escBk(j.data.description || j.data.discountLabel) + ' applied.'
-          + (j.data.endsOn ? ' <span class="text-gray-500">Ends ' + escBk(j.data.endsOn) + '.</span>' : '');
-        out.className = 'text-sm mt-1.5 text-green-700 font-semibold';
+          + (j.data.endsOn ? ' <span class="text-[var(--text-muted)]">Ends ' + escBk(j.data.endsOn) + '.</span>' : '');
+        out.className = 'text-sm mt-1.5 font-semibold';out.style.color='var(--live)';
       } else {
         // The server's reason is specific — expired, not started, fully claimed,
         // wrong service. A generic "invalid code" for an expired promotion sends
@@ -813,18 +968,18 @@
     ];
 
     $('reviewPanel').innerHTML = groups.map(g => `
-      <div class="border border-gray-200 rounded-xl overflow-hidden">
-        <div class="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
-          <h3 class="font-semibold text-sm text-gray-800">${g.title}</h3>
-          <button type="button" data-edit="${g.step}" class="text-sm font-semibold text-yellow-700 hover:text-yellow-800 underline">
+      <div class="border border-[var(--line)] rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between bg-[var(--ink-raised)] px-4 py-2.5 border-b border-[var(--line)]">
+          <h3 class="font-semibold text-sm text-[var(--text)]">${g.title}</h3>
+          <button type="button" data-edit="${g.step}" class="text-sm font-semibold gold underline">
             Edit<span class="sr-only"> ${g.title}</span>
           </button>
         </div>
-        <dl class="divide-y divide-gray-100">
+        <dl class="divide-y divide-[var(--line)]">
           ${g.rows.map(([k, v]) => `
             <div class="flex gap-4 px-4 py-2.5 text-sm">
-              <dt class="text-gray-500 w-40 flex-shrink-0">${esc(k)}</dt>
-              <dd class="text-gray-900 font-medium break-words">${esc(v || '—')}</dd>
+              <dt class="text-[var(--text-muted)] w-40 flex-shrink-0">${esc(k)}</dt>
+              <dd class="text-[var(--text)] font-medium break-words">${esc(v || '—')}</dd>
             </div>`).join('')}
         </dl>
       </div>`).join('');
@@ -886,17 +1041,32 @@
   // Service pages link here as booking.html?service=<slug>, so the enquiry lands
   // with the right service already ticked and we learn which page drove it.
   const params      = new URLSearchParams(location.search);
-  const wantedSlug  = params.get('service');
   let   channel     = 'booking-form';
 
-  if (wantedSlug) {
-    const match = SERVICES.find(s => s.slug === wantedSlug);
-    if (match) {
-      const cb = form.querySelector(`input[data-slug="${CSS.escape(match.slug)}"]`);
+  // `service` accepts one slug or a comma-separated list. The homepage
+  // quote tray lets a visitor pick several services before they ever
+  // reach this form, and arriving to find only the first one ticked
+  // would throw away the choice they already made — the fastest way to
+  // lose someone who had already committed to the plan.
+  const wantedSlugs = (params.get('service') || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  if (wantedSlugs.length) {
+    const matched = wantedSlugs
+      .map(slug => SERVICES.find(s => s.slug === slug))
+      .filter(Boolean);
+
+    for (const m of matched) {
+      const cb = form.querySelector(`input[data-slug="${CSS.escape(m.slug)}"]`);
       if (cb) cb.checked = true;
-      $('prefillName').textContent = match.name;
+    }
+
+    if (matched.length) {
+      $('prefillName').textContent = matched.length === 1
+        ? matched[0].name
+        : matched.slice(0, -1).map(m => m.name).join(', ') + ' and ' + matched[matched.length - 1].name;
       $('prefillNotice').classList.remove('hidden');
-      channel = 'service:' + match.slug;
+      channel = 'service:' + matched.map(m => m.slug).join('+');
     }
   }
   if (params.get('event')) $('event_type').value = params.get('event');
@@ -993,6 +1163,7 @@
       $('successName').textContent = data.name.split(' ')[0] || 'there';
       $('successRef').textContent  = ref;
       $('successWa').href          = waLink(data, ref);
+      stampTheReply();
 
       form.classList.add('hidden');
       $('progressRail').classList.add('hidden');
@@ -1001,6 +1172,21 @@
       successPanel.classList.remove('hidden');
       successPanel.focus();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Hand off to WhatsApp if they asked for it.
+      //
+      // window.open is called from inside the click that started this
+      // submit, so most browsers treat it as user-initiated and let it
+      // through. Some will still block it — which is exactly why the
+      // confirmation panel behind it keeps its own WhatsApp button and
+      // its reference number. This is a shortcut, never the delivery
+      // mechanism: the enquiry is already saved by the time we get here.
+      if ($('alsoWhatsapp')?.checked) {
+        const opened = window.open(waLink(data, ref), '_blank', 'noopener');
+        if (!opened) {
+          $('waBlockedNote').classList.remove('hidden');
+        }
+      }
 
     } catch (err) {
       const offline = !navigator.onLine;
@@ -1032,13 +1218,77 @@
     } catch (e) { /* clipboard blocked — the reference is visible on screen anyway */ }
   });
 
-  // ===================== MOBILE MENU =====================
-  $('mobile-menu-btn').addEventListener('click', function () {
-    const menu = $('mobile-menu');
-    const open = menu.classList.toggle('hidden') === false;
-    this.setAttribute('aria-expanded', String(open));
-    this.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  // ===================== SHARE THE BOOKING LINK =====================
+  // The short URL is the whole point: it is short enough to read out on a
+  // call and it survives being pasted into a WhatsApp group intact.
+  $('shareBookBtn')?.addEventListener('click', async () => {
+    const url = 'https://lawiesounds.com/book';
+    const btn = $('shareBookBtn');
+    const label = btn.querySelector('span');
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Lawie Sounds — book your event',
+          text : 'Book Lawie Sounds for your event. Free quote in 2 hours.',
+          url,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      label.textContent = 'Copied!';
+      setTimeout(() => { label.textContent = 'Share'; }, 2200);
+    } catch (e) {
+      // Share sheet dismissed or clipboard denied. The URL is on screen.
+    }
   });
+
+  // The header, mobile menu, announcement bar and reveals are wired by
+  // /js/site.js — this page binds nothing of its own for the chrome.
+
+  // ===================== THE REPLY DEADLINE =====================
+  //
+  // "Within 2 hours" is a policy. "By 16:40 today" is a commitment a client
+  // can hold us to — and, more usefully to them, something they can decide
+  // to wait for instead of ringing three other suppliers in the meantime.
+  //
+  // Business hours are 08:00–20:00. An enquiry that lands at 23:30 does not
+  // get a promise of 01:30; it gets 10:00 tomorrow, which is the truth. A
+  // deadline we would miss is worse than no deadline at all.
+  const OPEN_HOUR = 8, CLOSE_HOUR = 20, SLA_HOURS = 2;
+
+  function replyDeadline(from = new Date()) {
+    const d = new Date(from);
+    if (d.getHours() < OPEN_HOUR) {
+      d.setHours(OPEN_HOUR, 0, 0, 0);                     // before opening
+    } else if (d.getHours() >= CLOSE_HOUR) {
+      d.setDate(d.getDate() + 1);                          // after closing
+      d.setHours(OPEN_HOUR, 0, 0, 0);
+    }
+    d.setTime(d.getTime() + SLA_HOURS * 3600000);
+    // Rolled past closing while adding the two hours — finish first thing.
+    if (d.getHours() >= CLOSE_HOUR) {
+      d.setDate(d.getDate() + 1);
+      d.setHours(OPEN_HOUR + SLA_HOURS, 0, 0, 0);
+    }
+    return d;
+  }
+
+  function stampTheReply() {
+    const now = new Date();
+    const by = replyDeadline(now);
+    const sameDay = by.toDateString() === now.toDateString();
+    const time = by.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    const chip = $('replyBy');
+    if (chip) {
+      chip.innerHTML = `<i class="fas fa-stopwatch"></i>We will reply by <strong>${time}${sameDay ? ' today' : ' tomorrow'}</strong>`;
+    }
+    const sent = $('sentAt');
+    if (sent && window.LS) {
+      sent.innerHTML = `<i class="fas fa-paper-plane"></i>Sent ${window.LS.timeAgo(now)}` +
+        `<time datetime="${now.toISOString()}" data-ts hidden></time>`;
+    }
+  }
 
   // ===================== INIT =====================
   $('event_date').min = new Date().toISOString().split('T')[0];

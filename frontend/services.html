@@ -3,848 +3,668 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <link rel="canonical" href="https://lawiesounds.com/services.html">
+
+  <title>Event Services in Nyeri &amp; Across Kenya | Lawie Sounds</title>
+  <meta name="description" content="DJ and MC, sound systems, lighting, LED screens, photography, live streaming, 360 booth, drone and pyrotechnics — one team, one invoice. Free quote in 2 hours.">
+  <meta name="keywords" content="event services Nyeri, DJ Nyeri, MC services, sound hire Kenya, event lighting, LED screen hire, photography, drone services, pyrotechnics Kenya">
+  <meta name="author" content="Lawie Sounds">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://lawiesounds.com/services">
+
   <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
   <link rel="apple-touch-icon" href="/IMAGES/LOGO/2.jpg">
-  <meta name="theme-color" content="#facc15">
-  <title>Our Services | LAWIE SOUNDS — Professional Event Entertainment Kenya</title>
-  <meta name="description" content="Book professional event services in Kenya. DJ & MC, LED screens, lighting, photography, pyrotechnics, drone services, and more. Quote in 2 hours.">
-  <meta name="keywords" content="event services Nyeri, DJ Nyeri, MC services, event lighting, photography, drone services, pyrotechnics Kenya">
-  <meta property="og:title" content="Our Services | Lawie Sounds">
-  <meta property="og:image" content="https://lawiesounds.com/IMAGES/LOGO/2.jpg">
-  <meta property="og:url" content="https://lawiesounds.com/services.html">
+  <meta name="theme-color" content="#08080f">
+
+  <meta property="og:type" content="website">
   <meta property="og:site_name" content="Lawie Sounds">
+  <meta property="og:locale" content="en_KE">
+  <meta property="og:title" content="Event Services in Nyeri &amp; Across Kenya | Lawie Sounds">
+  <meta property="og:description" content="One team for DJ, sound, lighting, LED and live media. Free quote in 2 hours.">
+  <meta property="og:image" content="https://lawiesounds.com/IMAGES/Hero%20section/1.jpg">
+  <meta property="og:url" content="https://lawiesounds.com/services">
   <meta name="twitter:card" content="summary_large_image">
-  <meta property="og:description" content="Professional event entertainment — DJ, lighting, screens, photography and more.">
+  <meta name="twitter:title" content="Event Services in Nyeri &amp; Across Kenya | Lawie Sounds">
+  <meta name="twitter:description" content="One team for DJ, sound, lighting, LED and live media. Free quote in 2 hours.">
+  <meta name="twitter:image" content="https://lawiesounds.com/IMAGES/Hero%20section/1.jpg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- The shared design system: tokens, header, footer, buttons, cards and
+       the timestamp atoms. This page adds only the sticky filter bar and
+       the masonry strip, which exist nowhere else. -->
+  <link rel="stylesheet" href="/css/app.css">
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    * { font-family: 'Inter', sans-serif; }
-
-    :root {
-      --bg:      #08080f;
-      --surface: #0f0f1a;
-      --card:    #111120;
-      --border:  rgba(255,255,255,0.07);
-      --yellow:  #facc15;
-      --yellow-dim: rgba(250,204,21,0.12);
+    /* The filter bar stays reachable while the grid scrolls — with nine
+       services and five categories, having to scroll back up to change
+       the filter is the whole friction of this page. */
+    .filter-bar {
+      position: sticky; top: var(--header-h); z-index: 40;
+      background: rgba(8,8,15,.96);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 0;
     }
-
-    body { background: var(--bg); color: #fff; margin: 0; }
-
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--yellow); border-radius: 4px; }
-
-    /* ── Skeleton ── */
-    .skeleton {
-      background: linear-gradient(90deg,#111122 25%,#1a1a2e 50%,#111122 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.6s infinite;
-    }
-    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
-
-    /* ── Service card ── */
-    .service-card {
-      background: var(--card);
-      border: 1.5px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      transition: transform 0.3s cubic-bezier(.2,.9,.4,1.1), border-color 0.25s, box-shadow 0.3s;
-      display: flex;
-      flex-direction: column;
-    }
-    .service-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(250,204,21,0.35);
-      box-shadow: 0 20px 40px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(250,204,21,0.08);
-    }
-    .service-card .card-image {
-      position: relative;
-      height: 220px;
-      overflow: hidden;
-      background: #1a1a2e;
-    }
-    .service-card .card-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.5s cubic-bezier(.4,0,.2,1);
-    }
-    .service-card:hover .card-image img { transform: scale(1.07); }
-    .service-card .card-image .img-gradient {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%);
-      pointer-events: none;
-    }
-    .service-card .card-image .cat-badge {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: var(--yellow);
-      color: #000;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 999px;
-    }
-    .service-card .card-image .icon-badge {
-      position: absolute;
-      bottom: 14px;
-      right: 14px;
-      width: 40px;
-      height: 40px;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(250,204,21,0.3);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--yellow);
-      font-size: 16px;
-    }
-    .service-card .card-body { flex: 1; display: flex; flex-direction: column; padding: 20px; }
-    .service-card .card-body h3 { font-size: 1.15rem; font-weight: 800; margin: 0 0 6px; color: #fff; }
-    .service-card .card-body p  { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.6; flex: 1; margin: 0 0 16px; }
-    .service-card .card-footer  { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px; }
-
-    /* Pkg pills */
     .pkg-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: rgba(250,204,21,0.1);
-      color: var(--yellow);
-      border: 1px solid rgba(250,204,21,0.2);
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text-muted);
     }
-
-    /* CTA buttons on card */
-    .btn-wa {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      background: #16a34a;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: background 0.2s;
-      text-decoration: none;
-      flex: 1;
+    /* Masonry, so portrait and landscape photographs both sit naturally
+       instead of every one being cropped to the same rectangle. */
+    .moments { column-count: 4; column-gap: 14px; }
+    @media (max-width: 1024px) { .moments { column-count: 3; } }
+    @media (max-width: 720px)  { .moments { column-count: 2; } }
+    .moments > a {
+      display: block; break-inside: avoid; margin-bottom: 14px;
+      border-radius: var(--r-md); overflow: hidden; position: relative;
+      background: #0a0a13; text-decoration: none;
+      transition: transform .3s cubic-bezier(.2,.8,.3,1), box-shadow .3s;
     }
-    .btn-wa:hover { background: #15803d; }
-    /* Primary quote CTA. Routes to the booking form (which records the enquiry
-       in the dashboard) rather than to WhatsApp, which left no trace. Yellow =
-       the site's primary action colour, so it reads as the main path. */
-    .btn-quote {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      background: var(--yellow);
-      color: #000;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: background 0.2s, transform 0.1s;
-      text-decoration: none;
-      flex: 1;
-    }
-    .btn-quote:hover { background: #fde047; }
-    .btn-quote:active { transform: scale(0.97); }
-    .btn-details {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.06);
-      border: 1.5px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.75);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: all 0.2s;
-      text-decoration: none;
-      flex: 1;
-    }
-    .btn-details:hover { border-color: var(--yellow); color: var(--yellow); }
-
-    /* ── Filter buttons ── */
-    .filter-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 7px 16px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1.5px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .filter-btn.active { background: var(--yellow); color: #000; }
-    .filter-btn:not(.active) {
-      background: rgba(255,255,255,0.05);
-      color: rgba(255,255,255,0.6);
-      border-color: rgba(255,255,255,0.1);
-    }
-    .filter-btn:not(.active):hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-    /* ── Reveal ── */
-    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
-    .reveal.visible { opacity: 1; transform: none; }
-
-    /* ── Logo ── */
-    .logo-img { transition: transform 0.3s; }
-    .logo-img:hover { transform: scale(1.06); }
-
-    /* ── Touch ── */
-    .btn-touch { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
-
-    /* ── Search ── */
-    .search-input {
-      background: rgba(255,255,255,0.06);
-      border: 1.5px solid rgba(255,255,255,0.1);
-      color: #fff;
-      border-radius: 999px;
-      padding: 10px 18px 10px 44px;
-      width: 100%;
-      font-size: 14px;
-      transition: border-color 0.2s;
-      outline: none;
-    }
-    .search-input::placeholder { color: rgba(255,255,255,0.3); }
-    .search-input:focus { border-color: rgba(250,204,21,0.5); }
-
-    /* ── No-results / empty ── */
-    .empty-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.04);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-    }
-
-    /* ── Stat pill ── */
-    .stat-pill {
-      background: rgba(250,204,21,0.1);
-      border: 1px solid rgba(250,204,21,0.2);
-      color: var(--yellow);
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    /* ── Price ── */
-    .price-from { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 12px; }
-    .price-from strong { color: var(--yellow); font-size: 14px; }
-
-    /* ── Filter scroll ── */
-    .filter-scroll { overflow-x: auto; -ms-overflow-style: none; scrollbar-width: none; }
-    .filter-scroll::-webkit-scrollbar { display: none; }
-
-    html { scroll-behavior: smooth; }
-
-    *:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; border-radius: 6px; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .reveal, .service-card, .service-card .card-image img { transition: none !important; animation: none !important; }
+    .moments > a:hover { transform: translateY(-4px); box-shadow: var(--sh-3); }
+    .moments img { width: 100%; display: block; transition: transform .6s, filter .6s; }
+    .moments > a:hover img { transform: scale(1.05); filter: brightness(1.08); }
+    .moments .tag {
+      position: absolute; inset: auto 0 0 0; padding: 18px 12px 10px;
+      background: linear-gradient(to top, rgba(0,0,0,.8), transparent);
+      font-size: 10.5px; font-weight: 800; letter-spacing: .06em; color: var(--gold);
     }
   </style>
+
+  <script type="application/ld+json" id="ldServices"></script>
 </head>
 <body>
 
-  <!-- ====================================================
-       HEADER
-  ===================================================== -->
-  <header class="sticky top-0 z-40 border-b" style="background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);border-color:var(--border)">
-    <div class="container mx-auto px-4 py-3.5">
-      <div class="flex items-center justify-between gap-3">
-        <a href="index.html" class="flex items-center gap-3 flex-shrink-0">
-          <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="logo-img h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
-          <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
-        </a>
+<a href="#main" class="sr-only focus:not-sr-only skip-link">Skip to content</a>
 
-        <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
-          <a href="index.html"         class="text-gray-400 hover:text-yellow-400 transition">Home</a>
-          <a href="services.html"      class="text-yellow-400 border-b-2 border-yellow-400 pb-0.5">Services</a>
-          <a href="gallery.html"       class="text-gray-400 hover:text-yellow-400 transition">Gallery</a>
-          <a href="booking.html"       class="text-gray-400 hover:text-yellow-400 transition">Booking</a>
-          <a href="index.html#contact" class="text-gray-400 hover:text-yellow-400 transition">Contact</a>
-        </nav>
-
-        <div class="flex items-center gap-2">
-          <a href="booking.html" class="btn-touch bg-yellow-400 text-black px-5 py-2 rounded-full text-sm font-bold hover:bg-yellow-300 transition shadow-lg">
-            <i class="fas fa-calendar-check mr-1.5"></i><span class="hidden sm:inline">Book Now</span><span class="sm:hidden">Book</span>
-          </a>
-          <button id="mobile-menu-btn" class="btn-touch md:hidden text-white p-2" aria-label="Menu">
-            <i class="fas fa-bars text-lg"></i>
-          </button>
-        </div>
-      </div>
-
-      <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t space-y-1" style="border-color:var(--border)">
-        <a href="index.html"         class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Home</a>
-        <a href="services.html"      class="block py-2.5 text-yellow-400 text-sm font-bold">Services</a>
-        <a href="gallery.html"       class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Gallery</a>
-        <a href="booking.html"       class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Booking</a>
-        <a href="index.html#contact" class="block py-2.5 text-gray-300 hover:text-yellow-400 transition text-sm font-medium">Contact</a>
-      </div>
-    </div>
-  </header>
-
-
-  <!-- ====================================================
-       HERO
-  ===================================================== -->
-  <section class="relative overflow-hidden pt-16 pb-20 text-center" style="background:linear-gradient(180deg,#000 0%,var(--bg) 100%)">
-    <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(ellipse 65% 55% at 50% 0%,rgba(250,204,21,0.08),transparent)"></div>
-    <div class="container mx-auto px-4 relative">
-      <!-- Trust badges -->
-      <div class="flex flex-wrap justify-center gap-2 mb-8 reveal">
-        <span class="stat-pill"><i class="fas fa-star mr-1"></i>500+ Events</span>
-        <span class="stat-pill"><i class="fas fa-thumbs-up mr-1"></i>98% Satisfaction</span>
-        <span class="stat-pill"><i class="fas fa-bolt mr-1"></i>Quote in 2 Hours</span>
-      </div>
-
-      <h1 class="text-4xl sm:text-5xl md:text-6xl font-black mb-5 leading-tight reveal" style="animation-delay:.05s">
-        Our <span class="text-yellow-400">Services</span>
-      </h1>
-
-      <p class="text-gray-400 text-base sm:text-lg max-w-xl mx-auto mb-8 reveal" style="animation-delay:.1s">
-        Comprehensive event solutions from sound to lighting, photography to pyrotechnics. Professional, reliable, and unforgettable.
-      </p>
-
-      <!-- Live count -->
-      <div class="reveal" style="animation-delay:.15s">
-        <p class="text-sm text-gray-500"><span id="heroCount">—</span> services available right now</p>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ====================================================
-       STICKY SEARCH + FILTER BAR
-  ===================================================== -->
-  <div id="filterBar" class="sticky z-30 border-b py-3.5" style="top:58px;background:rgba(8,8,15,0.96);backdrop-filter:blur(16px);border-color:var(--border)">
-    <div class="container mx-auto px-4 space-y-3">
-      <!-- Search -->
-      <div class="relative max-w-lg mx-auto">
-        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none"></i>
-        <input id="searchInput" type="text" placeholder="Search services (DJ, lighting, drone, photography…)" class="search-input" aria-label="Search services">
-      </div>
-      <!-- Category filters -->
-      <div id="filterContainer" class="filter-scroll flex gap-2">
-        <div class="skeleton h-9 w-16 rounded-full"></div>
-        <div class="skeleton h-9 w-20 rounded-full"></div>
-        <div class="skeleton h-9 w-24 rounded-full"></div>
-        <div class="skeleton h-9 w-20 rounded-full"></div>
-        <div class="skeleton h-9 w-28 rounded-full"></div>
-      </div>
-      <!-- Result count -->
-      <p class="text-xs text-gray-600 text-center"><span id="resultCount">0</span> services found</p>
-    </div>
+<!-- ══════════════ ANNOUNCEMENT BAR (admin-controlled) ══════════════ -->
+<div id="announce" class="announce" hidden>
+  <div class="wrap" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:11px">
+    <span style="font-size:18px" aria-hidden="true">🎉</span>
+    <p id="announceMsg" style="margin:0;flex:1;min-width:200px;font-size:14.5px;font-weight:700;line-height:1.4"></p>
+    <span id="announceEnds" style="font-size:12px;font-weight:800;letter-spacing:.04em;opacity:.75"></span>
+    <a id="announceCta" href="/book" class="btn btn-sm cta">Claim offer <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
+    <button id="announceClose" aria-label="Dismiss this announcement" style="background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:inherit;opacity:.6;padding:0 4px">&times;</button>
   </div>
+</div>
 
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Lawie Sounds — home">
+      <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="" fetchpriority="high">
+      <span>
+        <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
+        <span class="brand-sub">Nyeri · Kenya</span>
+      </span>
+    </a>
 
-  <!-- ====================================================
-       SERVICES GRID
-  ===================================================== -->
-  <main class="container mx-auto px-4 py-10">
+    <nav class="hidden lg:flex" style="gap:30px" aria-label="Main navigation">
+      <a class="nav-link" href="/services">Services</a>
+      <a class="nav-link" href="/latest" id="navLatest" style="position:relative">What's new<span class="new-dot" id="navNewDot" hidden></span></a>
+      <a class="nav-link" href="/gallery">Our work</a>
+      <a class="nav-link" href="/how">How it works</a>
+      <a class="nav-link" href="/reviews">Reviews</a>
+      <a class="nav-link" href="/faq">FAQ</a>
+    </nav>
 
-    <!-- Skeleton loader -->
-    <div id="skeletonLoader" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <div class="skeleton rounded-2xl" style="height:420px"></div>
-      <div class="skeleton rounded-2xl hidden md:block" style="height:420px"></div>
-      <div class="skeleton rounded-2xl hidden lg:block" style="height:420px"></div>
-    </div>
-
-    <!-- Services grid (dynamic) -->
-    <div id="servicesGrid" class="hidden grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-
-    <!-- No results -->
-    <div id="noResults" class="hidden text-center py-24">
-      <div class="empty-icon"><i class="fas fa-search text-3xl text-gray-600"></i></div>
-      <h3 class="text-xl font-bold text-gray-400 mb-2">No Services Found</h3>
-      <p class="text-gray-600 text-sm mb-7">Try a different search term or browse all categories.</p>
-      <button onclick="resetFilters()" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-7 py-3 rounded-full font-bold hover:bg-yellow-300 transition">
-        <i class="fas fa-undo-alt"></i> Reset Filters
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="tel:+254703925826" class="hidden xl:inline-flex" style="color:var(--text-muted);font-size:13.5px;font-weight:600;text-decoration:none;gap:8px;align-items:center">
+        <i class="fas fa-phone-alt gold"></i>+254 703 925 826
+      </a>
+      <a href="/book" class="btn btn-primary btn-sm hidden sm:inline-flex"><i class="fas fa-calendar-check"></i>Get a quote</a>
+      <button id="menuBtn" class="lg:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav"
+              style="background:rgba(255,255,255,.06);border:1px solid var(--line);color:#fff;width:44px;height:44px;border-radius:12px;cursor:pointer">
+        <i class="fas fa-bars"></i>
       </button>
     </div>
-
-  </main>
-
-
-  <!-- ====================================================
-       MOMENTS CAPTURED — Service Gallery
-  ===================================================== -->
-  <section id="serviceGallery" class="py-14" style="background:var(--surface)">
-    <div class="container mx-auto px-4">
-      <div class="flex items-end justify-between mb-8 reveal">
-        <div>
-          <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-1">Our Work</p>
-          <h2 class="text-2xl md:text-3xl font-black">Moments <span class="text-yellow-400">Captured</span></h2>
-          <p class="text-gray-500 text-sm mt-1">Real events, real setups, real impact.</p>
-        </div>
-        <a href="gallery.html" class="flex-shrink-0 inline-flex items-center gap-2 text-yellow-400 text-sm font-bold hover:text-yellow-300 transition">
-          View All <i class="fas fa-arrow-right text-xs"></i>
-        </a>
-      </div>
-
-      <!-- Gallery grid -->
-      <div id="svcGalleryGrid" class="columns-2 sm:columns-3 lg:columns-4 gap-3" style="column-gap:12px"></div>
-
-      <!-- Skeleton -->
-      <div id="svcGallerySkel" class="columns-2 sm:columns-3 lg:columns-4 gap-3" style="column-gap:12px">
-        <div class="skeleton rounded-xl mb-3" style="height:180px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3" style="height:240px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3 hidden sm:block" style="height:200px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3 hidden lg:block" style="height:160px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3" style="height:220px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3" style="height:170px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3 hidden sm:block" style="height:250px;break-inside:avoid"></div>
-        <div class="skeleton rounded-xl mb-3 hidden lg:block" style="height:190px;break-inside:avoid"></div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ====================================================
-       WHY CHOOSE US — Trust strip
-  ===================================================== -->
-  <section class="py-14 border-y" style="border-color:var(--border);background:var(--surface)">
-    <div class="container mx-auto px-4">
-      <h2 class="text-center text-2xl font-black mb-10 reveal">Why Clients Choose <span class="text-yellow-400">Lawie Sounds</span></h2>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="text-center p-5 rounded-2xl border reveal" style="border-color:var(--border);background:var(--card)">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--yellow-dim)">
-            <i class="fas fa-clock text-yellow-400 text-xl"></i>
-          </div>
-          <h3 class="font-bold mb-1 text-sm">Response in 2 Hours</h3>
-          <p class="text-xs text-gray-500 leading-relaxed">Every booking request gets a personal callback within 2 hours — guaranteed.</p>
-        </div>
-        <div class="text-center p-5 rounded-2xl border reveal" style="border-color:var(--border);background:var(--card);animation-delay:.07s">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--yellow-dim)">
-            <i class="fas fa-shield-alt text-yellow-400 text-xl"></i>
-          </div>
-          <h3 class="font-bold mb-1 text-sm">Fully Insured Equipment</h3>
-          <p class="text-xs text-gray-500 leading-relaxed">All gear is professionally maintained and insured so your event runs without hiccups.</p>
-        </div>
-        <div class="text-center p-5 rounded-2xl border reveal" style="border-color:var(--border);background:var(--card);animation-delay:.14s">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--yellow-dim)">
-            <i class="fas fa-users text-yellow-400 text-xl"></i>
-          </div>
-          <h3 class="font-bold mb-1 text-sm">Experienced Team</h3>
-          <p class="text-xs text-gray-500 leading-relaxed">500+ events handled. Our crew knows how to adapt to any venue, crowd, or situation.</p>
-        </div>
-        <div class="text-center p-5 rounded-2xl border reveal" style="border-color:var(--border);background:var(--card);animation-delay:.21s">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--yellow-dim)">
-            <i class="fas fa-tags text-yellow-400 text-xl"></i>
-          </div>
-          <h3 class="font-bold mb-1 text-sm">Flexible Packages</h3>
-          <p class="text-xs text-gray-500 leading-relaxed">Mix and match services to build your perfect package at any budget level.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ====================================================
-       CTA BANNER
-  ===================================================== -->
-  <section class="py-16" style="background:linear-gradient(135deg,rgba(250,204,21,0.12) 0%,rgba(234,179,8,0.05) 100%)">
-    <div class="container mx-auto px-4 text-center">
-      <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-3">GET STARTED TODAY</p>
-      <h2 class="text-2xl md:text-3xl font-black mb-3">Need a Custom Package?</h2>
-      <p class="text-gray-400 max-w-md mx-auto mb-8 text-sm leading-relaxed">Mix and match services to create your perfect event. Get a personalised quote within 2 hours — no commitment required.</p>
-      <div class="flex flex-wrap justify-center gap-4">
-        <a href="booking.html" class="btn-touch inline-flex items-center gap-2 bg-yellow-400 text-black px-8 py-3.5 rounded-full font-bold hover:bg-yellow-300 transition shadow-xl">
-          <i class="fas fa-gem"></i> Request Custom Quote
-        </a>
-        <a href="https://wa.me/254703925826?text=Hi%20Lawie%20Sounds%2C%20I%20need%20a%20custom%20event%20package%20quote." target="_blank" rel="noopener"
-          class="btn-touch inline-flex items-center gap-2 bg-green-600 text-white px-8 py-3.5 rounded-full font-bold hover:bg-green-700 transition shadow-xl">
-          <i class="fab fa-whatsapp text-lg"></i> WhatsApp Us
-        </a>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ====================================================
-       FOOTER
-  ===================================================== -->
-  <footer class="border-t" style="background:#000;border-color:var(--border)">
-    <div class="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
-      <div>
-        <img src="../IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds" class="h-14 w-14 rounded-full mb-4 border-2 border-yellow-400 object-cover">
-        <p class="text-sm text-gray-500 leading-relaxed">
-          &copy; 2026 <strong class="text-white">LAWIE SOUNDS</strong><br>
-          Professional Event Entertainment · Kenya<br>
-          Site by <a rel="noopener noreferrer author" href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" class="text-yellow-400 hover:underline">Kelvin Ndegwa</a> &middot; FullStack Engineer
-        </p>
-      </div>
-      <div>
-        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Navigation</h3>
-        <ul class="space-y-2.5 text-sm">
-          <li><a href="index.html"    class="text-gray-400 hover:text-yellow-400 transition">Home</a></li>
-          <li><a href="services.html" class="text-yellow-400">Services</a></li>
-          <li><a href="gallery.html"  class="text-gray-400 hover:text-yellow-400 transition">Gallery</a></li>
-          <li><a href="booking.html"  class="text-gray-400 hover:text-yellow-400 transition">Booking</a></li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Connect</h3>
-        <div class="flex gap-4 text-2xl mb-5">
-          <a rel="noopener noreferrer" href="https://instagram.com/lawie_sounds"  target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a rel="noopener noreferrer" href="https://facebook.com/lawie.sounds"   target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a rel="noopener noreferrer" href="https://wa.me/254703925826"          target="_blank" class="text-gray-500 hover:text-green-400 transition" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-          <a rel="noopener noreferrer" href="https://tiktok.com/@lawie_sounds"    target="_blank" class="text-gray-500 hover:text-yellow-400 transition" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
-        </div>
-        <p class="text-sm text-gray-500"><i class="fas fa-phone mr-2 text-yellow-400"></i><a href="tel:+254703925826" class="hover:text-yellow-400 transition">+254 703 925 826</a></p>
-        <p class="text-sm text-gray-500 mt-1.5"><i class="fas fa-map-marker-alt mr-2 text-yellow-400"></i>Nyeri, Kenya</p>
-      </div>
-    </div>
-  </footer>
-
-
-  <!-- Floating Action Buttons -->
-  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-    <a href="tel:+254703925826" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#22c55e;color:#fff" aria-label="Call">
-      <i class="fas fa-phone-alt"></i>
-    </a>
-    <a rel="noopener noreferrer" href="https://wa.me/254703925826" target="_blank" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#16a34a;color:#fff" aria-label="WhatsApp">
-      <i class="fab fa-whatsapp text-lg"></i>
-    </a>
-    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="btn-touch w-12 h-12 rounded-full shadow-xl transition hover:scale-110" style="background:#facc15;color:#000" aria-label="Back to top">
-      <i class="fas fa-arrow-up"></i>
-    </button>
   </div>
 
+  <nav id="mobileNav" class="lg:hidden" hidden aria-label="Mobile navigation" style="border-top:1px solid var(--line);background:rgba(8,8,15,.98)">
+    <div class="wrap" style="padding-block:12px;display:grid;gap:2px">
+      <a class="mnav" href="/services">Services</a>
+      <a class="mnav" href="/latest">What's new</a>
+      <a class="mnav" href="/gallery">Our work</a>
+      <a class="mnav" href="/how">How it works</a>
+      <a class="mnav" href="/reviews">Reviews</a>
+      <a class="mnav" href="/faq">FAQ</a>
+      <a class="mnav" href="/contact">Contact</a>
+      <a href="/book" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+    </div>
+  </nav>
+</header>
 
-  <script>
-    // ============================================================
-    // SERVICES PAGE — Dynamic from admin dashboard (Supabase API)
-    // ============================================================
+<main id="main">
 
-    let SERVICES     = [];
-    let CATEGORIES   = [];
-    let activeFilter = 'all';
-    let searchQuery  = '';
+<!-- ══════════════ PAGE HEAD ══════════════ -->
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a><i class="fas fa-chevron-right"></i><span>Services</span>
+    </nav>
+    <span class="eyebrow" style="margin-top:18px">What we bring</span>
+    <h1>Everything your event needs, <span class="gold">from one team</span></h1>
+    <p class="lead">
+      Sound, lighting, screens and media — specified together, delivered by one crew, billed on one
+      invoice. Pick what you need and we will price it as a package, or tell us about the day and
+      we will spec the rest.
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px">
+      <span class="chip"><i class="fas fa-star gold"></i>500+ events delivered</span>
+      <span class="chip"><i class="fas fa-bolt gold"></i>Quote in 2 hours</span>
+      <span class="chip"><i class="fas fa-file-invoice gold"></i>One invoice, not five</span>
+      <span class="chip" id="freshChip" hidden></span>
+    </div>
+  </div>
+</section>
 
-    // Slug → local image fallback (when admin hasn't uploaded a service image yet)
-    const IMG_FALLBACK = {
-      'dj-mc-services': '../IMAGES/DJ and MC Services/1.jpg',
-      'led-screens':    '../IMAGES/LED Screens/1.jpg',
-      'power-lighting': '../IMAGES/Power & Lighting/1.jpg',
-      'pyrotechnics':   '../IMAGES/Pyrotechnics/1.jpg',
-      'photography':    '../IMAGES/Photography/1.jpg',
-      'live-streaming': '../IMAGES/Live Streaming & Media/1.jpg',
-      '360-booth':      '../IMAGES/360 Booth/1.jpg',
-      'drone-services': '../IMAGES/Drone/1.jpg',
-      'public-address': '../IMAGES/Public Address Systems/1.jpg',
-    };
+<!-- ══════════════ FILTER BAR ══════════════ -->
+<div class="filter-bar">
+  <div class="wrap" style="display:grid;gap:12px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <label class="searchbox">
+        <span class="sr-only">Search services</span>
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <input id="searchInput" type="search" placeholder="Search services — DJ, lighting, drone, photography…" autocomplete="off">
+        <button type="button" class="clear" id="searchClear" hidden aria-label="Clear search"><i class="fas fa-times"></i></button>
+      </label>
+    </div>
+    <div class="filters" id="filterContainer" role="group" aria-label="Filter services by category">
+      <div class="skel" style="height:42px;width:110px;border-radius:999px"></div>
+      <div class="skel" style="height:42px;width:90px;border-radius:999px"></div>
+      <div class="skel" style="height:42px;width:120px;border-radius:999px"></div>
+    </div>
+    <p id="resultCount" aria-live="polite" style="font-size:12.5px;color:var(--text-faint);margin:0"></p>
+  </div>
+</div>
 
-    // Hardcoded fallback (if API is completely unavailable)
-    const FALLBACK_SERVICES = [
-      { id:'1', name:'DJ & MC Services',       slug:'dj-mc-services', category:'Audio',    icon:'fa-headphones', shortDesc:'Professional DJ and MC for high-energy events — weddings, corporates, and parties.', packages:[] },
-      { id:'2', name:'LED Screens',            slug:'led-screens',    category:'Visual',   icon:'fa-tv',         shortDesc:'High-resolution LED screens for stunning visuals at any event size.',               packages:[] },
-      { id:'3', name:'Power & Lighting',       slug:'power-lighting', category:'Lighting', icon:'fa-lightbulb',  shortDesc:'Professional lighting design and power distribution for every occasion.',             packages:[] },
-      { id:'4', name:'Pyrotechnics',           slug:'pyrotechnics',   category:'Effects',  icon:'fa-fire',       shortDesc:'Spectacular fire effects, confetti cannons, and CO2 bursts.',                        packages:[] },
-      { id:'5', name:'Photography',            slug:'photography',    category:'Media',    icon:'fa-camera',     shortDesc:'Professional event photography that captures every unforgettable moment.',              packages:[] },
-      { id:'6', name:'Live Streaming',         slug:'live-streaming', category:'Media',    icon:'fa-video',      shortDesc:'Broadcast your event live to audiences anywhere in the world.',                       packages:[] },
-      { id:'7', name:'360 Booth',              slug:'360-booth',      category:'Media',    icon:'fa-cube',       shortDesc:'Immersive 360-degree photo and video experience for your guests.',                    packages:[] },
-      { id:'8', name:'Drone Services',         slug:'drone-services', category:'Media',    icon:'fa-drone',      shortDesc:'Stunning aerial cinematography for establishing shots and highlights.',                packages:[] },
-      { id:'9', name:'Public Address Systems', slug:'public-address', category:'Audio',    icon:'fa-volume-up',  shortDesc:'Crystal-clear audio for speeches, announcements, and large audiences.',               packages:[] },
-    ];
+<!-- ══════════════ SERVICES GRID ══════════════ -->
+<section style="padding:36px 0 80px">
+  <div class="wrap">
+    <div id="skeletonLoader" class="svc-grid">
+      <div class="skel svc-skel"></div>
+      <div class="skel svc-skel"></div>
+      <div class="skel svc-skel"></div>
+    </div>
 
-    function getImage(s) {
-      if (s.mainImage && !s.mainImage.includes('placehold.co')) return s.mainImage;
-      if (IMG_FALLBACK[s.slug]) return IMG_FALLBACK[s.slug];
-      // Try fuzzy match by first word of slug
-      const key = Object.keys(IMG_FALLBACK).find(k => (s.slug || '').startsWith(k.split('-')[0]));
-      return key ? IMG_FALLBACK[key] : '../IMAGES/LOGO/2.jpg';
-    }
+    <div id="servicesGrid" class="svc-grid" hidden></div>
 
-    const ESC_SVC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
-    function escSvc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ESC_SVC[c]); }
+    <div id="noResults" class="empty" hidden>
+      <i class="fas fa-magnifying-glass"></i>
+      <h3>Nothing matches that</h3>
+      <p>Try a different word, or clear the filters and browse everything we do.</p>
+      <button type="button" onclick="resetFilters()" class="btn btn-primary btn-sm" style="margin-top:18px">
+        <i class="fas fa-rotate-left"></i>Show everything
+      </button>
+    </div>
+  </div>
+</section>
 
-    function getStartingPrice(s) {
-      // The API computes this per service and applies the display policy, so a
-      // service set to "price on request" arrives with no figures at all.
-      if (s.priceSummary) return s.priceSummary.fromPrice;
-      const prices = (s.packages || []).map(p => Number(p.price)).filter(p => Number.isFinite(p) && p > 0);
-      return prices.length ? Math.min(...prices) : null;
-    }
+<!-- ══════════════ MOMENTS ══════════════ -->
+<section id="moments" style="padding:80px 0;background:var(--ink-raised);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="reveal" style="max-width:700px">
+      <span class="eyebrow">From real events</span>
+      <h2 class="section-title">What this actually <span class="gold">looks like</span></h2>
+      <p class="section-lead">
+        Photographs from jobs we have run, not stock images of somebody else's event.
+        Tap one to see the service behind it.
+      </p>
+      <p class="freshline" id="momentsFresh" hidden style="margin-top:14px"></p>
+    </div>
 
-    // What appears where the price goes.
-    //
-    // A visible entry price is the point: it tells a client with a small event
-    // that they can afford us. With no price at all they assume they cannot and
-    // never enquire — a loss that leaves no trace. Where the figure is withheld
-    // deliberately, we say so and invite them to name their budget rather than
-    // showing nothing.
-    function priceLine(s) {
-      const summary = s.priceSummary;
-      const note = s.budgetNote
-        ? `<p class="text-xs text-gray-500 mt-1">${escSvc(s.budgetNote)}</p>`
-        : '';
+    <div id="momentsSkel" class="moments" style="margin-top:32px">
+      <div class="skel" style="height:200px;margin-bottom:14px"></div>
+      <div class="skel" style="height:260px;margin-bottom:14px"></div>
+      <div class="skel" style="height:180px;margin-bottom:14px"></div>
+      <div class="skel" style="height:230px;margin-bottom:14px"></div>
+    </div>
+    <div id="momentsGrid" class="moments" style="margin-top:32px" hidden></div>
 
-      if (summary && summary.mode === 'on_request') {
-        return `<p class="price-from"><strong>Price on request</strong></p>${note}`;
-      }
-      if (summary && summary.label && summary.fromPrice != null) {
-        return `<p class="price-from">${escSvc(summary.label)}</p>${note}`;
-      }
-      const from = getStartingPrice(s);
-      if (from != null) {
-        return `<p class="price-from">Starting from <strong>KES ${from.toLocaleString()}</strong></p>${note}`;
-      }
-      // No packages priced yet. Say something useful rather than leaving a gap
-      // the visitor has to interpret.
-      return `<p class="price-from text-gray-500">Ask us for a quote</p>${note}`;
-    }
+    <div style="text-align:center;margin-top:24px">
+      <a href="/gallery" class="btn btn-ghost">See the full gallery <i class="fas fa-arrow-right" style="font-size:12px"></i></a>
+    </div>
+  </div>
+</section>
 
-    async function fetchServices() {
-      try {
-        const res  = await fetch('/api/services');
-        if (!res.ok) throw new Error();
-        const json = await res.json();
-        return (json.data || []).length > 0 ? json.data : FALLBACK_SERVICES;
-      } catch {
-        return FALLBACK_SERVICES;
-      }
-    }
+<!-- ══════════════ HOW IT WORKS ══════════════ -->
+<section id="how" style="padding:80px 0">
+  <div class="wrap">
+    <div class="reveal" style="max-width:700px">
+      <span class="eyebrow">How it works</span>
+      <h2 class="section-title">Four steps, <span class="gold">no surprises</span></h2>
+    </div>
+    <div class="steps reveal" style="margin-top:44px">
+      <div class="step">
+        <h3>Tell us about the day</h3>
+        <p>Date, venue, rough guest count and what you have in mind. Two minutes on the form, or a WhatsApp message.</p>
+      </div>
+      <div class="step">
+        <h3>We spec it and price it</h3>
+        <p>A written quote within two hours in working time, itemised, with anything you do not need taken out.</p>
+      </div>
+      <div class="step">
+        <h3>We set up early</h3>
+        <p>On site ahead of your guests, sound checked, lighting focused, with a spare for everything critical.</p>
+      </div>
+      <div class="step">
+        <h3>We run it and pack down</h3>
+        <p>A crew on the day, not a drop-off. One invoice at the end, matching the quote you agreed.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-    // ── Build category filter pills ──
-    function buildFilters() {
-      const el = document.getElementById('filterContainer');
-      el.innerHTML = [
-        { key:'all', label:'All Services' },
-        ...CATEGORIES.map(c => ({ key: c, label: c }))
-      ].map(f => {
-        const active  = activeFilter === f.key;
-        const count   = f.key === 'all' ? SERVICES.length : SERVICES.filter(s => s.category === f.key).length;
-        return `<button onclick="setFilter('${f.key.replace(/'/g,"\\'")}') " class="filter-btn ${active ? 'active' : ''}">${f.label}<span style="opacity:.5;font-size:11px;margin-left:4px">${count}</span></button>`;
-      }).join('');
-    }
+<!-- ══════════════ CTA ══════════════ -->
+<section style="padding:0 0 88px">
+  <div class="wrap">
+    <div class="cta-slab reveal">
+      <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;margin:0;line-height:1.12;max-width:20ch">Tell us the date and we will tell you what it costs.</h2>
+      <p style="margin:16px 0 0;max-width:52ch;font-size:16px;line-height:1.65;opacity:.85">
+        Free, itemised, and back with you inside two hours during working hours. No obligation and no
+        follow-up calls you did not ask for.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
+        <a href="/book" class="btn btn-dark btn-lg"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+        <a href="/wa" class="btn btn-lg" style="background:rgba(0,0,0,.12);color:#17120a;border-color:rgba(0,0,0,.25)"><i class="fab fa-whatsapp" style="font-size:19px"></i>Ask on WhatsApp</a>
+      </div>
+    </div>
+  </div>
+</section>
 
-    // ── Render services grid ──
-    function renderServices() {
-      let list = SERVICES;
-      if (activeFilter !== 'all') list = list.filter(s => s.category === activeFilter);
-      if (searchQuery) list = list.filter(s => {
-        const q = searchQuery;
-        return (s.name || '').toLowerCase().includes(q) ||
-               (s.shortDesc || s.short_desc || '').toLowerCase().includes(q) ||
-               (s.category || '').toLowerCase().includes(q);
-      });
+</main>
 
-      document.getElementById('resultCount').textContent = list.length;
-      document.getElementById('heroCount').textContent   = SERVICES.length;
-      const grid    = document.getElementById('servicesGrid');
-      const noRes   = document.getElementById('noResults');
-      const skel    = document.getElementById('skeletonLoader');
+<!-- ══════════════ QUOTE TRAY ══════════════ -->
+<div class="tray" id="tray" role="region" aria-label="Your selected services">
+  <span class="tray-count" id="trayCount">0</span>
+  <span style="flex:1;min-width:150px">
+    <b id="trayTitle" style="display:block;font-size:14.5px">0 services selected</b>
+    <span id="trayNames" style="font-size:12.5px;color:var(--text-muted)"></span>
+  </span>
+  <button type="button" id="trayClear" class="btn btn-ghost btn-sm">Clear</button>
+  <a id="trayGo" href="/book" class="btn btn-primary btn-sm"><i class="fas fa-arrow-right"></i>Get a quote</a>
+</div>
 
-      skel.classList.add('hidden');
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a href="/" class="brand" style="margin-bottom:14px">
+          <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" loading="lazy" alt="">
+          <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+        </a>
+        <p style="font-size:13.5px;color:var(--text-faint);line-height:1.7;margin:14px 0 0;max-width:34ch">
+          Event entertainment, sound, lighting and live media across Nyeri, Mount Kenya and Kenya at large.
+        </p>
+        <div class="foot-social">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://tiktok.com/@lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
+          <a href="/wa" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <div class="foot-links">
+          <a href="/services">All services</a>
+          <a href="/gallery">Gallery</a>
+          <a href="/book">Get a quote</a>
+          <a href="/review">Leave a review</a>
+        </div>
+      </div>
+      <div>
+        <h4>Popular</h4>
+        <div class="foot-links" id="footerServices">
+          <a href="/s/dj-mc-services">DJ &amp; MC Services</a>
+          <a href="/s/public-address">Public Address Systems</a>
+          <a href="/s/power-lighting">Power &amp; Lighting</a>
+          <a href="/s/led-screens">LED Screens</a>
+          <a href="/s/photography">Photography</a>
+        </div>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <div class="foot-links">
+          <a href="tel:+254703925826"><i class="fas fa-phone-alt gold" style="width:18px"></i>+254 703 925 826</a>
+          <a href="tel:+254733925826"><i class="fas fa-mobile-screen gold" style="width:18px"></i>+254 733 925 826</a>
+          <a href="mailto:Lawiesounds@gmail.com"><i class="fas fa-envelope gold" style="width:18px"></i>Lawiesounds@gmail.com</a>
+          <span style="color:var(--text-muted);font-size:14px"><i class="fas fa-location-dot gold" style="width:18px"></i>Nyeri, Kenya</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <p style="margin:0">&copy; <span id="year">2026</span> Lawie Sounds. All rights reserved.</p>
+      <p style="margin:0">Site by <a href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" rel="noopener noreferrer author" class="gold" style="text-decoration:none">Kelvin Ndegwa</a> · FullStack Engineer</p>
+    </div>
+  </div>
+</footer>
 
-      if (!list.length) {
-        grid.classList.add('hidden');
-        noRes.classList.remove('hidden');
-        return;
-      }
-      noRes.classList.add('hidden');
-      grid.classList.remove('hidden');
+<!-- Desktop floating actions -->
+<div class="fab">
+  <a href="/call" style="background:#22c55e;color:#fff" aria-label="Call Lawie Sounds"><i class="fas fa-phone-alt"></i></a>
+  <a href="/wa" style="background:var(--wa);color:#04220f" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp" style="font-size:20px"></i></a>
+  <button id="toTop" style="background:var(--gold);color:#14110a" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+</div>
 
-      grid.innerHTML = list.map((s, idx) => {
-        const img          = getImage(s);
-        const fallbackImg  = IMG_FALLBACK[s.slug] || '../IMAGES/LOGO/2.jpg';
-        const icon         = s.icon || 'fa-star';
-        const desc         = s.shortDesc || s.short_desc || '';
-        const slug         = s.slug || s.id;
-        const startPrice   = getStartingPrice(s);
-        const pkgCount     = (s.packages || []).length;
-        const delay        = (idx % 3) * 0.07;
+<div class="mobile-bar">
+  <a href="/call" style="background:rgba(255,255,255,.07);color:#fff;border:1px solid var(--line)"><i class="fas fa-phone-alt"></i>Call</a>
+  <a href="/wa" style="background:var(--wa);color:#04220f"><i class="fab fa-whatsapp" style="font-size:17px"></i>WhatsApp</a>
+  <a href="/book" style="background:var(--gold);color:#14110a"><i class="fas fa-calendar-check"></i>Get a quote</a>
+</div>
 
-        return `
-          <div class="service-card reveal" style="animation-delay:${delay}s">
-            <div class="card-image">
-              <img src="${img}" alt="${s.name}" loading="lazy" onerror="this.onerror=null;this.src='${fallbackImg}'">
-              <div class="img-gradient"></div>
-              <div class="cat-badge">${s.category || 'Service'}</div>
-              <div class="icon-badge"><i class="fas ${icon}"></i></div>
-            </div>
+<script src="/js/site.js"></script>
+<script>
+(() => {
+  'use strict';
 
-            <div class="card-body">
-              <h3>${s.name}</h3>
-              <p>${desc.length > 110 ? desc.slice(0,110) + '…' : (desc || 'Professional event service by Lawie Sounds.')}</p>
+  const { $, $$, esc, api, isNew, timeAgo, stamp, observeReveals, SITE } = window.LS;
 
-              ${pkgCount > 0 ? `
-              <div class="flex flex-wrap gap-1.5 mb-1">
-                ${(s.packages || []).slice(0,3).map(p => `<span class="pkg-pill"><i class="fas fa-box" style="font-size:9px"></i>${escSvc(p.name)}${p.price != null ? ' — KES ' + Number(p.price).toLocaleString() : ''}</span>`).join('')}
-                ${pkgCount > 3 ? `<span class="pkg-pill">+${pkgCount-3} more</span>` : ''}
-              </div>` : ''}
+  let SERVICES = [];
+  let activeFilter = 'all';
+  let searchQuery = '';
 
-              <!-- The server decides how much price to publish, per service.
-                   Under "on_request" the figures are not in this payload at all,
-                   so there is nothing here to leak. -->
-              ${priceLine(s)}
-            </div>
+  // Local images for services the dashboard has not been given a photograph
+  // for yet. Absolute, not '../' — this page is served from /services, where
+  // a relative path resolves one level too high.
+  const IMG_FALLBACK = {
+    'dj-mc-services': '/IMAGES/DJ and MC Services/1.jpg',
+    'led-screens':    '/IMAGES/LED Screens/1.jpg',
+    'power-lighting': '/IMAGES/Power & Lighting/1.jpg',
+    'pyrotechnics':   '/IMAGES/Pyrotechnics/1.jpg',
+    'photography':    '/IMAGES/Photography/1.jpg',
+    'live-streaming': '/IMAGES/Live Streaming & Media/1.jpg',
+    '360-booth':      '/IMAGES/360 Booth/1.jpg',
+    'drone-services': '/IMAGES/Drone/1.jpg',
+    'public-address': '/IMAGES/Public Address Systems/1.jpg',
+  };
 
-            <div class="card-footer">
-              <div class="flex gap-2">
-                <a href="booking.html?service=${slug}" class="btn-quote" aria-label="Get a quote for ${s.name}">
-                  <i class="fas fa-file-invoice text-sm"></i> Get Quote
-                </a>
-                <a href="service-detail.html?service=${slug}" class="btn-details">
-                  <i class="fas fa-arrow-right text-xs"></i> Details
-                </a>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
+  // Used only when the API is unreachable. These are facts about us, so a
+  // fallback is honest here — unlike reviews, which have none anywhere.
+  const FALLBACK_SERVICES = [
+    { name:'DJ & MC Services',       slug:'dj-mc-services', category:'Audio',    icon:'fa-headphones',  shortDesc:'Professional DJ and Master of Ceremonies who read the room and keep the floor full.' },
+    { name:'Public Address Systems', slug:'public-address', category:'Audio',    icon:'fa-volume-high', shortDesc:'Speeches heard clearly at the back of the room, however big the room is.' },
+    { name:'Power & Lighting',       slug:'power-lighting', category:'Lighting', icon:'fa-lightbulb',   shortDesc:'Lighting design that flatters your photos, plus the power distribution to run it.' },
+    { name:'LED Screens',            slug:'led-screens',    category:'Visual',   icon:'fa-tv',          shortDesc:'High-resolution screens for slideshows, live feeds and branding.' },
+    { name:'Photography',            slug:'photography',    category:'Media',    icon:'fa-camera',      shortDesc:'Event photography that captures the moments you were too busy to see.' },
+    { name:'Live Streaming',         slug:'live-streaming', category:'Media',    icon:'fa-video',       shortDesc:'Broadcast the day to family and colleagues who could not travel.' },
+    { name:'360 Booth',              slug:'360-booth',      category:'Media',    icon:'fa-cube',        shortDesc:'The queue-forming guest experience that fills everyone’s feed by morning.' },
+    { name:'Drone Services',         slug:'drone-services', category:'Media',    icon:'fa-helicopter',  shortDesc:'Aerial cinematography for establishing shots and highlight reels.' },
+    { name:'Pyrotechnics',           slug:'pyrotechnics',   category:'Effects',  icon:'fa-fire',        shortDesc:'Cold sparks, confetti and CO2 for the moment everyone remembers.' },
+  ];
 
-      // Re-observe newly rendered cards
-      requestAnimationFrame(() => {
-        grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-      });
-    }
+  const serviceImage = (s) => {
+    if (s.mainImage && !String(s.mainImage).includes('placehold.co')) return s.mainImage;
+    return IMG_FALLBACK[s.slug] || '/IMAGES/LOGO/2.jpg';
+  };
 
-    function setFilter(cat) {
-      activeFilter = cat;
-      buildFilters();
-      renderServices();
-    }
+  // ── Quote tray ───────────────────────────────────────────────────
+  // Shares its storage key with the homepage, so a selection made there
+  // is still here — and vice versa. Someone who ticks two services on the
+  // homepage and then comes to compare the rest does not start over.
+  const TRAY_KEY = 'lawie_quote_pick';
+  let picked = new Set();
+  try { picked = new Set(JSON.parse(sessionStorage.getItem(TRAY_KEY) || '[]')); } catch {}
 
-    function resetFilters() {
-      activeFilter = 'all';
-      searchQuery  = '';
-      document.getElementById('searchInput').value = '';
-      buildFilters();
-      renderServices();
-    }
+  const nameOf = (slug) => (SERVICES.find(s => s.slug === slug) || {}).name || slug;
 
-    // ── Intersection Observer ──
-    const revealObserver = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
-      });
-    }, { threshold: 0.07 });
+  function renderTray() {
+    const n = picked.size;
+    $('tray').classList.toggle('up', n > 0);
+    if (!n) return;
+    $('trayCount').textContent = String(n);
+    $('trayTitle').textContent = `${n} service${n === 1 ? '' : 's'} selected`;
+    const names = [...picked].map(nameOf);
+    $('trayNames').textContent = names.length > 2
+      ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more`
+      : names.join(', ');
+    $('trayGo').href = '/book?service=' + encodeURIComponent([...picked].join(','));
+    try { sessionStorage.setItem(TRAY_KEY, JSON.stringify([...picked])); } catch {}
+  }
 
-    // ── Search (debounced) ──
-    let searchTimer;
-    document.getElementById('searchInput')?.addEventListener('input', e => {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => { searchQuery = e.target.value.toLowerCase().trim(); renderServices(); }, 280);
+  function togglePick(slug, cardEl) {
+    picked.has(slug) ? picked.delete(slug) : picked.add(slug);
+    const on = picked.has(slug);
+    cardEl.classList.toggle('picked', on);
+    const btn = cardEl.querySelector('.svc-pick');
+    btn.setAttribute('aria-pressed', String(on));
+    btn.innerHTML = on ? '<i class="fas fa-check"></i>Added to quote' : '<i class="fas fa-plus"></i>Add to quote';
+    renderTray();
+  }
+
+  $('trayClear').addEventListener('click', () => {
+    picked.clear();
+    try { sessionStorage.removeItem(TRAY_KEY); } catch {}
+    $$('.svc.picked').forEach(c => {
+      c.classList.remove('picked');
+      const b = c.querySelector('.svc-pick');
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<i class="fas fa-plus"></i>Add to quote';
     });
+    renderTray();
+  });
 
-    // ── Mobile menu ──
-    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-      document.getElementById('mobile-menu')?.classList.toggle('hidden');
-    });
+  // ── Price ────────────────────────────────────────────────────────
+  // A visible entry price is the single biggest driver of enquiries here.
+  // With no figure at all a client with a small event assumes we are out
+  // of reach and leaves without asking — a loss that leaves no trace.
+  // Where the figure is withheld deliberately we say so rather than
+  // leaving a gap for them to interpret.
+  function priceBlock(s) {
+    const note = s.budgetNote ? `<span class="note">${esc(s.budgetNote)}</span>` : '';
+    const sum = s.priceSummary;
+    if (sum && sum.mode === 'on_request') return `<div class="svc-price">Priced per event — <strong style="font-size:14px">tell us the date</strong>${note}</div>`;
+    if (sum && sum.label && sum.fromPrice != null) return `<div class="svc-price">${esc(sum.label)}${note}</div>`;
+    const prices = (s.packages || []).map(p => Number(p.price)).filter(p => Number.isFinite(p) && p > 0);
+    if (prices.length) return `<div class="svc-price">From <strong>KES ${Math.min(...prices).toLocaleString('en-KE')}</strong>${note}</div>`;
+    return `<div class="svc-price">Ask us for a price${note}</div>`;
+  }
 
-    // ── Service gallery (Moments Captured) ──
-    const GALLERY_FALLBACK = [
-      '../IMAGES/DJ and MC Services/1.jpg',
-      '../IMAGES/LED Screens/1.jpg',
-      '../IMAGES/Power & Lighting/1.jpg',
-      '../IMAGES/Pyrotechnics/1.jpg',
-      '../IMAGES/Photography/1.jpg',
-      '../IMAGES/Live Streaming & Media/1.jpg',
-      '../IMAGES/360 Booth/1.jpg',
-      '../IMAGES/Drone/1.jpg',
-      '../IMAGES/Public Address Systems/1.jpg',
-      '../IMAGES/DJ and MC Services/2.jpg',
-      '../IMAGES/LED Screens/2.jpg',
-      '../IMAGES/Power & Lighting/2.jpg',
-    ].filter(Boolean);
+  // ── Card ─────────────────────────────────────────────────────────
+  function serviceCard(s) {
+    const slug = esc(s.slug || s.id);
+    const on = picked.has(s.slug);
+    const desc = s.shortDesc || s.short_desc || 'Professional event service by Lawie Sounds.';
+    const feats = (s.features || []).slice(0, 3);
+    const pkgs = (s.packages || []);
+    // A service added in the last fortnight is worth pointing at: it is the
+    // clearest signal on the page that this list is maintained by people.
+    const fresh = isNew(s.createdAt);
 
-    async function loadServiceGallery() {
-      const skel = document.getElementById('svcGallerySkel');
-      const grid = document.getElementById('svcGalleryGrid');
-      let items = [];
-      try {
-        // Prefer featured items for this showcase; fall back to recents
-        const res  = await fetch('/api/gallery?featured=true');
-        if (res.ok) {
-          const json = await res.json();
-          items = (json.data || []).filter(g => g.type !== 'video').slice(0, 12);
-        }
-        // If not enough featured, top up from all gallery
-        if (items.length < 6) {
-          const res2  = await fetch('/api/gallery');
-          if (res2.ok) {
-            const json2 = await res2.json();
-            const ids = new Set(items.map(i => i.id));
-            const more = (json2.data || []).filter(g => g.type !== 'video' && !ids.has(g.id));
-            items = [...items, ...more].slice(0, 12);
-          }
-        }
-      } catch {}
-
-      const imgs = items.length
-        ? items.map(g => ({ url: g.imageUrl || g.image_url, title: g.title || '', slug: g.serviceSlug || g.service_slug || null }))
-        : GALLERY_FALLBACK.map(url => ({ url, title: '', slug: null }));
-
-      skel.classList.add('hidden');
-
-      if (!imgs.length) { document.getElementById('serviceGallery').classList.add('hidden'); return; }
-
-      grid.innerHTML = imgs.map((img, i) => `
-        <div class="reveal mb-3" style="break-inside:avoid;animation-delay:${(i % 4) * 0.06}s">
-          <a href="${img.slug ? 'service-detail.html?service=' + encodeURIComponent(img.slug) : 'gallery.html'}"
-             class="block rounded-xl overflow-hidden group relative" style="background:#1a1a2e">
-            <img src="${img.url}"
-                 alt="${img.title || 'Lawie Sounds event'}"
-                 loading="lazy"
-                 class="w-full object-cover transition duration-500 group-hover:scale-105 group-hover:brightness-110"
-                 style="display:block"
-                 onerror="this.closest('.reveal').style.display='none'">
-            ${img.slug ? `<div class="absolute bottom-0 inset-x-0 p-2" style="background:linear-gradient(to top,rgba(0,0,0,0.75),transparent)">
-              <span style="font-size:10px;color:var(--yellow);font-weight:700">${img.slug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} ↗</span>
+    return `
+      <article class="svc reveal${on ? ' picked' : ''}" data-slug="${slug}" data-cat="${esc(s.category || 'Other')}">
+        <div class="svc-media">
+          <img src="${esc(serviceImage(s))}" alt="${esc(s.name)} by Lawie Sounds" loading="lazy" width="480" height="300"
+               onerror="this.onerror=null;this.src='/IMAGES/LOGO/2.jpg'">
+          <span class="svc-cat">${esc(s.category || 'Service')}</span>
+          ${fresh ? '<span class="stamp-new" style="position:absolute;top:12px;right:12px;z-index:3">New</span>' : ''}
+          <span class="svc-icon"><i class="fas ${esc(s.icon || 'fa-star')}"></i></span>
+        </div>
+        <div class="svc-body">
+          <h3>${esc(s.name)}</h3>
+          <p class="svc-desc">${esc(desc.length > 118 ? desc.slice(0, 118).trimEnd() + '…' : desc)}</p>
+          ${feats.length ? `<ul class="svc-feats">${feats.map(f => `<li><i class="fas fa-check"></i>${esc(f)}</li>`).join('')}</ul>` : ''}
+          ${pkgs.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${pkgs.slice(0, 3).map(p => `<span class="pkg-pill"><i class="fas fa-box" style="font-size:9px"></i>${esc(p.name)}</span>`).join('')}
+              ${pkgs.length > 3 ? `<span class="pkg-pill">+${pkgs.length - 3} more</span>` : ''}
             </div>` : ''}
-          </a>
-        </div>`).join('');
+          ${priceBlock(s)}
+        </div>
+        <div class="svc-actions">
+          <button type="button" class="svc-pick" aria-pressed="${on}" aria-label="${on ? 'Remove' : 'Add'} ${esc(s.name)} ${on ? 'from' : 'to'} your quote">
+            <i class="fas fa-${on ? 'check' : 'plus'}"></i>${on ? 'Added to quote' : 'Add to quote'}
+          </button>
+          <a class="svc-more" href="/s/${slug}" aria-label="See details for ${esc(s.name)}">Details<i class="fas fa-arrow-right" style="font-size:11px"></i></a>
+        </div>
+      </article>`;
+  }
 
-      requestAnimationFrame(() => {
-        grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-      });
+  function matches(s) {
+    if (activeFilter !== 'all' && (s.category || 'Other') !== activeFilter) return false;
+    if (!searchQuery) return true;
+    return [s.name, s.shortDesc || s.short_desc, s.category, ...(s.features || [])]
+      .filter(Boolean).join(' ').toLowerCase().includes(searchQuery);
+  }
+
+  function renderServices() {
+    const list = SERVICES.filter(matches);
+    const grid = $('servicesGrid'), none = $('noResults');
+
+    $('skeletonLoader').hidden = true;
+    $('resultCount').textContent = list.length
+      ? `Showing ${list.length} of ${SERVICES.length} service${SERVICES.length === 1 ? '' : 's'}` +
+        (activeFilter === 'all' ? '' : ` in ${activeFilter}`) +
+        (searchQuery ? ` matching “${searchQuery}”` : '')
+      : '';
+
+    none.hidden = list.length > 0;
+    grid.hidden = list.length === 0;
+    if (!list.length) return;
+
+    grid.innerHTML = list.map(serviceCard).join('');
+    grid.querySelectorAll('.svc-pick').forEach(btn => {
+      const card = btn.closest('.svc');
+      btn.addEventListener('click', () => togglePick(card.dataset.slug, card));
+    });
+    observeReveals(grid);
+  }
+
+  function renderFilters() {
+    const cats = [...new Set(SERVICES.map(s => s.category || 'Other'))].sort();
+    $('filterContainer').innerHTML = [{ k: 'all', l: 'Everything' }, ...cats.map(c => ({ k: c, l: c }))]
+      .map(f => {
+        const n = f.k === 'all' ? SERVICES.length : SERVICES.filter(s => (s.category || 'Other') === f.k).length;
+        return `<button type="button" class="filter-btn" aria-pressed="${activeFilter === f.k}" data-cat="${esc(f.k)}">${esc(f.l)}<span class="n">${n}</span></button>`;
+      }).join('');
+    $$('#filterContainer .filter-btn').forEach(b => b.addEventListener('click', () => setFilter(b.dataset.cat)));
+  }
+
+  function setFilter(cat) { activeFilter = cat; renderFilters(); renderServices(); }
+
+  window.resetFilters = function resetFilters() {
+    activeFilter = 'all';
+    searchQuery = '';
+    $('searchInput').value = '';
+    $('searchClear').hidden = true;
+    renderFilters();
+    renderServices();
+  };
+
+  // ── Search ───────────────────────────────────────────────────────
+  let searchTimer;
+  $('searchInput').addEventListener('input', (e) => {
+    const v = e.target.value;
+    $('searchClear').hidden = !v;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { searchQuery = v.toLowerCase().trim(); renderServices(); }, 240);
+  });
+  $('searchClear').addEventListener('click', () => {
+    $('searchInput').value = '';
+    $('searchClear').hidden = true;
+    searchQuery = '';
+    renderServices();
+    $('searchInput').focus();
+  });
+
+  // ── Schema ───────────────────────────────────────────────────────
+  // The machine-readable catalogue. Without it this page is nine words of
+  // body text to a crawler; with it Google can list the services as
+  // sitelinks and surface them in local results.
+  function writeSchema() {
+    $('ldServices').textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Lawie Sounds event services',
+      itemListElement: SERVICES.map((s, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Service',
+          name: s.name,
+          description: s.shortDesc || undefined,
+          serviceType: s.category || undefined,
+          url: `${SITE}/s/${s.slug}`,
+          areaServed: { '@type': 'Country', name: 'Kenya' },
+          provider: { '@type': 'LocalBusiness', name: 'Lawie Sounds' },
+        },
+      })),
+    });
+  }
+
+  // ── Moments strip ────────────────────────────────────────────────
+  async function loadMoments() {
+    let items = [];
+    const featured = await api('/api/gallery?featured=true');
+    items = (featured?.data || []).filter(g => g.type !== 'video').slice(0, 12);
+
+    if (items.length < 8) {
+      const all = await api('/api/gallery');
+      const seen = new Set(items.map(i => i.id));
+      items = [...items, ...(all?.data || []).filter(g => g.type !== 'video' && !seen.has(g.id))].slice(0, 12);
     }
 
-    // ── Boot ──
-    async function init() {
-      SERVICES   = await fetchServices();
-      CATEGORIES = [...new Set(SERVICES.map(s => s.category).filter(Boolean))].sort();
-      buildFilters();
-      renderServices();
-      document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-      loadServiceGallery();
+    $('momentsSkel').hidden = true;
+    if (!items.length) { $('moments').hidden = true; return; }
+
+    const grid = $('momentsGrid');
+    grid.innerHTML = items.map(g => {
+      const href = g.serviceSlug ? `/s/${encodeURIComponent(g.serviceSlug)}` : '/gallery';
+      const label = g.serviceSlug
+        ? g.serviceSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        : (g.category || '');
+      return `
+        <a href="${esc(href)}" aria-label="${esc(g.title || label || 'Event photograph')}">
+          <img src="${esc(g.imageUrl)}" alt="${esc(g.altText || g.title || 'Lawie Sounds event')}" loading="lazy"
+               onerror="this.closest('a').style.display='none'">
+          ${label ? `<span class="tag">${esc(label)} ↗</span>` : ''}
+        </a>`;
+    }).join('');
+    grid.hidden = false;
+
+    // How recently the library was added to. A gallery with no dates reads
+    // as an archive; one that says "added 6 days ago" reads as a business
+    // that is still working.
+    const newest = items.map(g => g.createdAt).filter(Boolean).sort().pop();
+    if (newest) {
+      const fresh = $('momentsFresh');
+      fresh.innerHTML = `<span class="orb"></span>Newest photograph added ${esc(timeAgo(newest))}`;
+      fresh.hidden = false;
+    }
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────
+  async function init() {
+    const res = await api('/api/services');
+    const live = (res?.data || []).filter(s => s.isActive !== false);
+    SERVICES = live.length ? live : FALLBACK_SERVICES;
+
+    renderFilters();
+    renderServices();
+    renderTray();
+    writeSchema();
+
+    // Was anything added recently? Worth a line in the header — it is the
+    // difference between a list and a list somebody maintains.
+    const newest = SERVICES.map(s => s.createdAt).filter(Boolean).sort().pop();
+    if (newest && isNew(newest, 45)) {
+      const chip = $('freshChip');
+      chip.innerHTML = `<i class="fas fa-sparkles gold"></i>Updated ${esc(timeAgo(newest))}`;
+      chip.hidden = false;
     }
 
-    window.setFilter    = setFilter;
-    window.resetFilters = resetFilters;
-    document.addEventListener('DOMContentLoaded', init);
-  </script>
+    // Deep link from the homepage or a campaign: /services?category=Audio
+    const cat = new URLSearchParams(location.search).get('category');
+    if (cat && SERVICES.some(s => (s.category || '') === cat)) setFilter(cat);
+
+    loadMoments();
+  }
+
+  init();
+})();
+</script>
 </body>
 </html>

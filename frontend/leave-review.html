@@ -16,67 +16,107 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <link rel="stylesheet" href="/css/app.css">
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    * { font-family: 'Inter', sans-serif; }
-    :root { --bg:#08080f; --surface:#0f0f1a; --border:rgba(255,255,255,0.08); --yellow:#facc15; }
-    body { background: var(--bg); color:#fff; margin:0; }
+    /* ══════════════════════════════════════════════════════════════
+       LEAVE A REVIEW — page-specific only.
+       Fields, buttons, panels and the consent styling come from
+       /css/app.css. What is unique here is the star input.
+       ══════════════════════════════════════════════════════════════ */
 
-    .field {
-      width:100%; padding:0.7rem 0.9rem; border-radius:0.65rem;
-      background:rgba(255,255,255,0.04); border:1.5px solid var(--border);
-      color:#fff; font-size:0.95rem; transition:border-color .18s;
+    /* Built from real radio buttons so it is keyboard operable and
+       announced correctly, with the visual layer drawn on top. The
+       row-reverse is what makes "hover a star, light everything to its
+       left" work in pure CSS. */
+    .stars-input { display: inline-flex; flex-direction: row-reverse; gap: 3px; }
+    .stars-input input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .stars-input label {
+      font-size: 34px; line-height: 1; cursor: pointer; color: rgba(255,255,255,.16);
+      transition: color .12s, transform .12s; padding: 0 2px;
     }
-    .field:focus { outline:none; border-color:var(--yellow); }
-    .field::placeholder { color:rgba(255,255,255,0.28); }
-    .field[aria-invalid="true"] { border-color:#f87171; }
+    .stars-input label:hover,
+    .stars-input label:hover ~ label,
+    .stars-input input:checked ~ label { color: var(--gold); }
+    .stars-input label:active { transform: scale(.9); }
+    .stars-input input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
 
-    .field-error { color:#fca5a5; font-size:0.78rem; margin-top:0.3rem; display:none; }
-    .field-error.show { display:block; }
+    .consent-box { background: var(--gold-soft); border: 1.5px solid var(--gold-line); border-radius: var(--r-md); padding: 16px; }
+    .panel { border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); }
 
-    /* Star input. Built from real radio buttons so it is keyboard operable and
-       announced correctly, with the visual layer drawn on top. */
-    .stars { display:inline-flex; flex-direction:row-reverse; gap:0.15rem; }
-    .stars input { position:absolute; opacity:0; width:0; height:0; }
-    .stars label {
-      font-size:2.1rem; line-height:1; cursor:pointer; color:rgba(255,255,255,0.16);
-      transition:color .12s, transform .12s; padding:0 0.1rem;
-    }
-    .stars label:hover, .stars label:hover ~ label,
-    .stars input:checked ~ label { color:var(--yellow); }
-    .stars label:active { transform:scale(0.9); }
-    .stars input:focus-visible + label { outline:2px solid var(--yellow); outline-offset:3px; border-radius:4px; }
+    /* Hidden until there is something to say. The script adds .show
+       alongside the message, and clears both together — an empty error
+       paragraph that still occupies space makes the form jump as fields
+       are validated. */
+    .err-msg { display: none; color: var(--bad); font-size: 12.5px; margin-top: 5px; }
+    .err-msg.show { display: flex; align-items: flex-start; gap: 6px; }
 
-    .btn-primary {
-      background:var(--yellow); color:#000; font-weight:800;
-      padding:0.85rem 2rem; border-radius:999px; border:none; cursor:pointer;
-      transition:background .18s, opacity .18s; min-height:48px;
-    }
-    .btn-primary:hover:not(:disabled) { background:#fde047; }
-    .btn-primary:disabled { opacity:.55; cursor:not-allowed; }
-
-    .consent-box {
-      background:rgba(250,204,21,0.05); border:1.5px solid rgba(250,204,21,0.22);
-      border-radius:0.8rem; padding:1rem;
-    }
-    .sr-only {
-      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
-    }
-    a { color:var(--yellow); }
+    a { color: var(--gold); }
   </style>
 </head>
 <body>
 
-  <header class="border-b" style="border-color:var(--border)">
-    <div class="container mx-auto px-4 py-3.5 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
-        <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
+<!-- ══════════════ ANNOUNCEMENT BAR (admin-controlled) ══════════════ -->
+<div id="announce" class="announce" hidden>
+  <div class="wrap" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:11px">
+    <span style="font-size:18px" aria-hidden="true">🎉</span>
+    <p id="announceMsg" style="margin:0;flex:1;min-width:200px;font-size:14.5px;font-weight:700;line-height:1.4"></p>
+    <span id="announceEnds" style="font-size:12px;font-weight:800;letter-spacing:.04em;opacity:.75"></span>
+    <a id="announceCta" href="/book" class="btn btn-sm cta">Claim offer <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
+    <button id="announceClose" aria-label="Dismiss this announcement" style="background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:inherit;opacity:.6;padding:0 4px">&times;</button>
+  </div>
+</div>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Lawie Sounds — home">
+      <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="" fetchpriority="high">
+      <span>
+        <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
+        <span class="brand-sub">Nyeri · Kenya</span>
+      </span>
+    </a>
+
+    <!-- Every entry is a real, shareable URL. /how and /faq 301 to the
+         matching homepage anchor on the server; here on the homepage
+         site.js turns them back into a smooth scroll and leaves the short
+         URL in the address bar. That is what lets this exact markup be
+         the header on every page. -->
+    <nav class="hidden lg:flex" style="gap:30px" aria-label="Main navigation">
+      <a class="nav-link" href="/services">Services</a>
+      <a class="nav-link" href="/latest" id="navLatest" style="position:relative">What's new<span class="new-dot" id="navNewDot" hidden></span></a>
+      <a class="nav-link" href="/gallery">Our work</a>
+      <a class="nav-link" href="/how">How it works</a>
+      <a class="nav-link" href="/reviews">Reviews</a>
+      <a class="nav-link" href="/faq">FAQ</a>
+    </nav>
+
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="tel:+254703925826" class="hidden xl:inline-flex" style="color:var(--text-muted);font-size:13.5px;font-weight:600;text-decoration:none;gap:8px;align-items:center">
+        <i class="fas fa-phone-alt gold"></i>+254 703 925 826
       </a>
-      <a href="index.html" class="text-sm text-gray-400 hover:text-yellow-400 transition">← Back to site</a>
+      <a href="/book" class="btn btn-primary btn-sm hidden sm:inline-flex"><i class="fas fa-calendar-check"></i>Get a quote</a>
+      <button id="menuBtn" class="lg:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav"
+              style="background:rgba(255,255,255,.06);border:1px solid var(--line);color:#fff;width:44px;height:44px;border-radius:12px;cursor:pointer">
+        <i class="fas fa-bars"></i>
+      </button>
     </div>
-  </header>
+  </div>
+
+  <nav id="mobileNav" class="lg:hidden" hidden aria-label="Mobile navigation" style="border-top:1px solid var(--line);background:rgba(8,8,15,.98)">
+    <div class="wrap" style="padding-block:12px;display:grid;gap:2px">
+      <a class="mnav" href="/services">Services</a>
+      <a class="mnav" href="/latest">What's new</a>
+      <a class="mnav" href="/gallery">Our work</a>
+      <a class="mnav" href="/how">How it works</a>
+      <a class="mnav" href="/reviews">Reviews</a>
+      <a class="mnav" href="/faq">FAQ</a>
+      <a class="mnav" href="/contact">Contact</a>
+      <a href="/book" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-calendar-check"></i>Get a free quote</a>
+    </div>
+  </nav>
+</header>
 
   <main class="container mx-auto px-4 py-10 max-w-2xl">
 
@@ -84,7 +124,7 @@
     <div id="formView">
       <div class="text-center mb-8">
         <h1 class="text-3xl sm:text-4xl font-black mb-3">How did we do?</h1>
-        <p class="text-gray-400 text-sm max-w-md mx-auto">
+        <p class="text-[var(--text-muted)] text-sm max-w-md mx-auto">
           If Lawie Sounds worked your event, we would genuinely value hearing about it — the good and the things we could do better.
         </p>
       </div>
@@ -94,36 +134,36 @@
         <!-- Rating -->
         <fieldset>
           <legend class="block text-sm font-semibold mb-2">Your rating <span class="text-red-400">*</span></legend>
-          <div class="stars" id="starGroup">
+          <div class="stars-input" id="starGroup">
             <input type="radio" name="rating" id="star5" value="5"><label for="star5" title="5 stars">★</label>
             <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars">★</label>
             <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars">★</label>
             <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars">★</label>
             <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star">★</label>
           </div>
-          <p id="ratingLabel" class="text-xs text-gray-500 mt-1 h-4"></p>
-          <p class="field-error" id="err-rating"></p>
+          <p id="ratingLabel" class="text-xs text-[var(--text-muted)] mt-1 h-4"></p>
+          <p class="err-msg" id="err-rating"></p>
         </fieldset>
 
         <!-- Comment -->
         <div>
           <label for="comment" class="block text-sm font-semibold mb-2">
-            Tell us about it <span class="text-gray-500 font-normal">(optional)</span>
+            Tell us about it <span class="text-[var(--text-muted)] font-normal">(optional)</span>
           </label>
-          <textarea id="comment" name="comment" rows="4" maxlength="1500" class="field"
+          <textarea id="comment" name="comment" rows="4" maxlength="1500" class="input"
             placeholder="What stood out? How was the sound, the timing, the team?"></textarea>
           <div class="flex justify-between items-start">
-            <p class="field-error" id="err-comment"></p>
-            <p class="text-xs text-gray-600 mt-1 ml-auto"><span id="commentCount">0</span> / 1500</p>
+            <p class="err-msg" id="err-comment"></p>
+            <p class="text-xs text-[var(--text-soft)] mt-1 ml-auto"><span id="commentCount">0</span> / 1500</p>
           </div>
         </div>
 
         <!-- Name + how it appears -->
         <div>
           <label for="clientName" class="block text-sm font-semibold mb-2">Your name <span class="text-red-400">*</span></label>
-          <input type="text" id="clientName" name="clientName" class="field" maxlength="120" autocomplete="name"
+          <input type="text" id="clientName" name="clientName" class="input" maxlength="120" autocomplete="name"
             placeholder="e.g. Sarah Kamau">
-          <p class="field-error" id="err-clientName"></p>
+          <p class="err-msg" id="err-clientName"></p>
 
           <!-- The privacy choice is shown at the moment it matters, with a live
                preview, rather than buried in a policy page. Minimised is the
@@ -131,10 +171,10 @@
           <div class="mt-3 rounded-lg p-3" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)">
             <label class="flex items-start gap-2.5 cursor-pointer">
               <input type="checkbox" id="showFullName" class="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0">
-              <span class="text-sm text-gray-300">
+              <span class="text-sm text-[var(--text-soft)]">
                 Show my full name publicly
-                <span class="block text-xs text-gray-500 mt-0.5">
-                  Leave this unticked and we will show <strong id="namePreview" class="text-gray-300">just your first name and last initial</strong>.
+                <span class="block text-xs text-[var(--text-muted)] mt-0.5">
+                  Leave this unticked and we will show <strong id="namePreview" class="text-[var(--text-soft)]">just your first name and last initial</strong>.
                 </span>
               </span>
             </label>
@@ -144,8 +184,8 @@
         <!-- Event details -->
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <label for="eventType" class="block text-sm font-semibold mb-2">Type of event <span class="text-gray-500 font-normal">(optional)</span></label>
-            <select id="eventType" class="field">
+            <label for="eventType" class="block text-sm font-semibold mb-2">Type of event <span class="text-[var(--text-muted)] font-normal">(optional)</span></label>
+            <select id="eventType" class="input">
               <option value="">Choose…</option>
               <option>Wedding</option>
               <option>Ruracio</option>
@@ -157,22 +197,22 @@
             </select>
           </div>
           <div>
-            <label for="eventDate" class="block text-sm font-semibold mb-2">When was it? <span class="text-gray-500 font-normal">(optional)</span></label>
-            <input type="date" id="eventDate" class="field">
-            <p class="field-error" id="err-eventDate"></p>
+            <label for="eventDate" class="block text-sm font-semibold mb-2">When was it? <span class="text-[var(--text-muted)] font-normal">(optional)</span></label>
+            <input type="date" id="eventDate" class="input">
+            <p class="err-msg" id="err-eventDate"></p>
           </div>
         </div>
 
         <!-- Verification -->
         <div>
           <label for="bookingReference" class="block text-sm font-semibold mb-2">
-            Booking reference <span class="text-gray-500 font-normal">(optional)</span>
+            Booking reference <span class="text-[var(--text-muted)] font-normal">(optional)</span>
           </label>
-          <input type="text" id="bookingReference" class="field" placeholder="LS-2607-A1B2C3" maxlength="20"
+          <input type="text" id="bookingReference" class="input" placeholder="LS-2607-A1B2C3" maxlength="20"
             style="text-transform:uppercase" autocomplete="off">
-          <p class="text-xs text-gray-500 mt-1.5">
+          <p class="text-xs text-[var(--text-muted)] mt-1.5">
             <i class="fas fa-circle-check text-green-500 mr-1"></i>
-            If you have it, your review gets a <strong class="text-gray-400">Verified client</strong> badge. We never publish the reference itself.
+            If you have it, your review gets a <strong class="text-[var(--text-muted)]">Verified client</strong> badge. We never publish the reference itself.
           </p>
         </div>
 
@@ -188,10 +228,10 @@
             <input type="checkbox" id="consentPublish" class="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0">
             <span class="text-sm">
               <strong>I agree that Lawie Sounds may publish this review on their website.</strong>
-              <span class="block text-xs text-gray-400 mt-1.5" id="consentNotice">Loading…</span>
+              <span class="block text-xs text-[var(--text-muted)] mt-1.5" id="consentNotice">Loading…</span>
             </span>
           </label>
-          <p class="field-error" id="err-consentPublish"></p>
+          <p class="err-msg" id="err-consentPublish"></p>
         </div>
 
         <div id="formError" class="hidden rounded-lg p-3 text-sm" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5"></div>
@@ -200,7 +240,7 @@
           <button type="submit" id="submitBtn" class="btn-primary">
             <i class="fas fa-paper-plane mr-2"></i>Send my review
           </button>
-          <p class="text-xs text-gray-600 mt-3">A person reads every review before it appears.</p>
+          <p class="text-xs text-[var(--text-soft)] mt-3">A person reads every review before it appears.</p>
         </div>
       </form>
     </div>
@@ -211,10 +251,10 @@
         <i class="fas fa-check text-3xl text-green-400"></i>
       </div>
       <h1 class="text-3xl font-black mb-3">Thank you</h1>
-      <p class="text-gray-400 text-sm max-w-md mx-auto mb-2">
+      <p class="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-2">
         Your review has been sent to the Lawie Sounds team. Someone reads every review before it goes on the site, so it may take a day or so to appear.
       </p>
-      <p class="text-gray-400 text-sm max-w-md mx-auto mb-8">
+      <p class="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-8">
         It will show publicly as <strong id="successName" class="text-white"></strong><span id="successVerified"></span>.
       </p>
 
@@ -223,31 +263,101 @@
            just to be able to re-send it. -->
       <div class="max-w-md mx-auto rounded-xl p-5 text-left" style="background:var(--surface);border:1.5px solid rgba(250,204,21,0.25)">
         <p class="text-sm font-bold text-yellow-400 mb-2"><i class="fas fa-key mr-1.5"></i>Changed your mind later?</p>
-        <p class="text-xs text-gray-400 mb-3">
+        <p class="text-xs text-[var(--text-muted)] mb-3">
           This private link removes your review from the website immediately, no questions asked.
-          <strong class="text-gray-300">Save it now</strong> — for your privacy we do not email it to you, and we cannot show it again.
+          <strong class="text-[var(--text-soft)]">Save it now</strong> — for your privacy we do not email it to you, and we cannot show it again.
         </p>
         <div class="flex gap-2">
-          <input id="withdrawLink" type="text" readonly class="field text-xs" style="font-family:monospace"
+          <input id="withdrawLink" type="text" readonly class="input text-xs" style="font-family:monospace"
                  aria-label="Your private link for withdrawing this review">
           <button type="button" onclick="copyWithdrawLink()" class="flex-none px-3 rounded-lg text-sm font-semibold transition"
             style="background:rgba(255,255,255,0.08);color:#fff" id="copyBtn">Copy</button>
         </div>
       </div>
 
-      <a href="index.html" class="inline-block mt-8 text-sm text-gray-400 hover:text-yellow-400 transition">← Back to the site</a>
+      <a href="/" class="inline-block mt-8 text-sm text-[var(--text-muted)] hover:text-yellow-400 transition">← Back to the site</a>
     </div>
 
     <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
   </main>
 
-  <footer class="border-t mt-16" style="border-color:var(--border)">
-    <div class="container mx-auto px-4 py-8 text-center text-xs text-gray-600">
-      &copy; 2026 Lawie Sounds · Nyeri, Kenya ·
-      <a href="tel:+254703925826" class="hover:underline">+254 703 925 826</a>
-    </div>
-  </footer>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a href="/" class="brand" style="margin-bottom:14px">
+          <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" loading="lazy" alt="">
+          <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+        </a>
+        <p style="font-size:13.5px;color:var(--text-faint);line-height:1.7;margin:14px 0 0;max-width:34ch">
+          Event entertainment, sound, lighting and live media across Nyeri, Mount Kenya and Kenya at large.
+        </p>
+        <div class="foot-social">
+          <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://tiktok.com/@lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
+          <a href="/wa" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
 
+      <div>
+        <h4>Pages</h4>
+        <div class="foot-links">
+          <a href="/services">All services</a>
+          <a href="/gallery">Gallery</a>
+          <a href="/book">Get a quote</a>
+          <a href="/review">Leave a review</a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Popular</h4>
+        <!-- The homepage replaces this with the live list from the API.
+             Everywhere else the nine standing services are the truth and a
+             fetch would be a round trip for a footer. -->
+        <div class="foot-links" id="footerServices">
+          <a href="/s/dj-mc-services">DJ &amp; MC Services</a>
+          <a href="/s/public-address">Public Address Systems</a>
+          <a href="/s/power-lighting">Power &amp; Lighting</a>
+          <a href="/s/led-screens">LED Screens</a>
+          <a href="/s/photography">Photography</a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Contact</h4>
+        <div class="foot-links">
+          <a href="tel:+254703925826"><i class="fas fa-phone-alt gold" style="width:18px"></i>+254 703 925 826</a>
+          <a href="tel:+254733925826"><i class="fas fa-mobile-screen gold" style="width:18px"></i>+254 733 925 826</a>
+          <a href="mailto:Lawiesounds@gmail.com"><i class="fas fa-envelope gold" style="width:18px"></i>Lawiesounds@gmail.com</a>
+          <span style="color:var(--text-muted);font-size:14px"><i class="fas fa-location-dot gold" style="width:18px"></i>Nyeri, Kenya</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bottom">
+      <p style="margin:0">&copy; <span id="year">2026</span> Lawie Sounds. All rights reserved.</p>
+      <p style="margin:0">Site by <a href="https://www.linkedin.com/in/kelvin-ndegwa" target="_blank" rel="noopener noreferrer author" class="gold" style="text-decoration:none">Kelvin Ndegwa</a> · FullStack Engineer</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Desktop floating actions -->
+<div class="fab">
+  <a href="/call" style="background:#22c55e;color:#fff" aria-label="Call Lawie Sounds"><i class="fas fa-phone-alt"></i></a>
+  <a href="/wa" style="background:var(--wa);color:#04220f" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp" style="font-size:20px"></i></a>
+  <button id="toTop" style="background:var(--gold);color:#14110a" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+</div>
+
+<!-- Mobile thumb-zone action bar. The three things anyone actually wants
+     from a phone, in the part of the screen a thumb reaches. -->
+<div class="mobile-bar">
+  <a href="/call" style="background:rgba(255,255,255,.07);color:#fff;border:1px solid var(--line)"><i class="fas fa-phone-alt"></i>Call</a>
+  <a href="/wa" style="background:var(--wa);color:#04220f"><i class="fab fa-whatsapp" style="font-size:17px"></i>WhatsApp</a>
+  <a href="/book" style="background:var(--gold);color:#14110a"><i class="fas fa-calendar-check"></i>Get a quote</a>
+</div>
+
+  <script src="/js/site.js"></script>
   <script>
     const RATING_WORDS = { 1:'Not good', 2:'Below what we aim for', 3:'Fine', 4:'Good', 5:'Excellent' };
 
@@ -259,7 +369,7 @@
       if (input) input.setAttribute('aria-invalid', 'true');
     }
     function clearErrors() {
-      document.querySelectorAll('.field-error').forEach(e => { e.textContent = ''; e.classList.remove('show'); });
+      document.querySelectorAll('.err-msg').forEach(e => { e.textContent = ''; e.classList.remove('show'); });
       document.querySelectorAll('[aria-invalid]').forEach(e => e.removeAttribute('aria-invalid'));
       $('formError').classList.add('hidden');
     }

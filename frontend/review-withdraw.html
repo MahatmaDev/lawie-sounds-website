@@ -18,31 +18,33 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <link rel="stylesheet" href="/css/app.css">
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    * { font-family: 'Inter', sans-serif; }
-    :root { --bg:#08080f; --surface:#0f0f1a; --border:rgba(255,255,255,0.08); --yellow:#facc15; }
-    body { background:var(--bg); color:#fff; margin:0; }
-    .btn {
-      padding:0.8rem 1.75rem; border-radius:999px; font-weight:700; border:none;
-      cursor:pointer; min-height:48px; transition:opacity .18s, background .18s;
-    }
-    .btn:disabled { opacity:.55; cursor:not-allowed; }
-    .btn-danger { background:#dc2626; color:#fff; }
-    .btn-danger:hover:not(:disabled) { background:#b91c1c; }
-    .btn-ghost { background:rgba(255,255,255,0.08); color:#fff; }
-    .btn-ghost:hover { background:rgba(255,255,255,0.14); }
-    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-    a { color:var(--yellow); }
+    /* Deliberately stripped down: no navigation, no announcement bar, no
+       calls to action beyond the one this page exists for. Somebody here
+       is withdrawing their review, and marketing at them while they do it
+       would be the wrong instinct. Only the brand mark stays, so they can
+       see whose site they are on.
+
+       The one control app.css does not carry is a destructive button —
+       withdrawing is the only place on this site that needs one. */
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #b91c1c; }
+    .panel { border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--line); padding: 28px; }
+    a { color: var(--gold); }
   </style>
 </head>
 <body>
 
-  <header class="border-b" style="border-color:var(--border)">
-    <div class="container mx-auto px-4 py-3.5">
-      <a href="index.html" class="flex items-center gap-3 w-fit">
-        <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="" class="h-9 w-9 rounded-full object-cover border-2 border-yellow-400">
-        <span class="text-lg font-bold tracking-tight">LAWIE <span class="text-yellow-400">SOUNDS</span></span>
+  <header class="site-header" style="position:static">
+    <div class="wrap bar">
+      <a href="/" class="brand" aria-label="Lawie Sounds — home">
+        <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="">
+        <span>
+          <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
+          <span class="brand-sub">Nyeri · Kenya</span>
+        </span>
       </a>
     </div>
   </header>
@@ -51,14 +53,14 @@
 
     <div id="loadingView" class="text-center py-16">
       <i class="fas fa-spinner fa-spin text-2xl text-yellow-400"></i>
-      <p class="text-gray-500 text-sm mt-3">Checking your link…</p>
+      <p class="text-[var(--text-muted)] text-sm mt-3">Checking your link…</p>
     </div>
 
     <!-- Confirm. The reviewer is shown their own words before acting, so the
          link never removes something they cannot see. -->
     <div id="confirmView" class="hidden">
       <h1 class="text-2xl font-black mb-2">Withdraw your review?</h1>
-      <p class="text-gray-400 text-sm mb-6">
+      <p class="text-[var(--text-muted)] text-sm mb-6">
         This removes it from the Lawie Sounds website straight away. You do not need to give a reason,
         and nobody will contact you about it.
       </p>
@@ -68,16 +70,16 @@
           <span id="reviewStars" class="text-yellow-400 text-lg"></span>
           <span id="reviewStatus" class="text-xs px-2 py-0.5 rounded-full"></span>
         </div>
-        <p id="reviewComment" class="text-gray-300 text-sm italic leading-relaxed"></p>
-        <p class="text-xs text-gray-500 mt-3">
-          Shown publicly as <strong id="reviewName" class="text-gray-400"></strong> ·
+        <p id="reviewComment" class="text-[var(--text-soft)] text-sm italic leading-relaxed"></p>
+        <p class="text-xs text-[var(--text-muted)] mt-3">
+          Shown publicly as <strong id="reviewName" class="text-[var(--text-muted)]"></strong> ·
           submitted <span id="reviewDate"></span>
         </p>
       </div>
 
       <div class="flex flex-wrap gap-3">
         <button id="withdrawBtn" class="btn btn-danger"><i class="fas fa-trash-can mr-2"></i>Yes, withdraw it</button>
-        <a href="index.html" class="btn btn-ghost inline-flex items-center no-underline">Keep my review</a>
+        <a href="/" class="btn btn-ghost inline-flex items-center no-underline">Keep my review</a>
       </div>
       <p id="actionError" class="hidden text-sm mt-4" style="color:#fca5a5"></p>
     </div>
@@ -88,11 +90,11 @@
         <i class="fas fa-check text-3xl text-green-400"></i>
       </div>
       <h1 class="text-2xl font-black mb-3">Your review has been withdrawn</h1>
-      <p class="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+      <p class="text-[var(--text-muted)] text-sm max-w-sm mx-auto mb-8">
         It is no longer shown anywhere on the Lawie Sounds website. Thank you for having taken the time
         to write it in the first place.
       </p>
-      <a href="index.html" class="btn btn-ghost inline-flex items-center no-underline">Back to the site</a>
+      <a href="/" class="btn btn-ghost inline-flex items-center no-underline">Back to the site</a>
     </div>
 
     <!-- Bad or spent token -->
@@ -101,11 +103,11 @@
         <i class="fas fa-link-slash text-3xl text-red-400/70"></i>
       </div>
       <h1 class="text-2xl font-black mb-3">This link is not valid</h1>
-      <p class="text-gray-400 text-sm max-w-sm mx-auto mb-8">
+      <p class="text-[var(--text-muted)] text-sm max-w-sm mx-auto mb-8">
         It may already have been used, or the review may have been removed. If you still want a review
         taken down, message us and we will handle it.
       </p>
-      <a href="https://wa.me/254703925826" target="_blank" rel="noopener" class="btn btn-ghost inline-flex items-center no-underline">
+      <a href="/wa" class="btn btn-ghost inline-flex items-center no-underline">
         <i class="fab fa-whatsapp mr-2"></i>Message us
       </a>
     </div>
@@ -113,6 +115,13 @@
     <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
   </main>
 
+  <footer class="site-footer" style="padding:28px 0;margin-top:48px">
+    <div class="wrap" style="text-align:center">
+      <p style="color:var(--text-faint);font-size:12.5px;margin:0">&copy; <span id="year">2026</span> Lawie Sounds · Nyeri, Kenya</p>
+    </div>
+  </footer>
+
+  <script src="/js/site.js"></script>
   <script>
     const $ = id => document.getElementById(id);
     const token = new URLSearchParams(location.search).get('token');
@@ -136,7 +145,7 @@
 
         const n = Math.max(0, Math.min(5, data.rating || 0));
         $('reviewStars').textContent   = '★'.repeat(n) + '☆'.repeat(5 - n);
-        $('reviewComment').innerHTML   = data.comment ? `"${esc(data.comment)}"` : '<span class="text-gray-600">No written comment</span>';
+        $('reviewComment').innerHTML   = data.comment ? `"${esc(data.comment)}"` : '<span class="text-[var(--text-soft)]">No written comment</span>';
         $('reviewName').textContent    = data.displayName || 'A client';
         $('reviewDate').textContent    = data.createdAt
           ? new Date(data.createdAt).toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' })

@@ -23,3 +23,9 @@ test-connection.php
 MANAGER-GUIDE.md
 *-CREDENTIALS.md
 *-GUIDE.local.md
+
+# Client invoices — financial documents, never deployed or committed
+invoices/
+
+# Access handover documents — contain login credentials
+handover/

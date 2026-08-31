@@ -26,23 +26,34 @@
 --  A backfilled one has enquired_at in March and entered_at today, and that
 --  gap is itself the thing worth measuring.
 --
---  NAMING NOTE — why `channel` and not a new `source` column:
---  the plan called the arrival path "source", but this schema already has a
---  `source` column holding free text from the "How did you hear about us?"
---  field on the booking form, and a `channel` column that already means
---  exactly "how did this enquiry reach us" (default 'booking-form'). Adding a
---  second column called source would have left two columns with one name and
---  two meanings. So the arrival path is `channel`, its vocabulary is fixed
---  below, and `source` keeps the meaning it already had.
+--  NAMING NOTE — three columns, three distinct questions.
+--  The plan called the arrival path "source", but this table already has two
+--  columns in that neighbourhood and neither one is it:
+--
+--    source         free text from the form's "How did you hear about us?"
+--                   field. The client's own words. Untouched here.
+--    channel        which page drove the enquiry: 'booking-form' for a direct
+--                   visit, or 'service:<slug>+<slug>' when they arrived from a
+--                   service page. Live rows already carry the latter, and it is
+--                   real attribution data. Untouched here.
+--    entry_channel  NEW. How the enquiry reached us at all: the website form,
+--                   a WhatsApp message, a phone call, somebody walking in.
+--
+--  An earlier draft of this migration tried to overload `channel` with the
+--  arrival path. It would have failed its own CHECK constraint against five of
+--  the six live rows, and the matching server change would have overwritten
+--  every 'service:<slug>' value with 'web-form' — silently destroying the
+--  attribution the business is already collecting. Hence a new column.
 -- ============================================================================
 
 BEGIN;
 
 -- 1. The columns. All nullable at first so the backfill can run before any
 --    constraint is enforced.
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS enquired_at TIMESTAMPTZ;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS entered_at  TIMESTAMPTZ;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS entry_mode  TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS enquired_at   TIMESTAMPTZ;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS entered_at    TIMESTAMPTZ;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS entry_mode    TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS entry_channel TEXT;
 
 -- 2. Backfill. Every row that exists today came through the public booking
 --    form — that is the only writer there has ever been — so for all of them
@@ -54,17 +65,16 @@ UPDATE bookings SET enquired_at = created_at WHERE enquired_at IS NULL;
 UPDATE bookings SET entered_at  = created_at WHERE entered_at  IS NULL;
 UPDATE bookings SET entry_mode  = 'self-serve' WHERE entry_mode IS NULL;
 
--- Normalise the arrival channel onto the fixed vocabulary. 'booking-form' was
--- the old default and means the same thing as 'web-form'.
-UPDATE bookings SET channel = 'web-form'
- WHERE channel IS NULL OR channel IN ('booking-form', 'website', 'web', '');
+-- Every row that exists came through the public form, whichever page sent
+-- them to it, so the arrival path for all of them is the website.
+UPDATE bookings SET entry_channel = 'web-form' WHERE entry_channel IS NULL;
 
 -- 3. Defaults, so a writer that forgets these columns still records something
 --    true rather than a NULL that later has to be guessed at.
-ALTER TABLE bookings ALTER COLUMN enquired_at SET DEFAULT NOW();
-ALTER TABLE bookings ALTER COLUMN entered_at  SET DEFAULT NOW();
-ALTER TABLE bookings ALTER COLUMN entry_mode  SET DEFAULT 'self-serve';
-ALTER TABLE bookings ALTER COLUMN channel     SET DEFAULT 'web-form';
+ALTER TABLE bookings ALTER COLUMN enquired_at   SET DEFAULT NOW();
+ALTER TABLE bookings ALTER COLUMN entered_at    SET DEFAULT NOW();
+ALTER TABLE bookings ALTER COLUMN entry_mode    SET DEFAULT 'self-serve';
+ALTER TABLE bookings ALTER COLUMN entry_channel SET DEFAULT 'web-form';
 
 -- 4. Vocabularies. Free text here would be fatal to the analytics within a
 --    month: 'WhatsApp', 'whatsapp' and 'Whats app' are three channels to a
@@ -73,9 +83,13 @@ ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_entry_mode_check;
 ALTER TABLE bookings ADD  CONSTRAINT bookings_entry_mode_check
   CHECK (entry_mode IS NULL OR entry_mode IN ('self-serve', 'staff-entered', 'imported'));
 
-ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_channel_check;
-ALTER TABLE bookings ADD  CONSTRAINT bookings_channel_check
-  CHECK (channel IS NULL OR channel IN
+-- Note this constrains entry_channel, NOT channel. `channel` stays free text
+-- because it legitimately holds 'service:dj-mc-services+led-screens', which is
+-- an open set — one value per combination of services a visitor can arrive
+-- from. Constraining it would reject a row the site is designed to write.
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_entry_channel_check;
+ALTER TABLE bookings ADD  CONSTRAINT bookings_entry_channel_check
+  CHECK (entry_channel IS NULL OR entry_channel IN
     ('web-form', 'whatsapp', 'phone', 'walk-in', 'referral', 'repeat', 'instagram', 'other'));
 
 -- 5. An enquiry cannot be entered before it was made. This is the one ordering
@@ -91,7 +105,7 @@ ALTER TABLE bookings ADD  CONSTRAINT bookings_enquired_before_entered
 --    it needs the same index created_at already has.
 CREATE INDEX IF NOT EXISTS idx_bookings_enquired_at ON bookings (enquired_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bookings_entry_mode  ON bookings (entry_mode, enquired_at DESC);
-CREATE INDEX IF NOT EXISTS idx_bookings_channel     ON bookings (channel, enquired_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bookings_entry_channel ON bookings (entry_channel, enquired_at DESC);
 
 -- Duplicate detection for Quick Add: the same client phoning twice about the
 -- same event should be caught before a second row is written.
@@ -110,11 +124,11 @@ COMMIT;
 --
 --    -- coverage: what share of what we know about was self-entered by the
 --    -- client, versus typed in afterwards by someone here
---    SELECT entry_mode, channel, COUNT(*),
+--    SELECT entry_mode, entry_channel, COUNT(*),
 --           ROUND(AVG(EXTRACT(EPOCH FROM (entered_at - enquired_at)) / 86400)::numeric, 1)
 --             AS avg_days_to_enter
 --      FROM bookings
---     GROUP BY entry_mode, channel
+--     GROUP BY entry_mode, entry_channel
 --     ORDER BY COUNT(*) DESC;
 --
 --  READ THIS BEFORE PLOTTING ANYTHING FROM THIS TABLE:

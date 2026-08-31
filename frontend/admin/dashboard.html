@@ -4742,7 +4742,7 @@ function duplicateMarketingBanner(id) {
       const today = new Date().toISOString().split('T')[0];
       const channelOptions = Object.entries(CHANNEL_LABEL)
         .filter(([k]) => k !== 'web-form')   // the form fills that one in itself
-        .map(([k, label]) => `<option value="${k}" ${prefill.channel === k ? 'selected' : ''}>${label}</option>`)
+        .map(([k, label]) => `<option value="${k}" ${prefill.entryChannel === k ? 'selected' : ''}>${label}</option>`)
         .join('');
 
       const html = `
@@ -4812,7 +4812,7 @@ function duplicateMarketingBanner(id) {
         preConfirm: () => {
           const v = (id) => (document.getElementById(id)?.value || '').trim();
           const payload = {
-            name: v('qaName'), phone: v('qaPhone'), channel: v('qaChannel'),
+            name: v('qaName'), phone: v('qaPhone'), entryChannel: v('qaChannel'),
             eventDate: v('qaEventDate') || null, eventType: v('qaEventType') || null,
             venue: v('qaVenue') || null, notes: v('qaNotes') || null,
             status: v('qaStatus') || 'confirmed',
@@ -4823,7 +4823,7 @@ function duplicateMarketingBanner(id) {
           if (when) payload.enquiredAt = new Date(when + 'T12:00:00').toISOString();
           if (!payload.name)    { Swal.showValidationMessage('Who is the client?'); return false; }
           if (!payload.phone)   { Swal.showValidationMessage('A phone number is what makes this findable later.'); return false; }
-          if (!payload.channel) { Swal.showValidationMessage('How did they reach us?'); return false; }
+          if (!payload.entryChannel) { Swal.showValidationMessage('How did they reach us?'); return false; }
           return payload;
         },
       });
@@ -4939,7 +4939,7 @@ function duplicateMarketingBanner(id) {
             <span class="text-xs ${sla === 'overdue' ? 'text-red-400 font-semibold' : 'text-gray-500'}"
                   title="Client got in touch: ${escapeHtml(fullStamp(b.enquiredAt))}">${humanAge(enquiryAgeMs(b))}</span>
             <span class="block text-[11px] text-gray-600 mt-0.5">
-              <i class="fa${b.channel === 'whatsapp' || b.channel === 'instagram' ? 'b' : 's'} ${CHANNEL_ICON[b.channel] || 'fa-globe'} mr-1"></i>${escapeHtml(CHANNEL_LABEL[b.channel] || 'Website form')}
+              <i class="fa${b.entryChannel === 'whatsapp' || b.entryChannel === 'instagram' ? 'b' : 's'} ${CHANNEL_ICON[b.entryChannel] || 'fa-globe'} mr-1"></i>${escapeHtml(CHANNEL_LABEL[b.entryChannel] || 'Website form')}
             </span>
             ${wasBackfilled(b) ? `<span class="block text-[10px] text-gray-600 mt-0.5" title="Typed in on ${escapeHtml(fullStamp(b.enteredAt))}, after the fact"><i class="fas fa-pen-to-square mr-1"></i>added by hand</span>` : ''}
           </td>
@@ -5002,7 +5002,7 @@ function duplicateMarketingBanner(id) {
         // The three timestamps go out separately and keep their own names, so
         // a spreadsheet built on this export cannot quietly confuse when the
         // client got in touch with when somebody typed it up.
-        ['Came from','channel'], ['Entry mode','entryMode'],
+        ['Landing page','channel'], ['Reached us via','entryChannel'], ['Entry mode','entryMode'],
         ['Enquired at','enquiredAt'], ['Entered at','enteredAt'], ['Row created','createdAt'],
       ];
       // Prefix formula characters — a cell starting with = or + is executed by
@@ -5423,8 +5423,13 @@ function duplicateMarketingBanner(id) {
           ${row('Services', servicesText(b))}
           ${row('Package', b.selectedPackage)}
           ${row('Heard about us via', b.source)}
-          ${row('Came from', b.channel)}
-          ${row('Received', b.createdAt ? new Date(b.createdAt).toLocaleString('en-KE') + ' · ' + humanAge(enquiryAgeMs(b)) : '')}
+          ${row('Reached us via', CHANNEL_LABEL[b.entryChannel] || (b.entryChannel || ''))}
+          ${row('Landing page', b.channel)}
+          <!-- All three timestamps, named for what they mean. Showing only
+               one of them is what let a months-old enquiry read as though it
+               had arrived this morning. -->
+          ${row('Client got in touch', b.enquiredAt ? fullStamp(b.enquiredAt) + ' · ' + humanAge(enquiryAgeMs(b)) : '')}
+          ${wasBackfilled(b) ? row('Typed in', fullStamp(b.enteredAt) + ' · added by hand') : ''}
           ${row('First response', b.respondedAt ? new Date(b.respondedAt).toLocaleString('en-KE') : 'Not yet responded')}
           ${row('Handled by', b.handledBy)}
         </dl>

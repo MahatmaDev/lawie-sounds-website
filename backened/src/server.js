@@ -140,7 +140,7 @@ const map = {
     // For a web enquiry all three are the same instant; for one entered from a
     // WhatsApp message in March they are not, and every arrival-rate figure
     // depends on not confusing them.
-    enquiredAt: r.enquired_at || r.created_at, enteredAt: r.entered_at || r.created_at, entryMode: r.entry_mode || 'self-serve', createdAt: r.created_at }),
+    enquiredAt: r.enquired_at || r.created_at, enteredAt: r.entered_at || r.created_at, entryMode: r.entry_mode || 'self-serve', entryChannel: r.entry_channel, createdAt: r.created_at }),
   employee: (r) => r && ({ id: r.id, name: r.name, role: r.role, phone: r.phone, email: r.email, hireDate: r.hire_date, status: r.status, totalEvents: r.total_events, avgRating: r.avg_rating, createdAt: r.created_at }),
   payroll: (r) => r && ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, eventName: r.event_name, eventDate: r.event_date, amount: r.amount, status: r.status, paymentDate: r.payment_date, rating: r.rating, createdAt: r.created_at }),
   poster: (r) => r && ({ id: r.id, title: r.title, imageUrl: r.image_url, caption: r.caption, isActive: r.is_active, startDate: r.start_date, endDate: r.end_date, displayOrder: r.display_order, mediaType: r.media_type || 'image', storagePath: r.storage_path, thumbUrl: r.thumb_url, thumbPath: r.thumb_path, mimeType: r.mime_type, fileSize: r.file_size, width: r.width, height: r.height, createdAt: r.created_at }),
@@ -331,7 +331,7 @@ const DROPPABLE_BOOKING_COLUMNS = ['channel', 'event_details', 'source', 'respon
   // the same reason as the rest: until that migration is applied, a deploy
   // that writes them would reject every enquiry. Losing the provenance of a
   // booking is a bad day; losing the booking is a lost customer.
-  'enquired_at', 'entered_at', 'entry_mode'];
+  'enquired_at', 'entered_at', 'entry_mode', 'entry_channel'];
 
 // Run a bookings write, retrying without any droppable column the live schema
 // is missing. This is the exact failure that silently swallowed every booking
@@ -1077,10 +1077,15 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
     // internal staff-only field edited from the dashboard.
     event_details:    req.body.specialRequests || req.body.eventDetails || null,
     source:           req.body.source          || null,   // "How did you hear about us?"
-    // How the enquiry reached us, on the fixed vocabulary. Distinct from
-    // `source` above, which is the client's own answer about how they heard
-    // of us and is free text by nature.
-    channel:          'web-form',
+    // Which page drove the enquiry — 'booking-form' for a direct visit, or
+    // 'service:<slug>+<slug>' when they arrived from a service page. This is
+    // attribution the form has always sent and it is deliberately preserved
+    // as-is; an earlier draft overwrote it with a fixed value and threw away
+    // the only record of which page actually earns enquiries.
+    channel:          req.body.channel         || 'booking-form',
+    // How the enquiry reached us at all, on a fixed vocabulary. A different
+    // question from both `channel` above and `source` above it.
+    entry_channel:    'web-form',
     status:           'pending',
     user_ip:          ip,
     user_agent:       ua,
@@ -2468,7 +2473,7 @@ app.get('/api/admin/bookings', adminAuth, async (req, res) => {
 // free text here would be fatal to the analytics within a month, since
 // 'WhatsApp', 'whatsapp' and 'Whats app' are three channels to a GROUP BY and
 // one channel to a person.
-const BOOKING_CHANNELS = ['web-form', 'whatsapp', 'phone', 'walk-in', 'referral', 'repeat', 'instagram', 'other'];
+const ENTRY_CHANNELS = ['web-form', 'whatsapp', 'phone', 'walk-in', 'referral', 'repeat', 'instagram', 'other'];
 const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
 
 /**
@@ -2505,9 +2510,9 @@ app.post('/api/admin/bookings', adminAuth, async (req, res) => {
   const eventDate = req.body.eventDate || null;
   if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) errors.eventDate = 'Invalid date.';
 
-  const channel = String(req.body.channel || '').trim();
-  if (!BOOKING_CHANNELS.includes(channel)) {
-    errors.channel = `How did they get in touch? One of: ${BOOKING_CHANNELS.join(', ')}.`;
+  const entryChannel = String(req.body.entryChannel || '').trim();
+  if (!ENTRY_CHANNELS.includes(entryChannel)) {
+    errors.entryChannel = `How did they get in touch? One of: ${ENTRY_CHANNELS.join(', ')}.`;
   }
 
   const status = req.body.status || 'confirmed';
@@ -2562,7 +2567,9 @@ app.post('/api/admin/bookings', adminAuth, async (req, res) => {
     event_details:    req.body.specialRequests || null,
     notes:            req.body.notes || null,
     source:           req.body.source || null,
-    channel,
+    // `channel` is "which page drove this" and there is no page — nobody
+    // clicked anything, somebody phoned. Left null rather than invented.
+    entry_channel:    entryChannel,
     status,
     enquired_at:      enquiredAt.toISOString(),
     // When a human typed it in — always now, never backdated. This is the
@@ -2585,7 +2592,7 @@ app.post('/api/admin/bookings', adminAuth, async (req, res) => {
   await createNotification(
     'booking',
     'Booking added by hand',
-    `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}, via ${channel}`,
+    `${name} (${normalisedPhone}) — ${row.event_type || 'Event'} on ${row.event_date || 'TBD'}, via ${entryChannel}`,
     data.id, 'bookings',
   );
 

@@ -278,9 +278,10 @@
 
           <div class="grid md:grid-cols-2 gap-5 mt-5">
             <div>
-              <label for="email" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Email address <span class="text-red-600" aria-hidden="true">*</span></label>
-              <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required aria-required="true" aria-describedby="err-email"
+              <label for="email" class="block text-sm font-semibold text-[var(--text-soft)] mb-1.5">Email address <span class="text-[var(--text-muted)] font-normal">(optional)</span></label>
+              <input type="email" id="email" name="email" autocomplete="email" inputmode="email" aria-describedby="err-email email-hint"
                      class="form-input w-full border border-[var(--line)] rounded-lg px-4 py-3" placeholder="you@example.com">
+              <p id="email-hint" class="text-xs text-[var(--text-muted)] mt-1.5">We reply on WhatsApp or by phone. Add an email only if you would rather we wrote to you.</p>
               <p class="field-error" id="err-email"><i class="fas fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span></span></p>
             </div>
             <div>
@@ -704,7 +705,12 @@
   const RULES = {
     name:       v => v.trim().length >= 2 || 'Please enter your full name.',
     phone:      v => /^(?:\+?254|0)[17]\d{8}$/.test(v.replace(/[\s()-]/g, '')) || 'Enter a valid Kenyan number, e.g. 0712 345 678.',
-    email:      v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Enter a valid email, e.g. you@example.com.',
+    // Optional. Most enquiries here arrive from a phone and are answered on
+    // WhatsApp, and nothing in the system has ever sent a client an email —
+    // so requiring one was a field standing between somebody and a quote for
+    // no benefit. Still format-checked when given, because a mistyped address
+    // is worse than a blank one: it looks like a working reply channel.
+    email:      v => !v.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Enter a valid email, e.g. you@example.com.',
     event_date: v => {
       if (!v) return 'Please choose your event date.';
       return v >= new Date().toISOString().split('T')[0] || 'The event date cannot be in the past.';
@@ -955,7 +961,7 @@
     // over recall, and a direct route back to fix a mistake.
     const groups = [
       { step: 1, title: 'Your details', rows: [
-        ['Name', d.name], ['Phone', d.phone], ['Email', d.email],
+        ['Name', d.name], ['Phone', d.phone], ['Email', d.email || 'Not given'],
         ['Heard about us via', d.source || 'Not specified'],
       ]},
       { step: 2, title: 'Event', rows: [
@@ -1097,7 +1103,10 @@
   function waLink(d, ref) {
     const lines = [
       `*NEW ENQUIRY* — Ref ${ref}`, '',
-      `*Name:* ${d.name}`, `*Phone:* ${d.phone}`, `*Email:* ${d.email}`, '',
+      `*Name:* ${d.name}`, `*Phone:* ${d.phone}`,
+      // Omitted entirely rather than sent as an empty line — "Email:" with
+      // nothing after it reads like the message was truncated.
+      ...(d.email ? [`*Email:* ${d.email}`] : []), '',
       `*Event:* ${d.eventType}`, `*Date:* ${prettyDate(d.eventDate)}`,
       `*Guests:* ${d.guestCount}`, `*Budget:* ${BUDGET_LABEL[d.budget] || d.budget}`,
       `*Venue:* ${d.venue}`, '',

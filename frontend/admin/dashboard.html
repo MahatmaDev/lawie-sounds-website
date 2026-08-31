@@ -1297,7 +1297,9 @@
       
       // Add individual bookings (placeholder for now)
       eventBookings.forEach(booking => {
-        csvData.push([booking.name, booking.email, booking.phone, 'Standard', 1, `KES ${event.price}`]);
+        // join() turns a null into an empty cell but an undefined into the
+        // string "undefined"; email is optional now, so make the blank explicit.
+        csvData.push([booking.name, booking.email || '', booking.phone, 'Standard', 1, `KES ${event.price}`]);
       });
       
       const csvContent = csvData.map(row => row.join(',')).join('\n');

@@ -1623,7 +1623,17 @@
                   <div>
                     <p class="text-xs text-gray-500">Won</p>
                     <p class="text-lg font-bold text-purple-400">${p.won}</p>
-                    <span class="text-xs text-gray-600">${p.winRate != null ? p.winRate + '%' : '—'}</span>
+                    <!-- The rate is over DECIDED enquiries, and it is greyed
+                         when the interval is too wide to mean anything. A
+                         service showing "0%" because none of its enquiries has
+                         been answered yet reads as "we never win this", which
+                         is a different and much worse claim. -->
+                    <span class="text-xs ${p.interval && p.interval.reliable ? 'text-gray-400' : 'text-gray-600'}"
+                          title="${p.decided != null ? `${p.won} of ${p.decided} decided${p.stillOpen ? `, ${p.stillOpen} still open` : ''}` : ''}">
+                      ${p.winRate == null
+                        ? (p.stillOpen ? 'none decided yet' : '—')
+                        : `${p.winRate}%${p.interval && !p.interval.reliable ? ' <i class="fas fa-circle-question ml-0.5" title="not enough data yet"></i>' : ''}`}
+                    </span>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500">Booked</p>

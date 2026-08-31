@@ -3046,6 +3046,25 @@ function operationalAnalytics(d) {
     enquiries:      d.enquiries,
     reviews:        d.reviews,
     responsiveness: d.responsiveness,
+
+    // The statistics layer is operational, not financial, and the manager is
+    // the person who can actually move these numbers.
+    //
+    // `coverage` in particular has to be here: it is the count of jobs that
+    // never got typed in, and the manager is the one who types them in.
+    // Withholding it would hide the gap from the only person who can close
+    // it — and quietly turn the coverage nudge into decoration.
+    //
+    // `conversion` and `byService` carry rates and counts, never money.
+    // `prior` is needed to explain why a shrunk rate differs from the raw one.
+    conversion: d.conversion,
+    byService:  d.byService,
+    prior:      d.prior,
+    coverage:   d.coverage,
+
+    // `pipeline` is deliberately absent — it is denominated in shillings, and
+    // the whole point of this split is that the operational view carries none.
+
     breakdown: {
       byEventType: (d.breakdown?.byEventType || []).map(r => ({ label: r.label, count: r.count })),
     },

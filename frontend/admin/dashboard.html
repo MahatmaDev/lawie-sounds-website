@@ -684,7 +684,16 @@
       const bookedValue = wonBookings.reduce((s, b) => s + (Number(b.agreedAmount) || 0), 0);
       const unpricedWon = wonBookings.filter(b => b.agreedAmount === null || b.agreedAmount === undefined).length;
       const confirmedBookings = store.bookings.filter(b => ['confirmed','completed'].includes(b.status)).length;
-      const convRate = store.bookings.length > 0 ? Math.round((confirmedBookings / store.bookings.length) * 100) : 0;
+      // Decided, not total. An enquiry still awaiting a reply is not a loss,
+      // and counting it as one made a busy month look like a bad one — the
+      // more enquiries arrived, the worse this figure got.
+      //
+      // It is also shown as a count rather than a percentage on purpose. The
+      // Analytics tab reports this rate properly, with a confidence interval
+      // from analytics_summary(); a second percentage computed a different way
+      // in the browser would eventually disagree with it, and the owner would
+      // have no way to tell which screen was lying.
+      const decidedBookings = store.bookings.filter(b => b.status !== 'pending').length;
       const greeting = sessionStorage.getItem('adminGreeting') || 'Welcome'; const emoji = sessionStorage.getItem('adminEmoji') || '👋'; const adminName = sessionStorage.getItem('adminName') || 'Administrator';
 
       // Build last 6 months chart data from real bookings
@@ -770,7 +779,7 @@
         heroChip('Booked', bookedValue ? kesShort(bookedValue) : '—',
                  unpricedWon ? `${unpricedWon} still unpriced` : 'on work won', 'text-white', 0) +
         heroChip('Jobs won', wonBookings.length,
-                 `${convRate}% of enquiries`, 'text-green-400', 60) +
+                 `${confirmedBookings} of ${decidedBookings} decided`, 'text-green-400', 60) +
         heroChip('Waiting', heroPending,
                  heroPending ? 'needs a reply' : 'all answered',
                  heroPending ? 'text-yellow-400' : 'text-gray-400', 120);
@@ -789,7 +798,7 @@
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"><div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Events</p><p class="text-2xl font-bold text-white">${store.events.length}</p></div><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt text-purple-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${store.events.filter(e => { const d = new Date().toISOString().split('T')[0]; return e.date >= d && e.status !== 'cancelled'; }).length} upcoming</div></div>
       <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Total Enquiries</p><p class="text-2xl font-bold text-white">${store.bookings.length}</p></div><div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-ticket-alt text-blue-400"></i></div></div><div class="mt-2 text-xs text-yellow-400">${store.bookings.filter(b => b.status === 'pending').length} pending review</div></div>
       <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Pending Reviews</p><p class="text-2xl font-bold text-yellow-400">${pendingReviews.length}</p></div><div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-400"></i></div></div><div class="mt-2 text-xs text-yellow-400"><i class="fas fa-clock mr-1"></i> Awaiting approval</div></div>
-      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Conversion Rate</p><p class="text-2xl font-bold text-white">${convRate}%</p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div></div><div class="mt-2 text-xs text-gray-500">${confirmedBookings} confirmed / ${store.bookings.length} total</div></div></div>
+      <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 value-card"><div class="flex items-center justify-between"><div><p class="text-gray-400 text-sm">Jobs won</p><p class="text-2xl font-bold text-white">${confirmedBookings}<span class="text-base font-normal text-gray-500"> of ${decidedBookings}</span></p></div><div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center"><i class="fas fa-chart-line text-green-400"></i></div></div><div class="mt-2 text-xs text-gray-500">decided so far · <button type="button" onclick="switchTab(&quot;analytics&quot;)" class="text-purple-400 hover:underline">win rate with its margin of error</button></div></div></div>
       ${(() => {
         // Replaced the "Business Health Score" strip that used to sit here. That
         // score blended conversion, ratings, content counts and cancellations
@@ -6784,6 +6793,153 @@ function duplicateMarketingBanner(id) {
       return null;
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // PRESENTING UNCERTAINTY
+    //
+    // Every rate on this screen arrives from analytics_summary() with a
+    // Wilson score interval and a `reliable` flag. The browser does no
+    // arithmetic — it only decides how loudly to say the number.
+    //
+    // The rule is simple and it is not negotiable: an interval wider than
+    // ±15 points is not a small number, it is an unknown one, and it gets
+    // greyed and labelled rather than printed as fact. A confident wrong
+    // number is worse than an honest refusal, because someone prices work
+    // against it.
+    // ══════════════════════════════════════════════════════════════════
+    const asPct = (x) => x === null || x === undefined ? '—' : Math.round(Number(x) * 100) + '%';
+
+    function rateWithInterval(ci, { size = 'text-2xl' } = {}) {
+      if (!ci || ci.rate === null || ci.rate === undefined) {
+        return `<span class="${size} font-bold text-gray-600">—</span>
+                <span class="block text-xs text-gray-600 mt-0.5">nothing decided yet</span>`;
+      }
+      if (!ci.reliable) {
+        return `<span class="${size} font-bold text-gray-500" title="${asPct(ci.low)} to ${asPct(ci.high)}, 95% confidence">${asPct(ci.rate)}</span>
+                <span class="block text-xs text-gray-500 mt-0.5">
+                  <i class="fas fa-circle-question mr-1"></i>not enough data yet
+                  <span class="text-gray-600">(${asPct(ci.low)}–${asPct(ci.high)})</span>
+                </span>`;
+      }
+      return `<span class="${size} font-bold text-purple-400">${asPct(ci.rate)}</span>
+              <span class="block text-xs text-gray-500 mt-0.5">95% sure it is ${asPct(ci.low)}–${asPct(ci.high)}</span>`;
+    }
+
+    // The coverage caveat, shown permanently rather than when it looks bad.
+    // Every rate on this screen is computed over enquiries this system can
+    // see. If a third of the real jobs never got typed in, these figures
+    // describe the website rather than the business — and that is worth
+    // saying on the screen where someone is about to draw conclusions.
+    function coverageBanner(cov) {
+      if (!cov || !cov.total) return '';
+      const share = Number(cov.staffEnteredShare || 0);
+      if (!cov.staffEntered) {
+        return `<div class="mb-5 bg-gray-800/40 border border-gray-700 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+                  <i class="fas fa-chart-pie text-gray-500"></i>
+                  <p class="text-sm text-gray-400 flex-1">
+                    Every enquiry in this period came through the website form. Jobs that arrived by
+                    phone or WhatsApp are <strong class="text-gray-300">invisible to every figure below</strong>
+                    until someone adds them.
+                  </p>
+                  <button type="button" onclick="switchTab('bookings')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition flex-shrink-0">
+                    Add a booking
+                  </button>
+                </div>`;
+      }
+      return `<div class="mb-5 bg-blue-600/10 border border-blue-600/30 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+                <i class="fas fa-chart-pie text-blue-400"></i>
+                <p class="text-sm text-blue-100 flex-1">
+                  <strong>${asPct(share)}</strong> of these ${cov.total} enquiries (${cov.staffEntered})
+                  were added by hand rather than arriving through the website.
+                  <span class="text-blue-300/80">Conversion is computed within each group, never across —
+                  nobody backfills the enquiries they lost, so a pooled rate would be inflated.</span>
+                </p>
+              </div>`;
+    }
+
+    // Raw beside shrunk, deliberately. Read against each other they teach the
+    // reader why the leaderboard is not simply sorted by the headline number:
+    // a service at 1-for-1 is not the best service, it is the least measured.
+    function serviceLeaderboard(d) {
+      const rows = (d.byService || []).filter(s => s.enquiries > 0 || s.stillOpen > 0);
+      if (!rows.length) {
+        return `<p class="text-sm text-gray-500">No enquiries have been attributed to a service in this period.</p>`;
+      }
+      const prior = d.prior || {};
+      return `
+        <div class="overflow-x-auto table-responsive">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-gray-500 border-b border-gray-800">
+              <tr>
+                <th class="text-left  py-2 font-semibold">Service</th>
+                <th class="text-right py-2 font-semibold">Decided</th>
+                <th class="text-right py-2 font-semibold">Won</th>
+                <th class="text-right py-2 font-semibold">Raw</th>
+                <th class="text-right py-2 font-semibold">Shrunk</th>
+                <th class="text-right py-2 font-semibold">95% interval</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(s => {
+                const ci = s.interval || {};
+                const dim = !ci.reliable;
+                return `
+                <tr class="border-b border-gray-800/60">
+                  <td class="py-2.5 ${dim ? 'text-gray-400' : 'text-white'}">${escapeHtml(s.name)}
+                    ${s.stillOpen ? `<span class="text-[11px] text-gray-600 block">${s.stillOpen} still open</span>` : ''}
+                  </td>
+                  <td class="py-2.5 text-right text-gray-400">${s.enquiries}</td>
+                  <td class="py-2.5 text-right text-gray-400">${s.won}</td>
+                  <td class="py-2.5 text-right ${dim ? 'text-gray-600' : 'text-gray-300'}">${s.rawRate === null ? '—' : asPct(s.rawRate)}</td>
+                  <td class="py-2.5 text-right font-bold ${dim ? 'text-gray-500' : 'text-purple-400'}">${s.shrunkRate === null ? '—' : asPct(s.shrunkRate)}</td>
+                  <td class="py-2.5 text-right text-xs ${dim ? 'text-gray-600' : 'text-gray-400'}">
+                    ${ci.rate === null || ci.rate === undefined ? '—' : `${asPct(ci.low)}–${asPct(ci.high)}`}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 leading-relaxed">
+          <strong class="text-gray-400">Read the two rate columns against each other.</strong>
+          A service that has won its only enquiry shows 100% raw, and that is not evidence — the
+          shrunk column pulls it toward what services do on average, and it stops being a standout.
+          Services with real history barely move: they have earned their number.
+          ${prior.isFallback
+            ? `<span class="block mt-1 text-gray-600">There is not yet enough spread between services to fit a prior from your own data, so a neutral one is being used (${prior.alpha ?? 1}, ${prior.beta ?? 1}).</span>`
+            : `<span class="block mt-1 text-gray-600">Prior fitted from ${prior.servicesFitted} services: mean ${asPct(prior.mean)}, worth about ${Math.round(Number(prior.strength || 0))} past enquiries.</span>`}
+        </p>`;
+    }
+
+    // Adding up quoted values and calling it "pipeline" is fantasy: it assumes
+    // every open enquiry converts. The expectation weights each one by how
+    // often we actually win that service, and carries a band.
+    function pipelineCard(p) {
+      if (!p || !p.openCount) {
+        return `<p class="text-sm text-gray-500">Nothing open right now.</p>`;
+      }
+      if (!p.valuedCount) {
+        return `<div class="text-sm text-gray-400">
+                  <p class="mb-2"><strong class="text-white">${p.openCount}</strong> open ${p.openCount === 1 ? 'enquiry' : 'enquiries'}, none with a value recorded.</p>
+                  <p class="text-xs text-gray-500">Add an agreed or quoted price to an open enquiry and the expected value appears here.</p>
+                </div>`;
+      }
+      return `
+        <p class="text-2xl font-bold text-white">${kesShort(p.expected)}</p>
+        <p class="text-xs ${p.reliable ? 'text-gray-500' : 'text-gray-600'} mt-1">
+          ${p.reliable
+            ? `likely ${kesShort(p.low)} – ${kesShort(p.high)}`
+            : `<i class="fas fa-circle-question mr-1"></i>range not meaningful below about ten open leads`}
+        </p>
+        <dl class="mt-4 space-y-2 text-sm">
+          <div class="flex justify-between"><dt class="text-gray-400">Open enquiries</dt><dd class="text-gray-300">${p.openCount}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-400">If every one converted</dt><dd class="text-gray-500">${kesShort(p.gross)}</dd></div>
+        </dl>
+        <p class="text-xs text-gray-600 mt-3 leading-relaxed">
+          Each open enquiry is weighted by how often we win that service, so this is what the pipeline
+          is worth on average — not what it would be worth if nothing fell through.
+        </p>`;
+    }
+
     async function renderAnalytics() {
       destroyAnalyticsCharts();
       const container = document.getElementById('sectionContent');
@@ -6841,8 +6997,9 @@ function duplicateMarketingBanner(id) {
       // ── KPI tiles ─────────────────────────────────────────────
       const net     = full ? Number(d.revenue.collected)     - Number(d.costs.payroll)     : 0;
       const netPrev = full ? Number(d.revenue.collectedPrev) - Number(d.costs.payrollPrev) : 0;
-      const convRate     = d.enquiries.total     ? (d.enquiries.won     / d.enquiries.total)     * 100 : 0;
-      const convRatePrev = d.enquiries.totalPrev ? (d.enquiries.wonPrev / d.enquiries.totalPrev) * 100 : 0;
+      // The win rate is no longer computed here: analytics_summary() sends it
+      // with an interval, and a second figure derived a different way in the
+      // browser would eventually disagree with it on the same screen.
       const replyText = d.responsiveness.medianHours === null ? 'no data'
         : d.responsiveness.medianHours < 1 ? '< 1 hr'
         : d.responsiveness.medianHours.toFixed(1) + ' hrs';
@@ -6881,6 +7038,7 @@ function duplicateMarketingBanner(id) {
         </div>
 
         ${banner}
+        ${coverageBanner(d.coverage)}
 
         ${full ? `
         <!-- Money first. This is the question the owner actually opens the tab
@@ -6907,9 +7065,18 @@ function duplicateMarketingBanner(id) {
           ${tile('Jobs won', d.enquiries.won,
                  deltaChip(d.enquiries.won, d.enquiries.wonPrev),
                  `${d.enquiries.cancelled} cancelled`, 'text-purple-400')}
-          ${tile('Win rate', convRate.toFixed(0) + '%',
-                 deltaChip(convRate, convRatePrev),
-                 'enquiries that became jobs', 'text-purple-400')}
+          <!-- Not convRate.toFixed(0) + '%'. Two of two enquiries won is not
+               a 100% win rate, it is two enquiries. The tile shows the
+               interval and refuses to commit when the interval is wide. -->
+          <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+            <p class="text-xs text-gray-400 mb-1">Win rate</p>
+            ${rateWithInterval(d.conversion && d.conversion.overall)}
+            <p class="text-xs text-gray-600 mt-1.5">
+              of ${(d.conversion && d.conversion.decided) || 0} decided${
+                d.conversion && d.conversion.stillOpen
+                  ? ` · ${d.conversion.stillOpen} still open` : ''}
+            </p>
+          </div>
           ${full
             ? tile('Avg job value', kesShort(d.revenue.avgDeal),
                    deltaChip(d.revenue.avgDeal, d.revenue.avgDealPrev),
@@ -6952,6 +7119,45 @@ function duplicateMarketingBanner(id) {
             <div id="anTypes"></div>
           </div>
         </div>
+
+        <!-- ── The statistics layer ──────────────────────────────────
+             Rates with intervals, a leaderboard that has been shrunk toward
+             the mean, and a pipeline that is an expectation rather than a
+             wish. All computed in analytics_summary(); nothing here does
+             arithmetic, it only decides how confidently to speak. -->
+        <div class="grid lg:grid-cols-3 gap-5 mb-5">
+          <div class="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-5">
+            <h3 class="font-semibold mb-1">Conversion by service</h3>
+            <p class="text-xs text-gray-500 mb-4">
+              Only decided enquiries count as trials — one still sitting open is not a loss.
+            </p>
+            ${serviceLeaderboard(d)}
+          </div>
+          <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+            <h3 class="font-semibold mb-1">Expected pipeline</h3>
+            <p class="text-xs text-gray-500 mb-4">What the open work is worth on average</p>
+            ${pipelineCard(d.pipeline)}
+          </div>
+        </div>
+
+        ${(d.conversion && d.conversion.byEntryMode && d.conversion.byEntryMode.length > 1) ? `
+        <!-- Only shown once there is more than one entry mode, because that is
+             the point at which pooling them would start to mislead. -->
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5 mb-5">
+          <h3 class="font-semibold mb-1">Conversion by how the enquiry arrived</h3>
+          <p class="text-xs text-gray-500 mb-4">
+            Never added together. Staff-entered jobs are typed up mostly when they are won, so their
+            rate is inflated by definition — comparing the two groups is meaningful, merging them is not.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            ${d.conversion.byEntryMode.map(m => `
+              <div class="bg-gray-800/40 rounded-xl p-4">
+                <p class="text-xs text-gray-400 mb-1">${m.mode === 'self-serve' ? 'Client filled the form' : m.mode === 'staff-entered' ? 'Added by hand' : escapeHtml(m.mode)}</p>
+                ${rateWithInterval(m.interval, { size: 'text-xl' })}
+                <p class="text-xs text-gray-600 mt-1.5">${m.k} of ${m.n} decided</p>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
 
         <div class="grid lg:grid-cols-3 gap-5">
           <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">

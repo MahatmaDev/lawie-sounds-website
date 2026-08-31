@@ -13,6 +13,12 @@
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Cache-Control": "no-store, no-cache, must-revalidate"
     }},
+    { "src": "/a/[^/]+/?", "continue": true, "headers": {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff"
+    }},
     { "src": "/icons/(.*)", "continue": true, "headers": {
       "Cache-Control": "public, max-age=31536000, immutable"
     }},
@@ -29,7 +35,7 @@
       "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400"
     }},
 
-    { "src": "/(?:book|services|gallery|review|withdraw|s/[^/]+)/?", "continue": true, "headers": {
+    { "src": "/(?:book|services|gallery|review|withdraw|s/[^/]+|w/[^/]+)/?", "continue": true, "headers": {
       "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400"
     }},
 
@@ -70,6 +76,9 @@
     { "src": "/review/?",   "dest": "/frontend/leave-review.html" },
     { "src": "/withdraw/?", "dest": "/frontend/review-withdraw.html" },
     { "src": "/s/([^/]+)/?", "dest": "/frontend/service-detail.html?service=$1" },
+
+    { "src": "/a/([^/]+)/?", "dest": "/frontend/album.html" },
+    { "src": "/w/([^/]+)/?", "dest": "/frontend/showcase.html?event=$1" },
 
     { "src": "/", "dest": "/frontend/index.html" },
     { "src": "/admin/?", "dest": "/frontend/admin/login.html" },

@@ -21,6 +21,7 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
 
+  <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/app.css">
 
   <style>
@@ -1069,6 +1070,19 @@
       channel = 'service:' + matched.map(m => m.slug).join('+');
     }
   }
+
+  // An explicit ?channel= wins over the derived one. Client albums link here as
+  // ?service=a,b&channel=album:<id>, which is what turns "a friend recommended
+  // you" into a measurable path: the analytics layer already groups enquiries by
+  // channel, so a booking that started in someone else's album is attributable
+  // instead of arriving as a mystery.
+  //
+  // Constrained to a safe shape on purpose. This value is free text server-side
+  // and lands in the dashboard, so it must not become a way to push arbitrary
+  // content there from a URL.
+  const explicitChannel = (params.get('channel') || '').trim();
+  if (/^[a-z]+:[A-Za-z0-9_+:-]{1,80}$/.test(explicitChannel)) channel = explicitChannel;
+
   if (params.get('event')) $('event_type').value = params.get('event');
 
   // service-detail.html links package CTAs as ...&package=<name>. Carry it

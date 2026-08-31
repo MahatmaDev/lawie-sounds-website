@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <title id="pageTitle">Event | Lawie Sounds</title>
+  <meta name="description" id="metaDesc" content="An event delivered by Lawie Sounds — sound, lighting, LED and live media across Nyeri and Kenya.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" id="canonicalLink" href="https://lawiesounds.com/gallery">
+
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#08080f">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Lawie Sounds">
+  <meta property="og:locale" content="en_KE">
+  <meta property="og:title" id="ogTitle" content="Event | Lawie Sounds">
+  <meta property="og:description" id="ogDesc" content="">
+  <meta property="og:image" id="ogImage" content="https://lawiesounds.com/IMAGES/Hero%20section/1.jpg">
+  <meta property="og:url" id="ogUrl" content="">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-zoom.min.css">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/app.css">
+
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       ONE EVENT. Everything else is /css/theme.css + /css/app.css.
+       ══════════════════════════════════════════════════════════════ */
+    .sc-hero {
+      position: relative; padding: calc(var(--header-h) + 56px) 0 40px;
+      border-bottom: 1px solid var(--line); overflow: hidden;
+    }
+    /* The cover, heavily darkened. It sets the mood; the words do the work. */
+    .sc-hero::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: var(--cover, none);
+      background-size: cover; background-position: center;
+      opacity: .22; filter: saturate(.85);
+    }
+    .sc-hero::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(8,8,15,.55), var(--ink) 92%);
+    }
+    .sc-hero > .wrap { position: relative; z-index: 1; }
+
+    .sc-title { font-family: Sora, Inter, sans-serif; font-weight: 800; letter-spacing: -.025em;
+                font-size: clamp(30px, 5.5vw, 52px); line-height: 1.05; margin: 10px 0 14px; }
+    .sc-facts { display: flex; flex-wrap: wrap; gap: 10px 22px; color: var(--text-muted); font-size: 14.5px; }
+    .sc-facts span { display: inline-flex; align-items: center; gap: 7px; }
+    .sc-facts i { color: var(--gold); font-size: 12.5px; }
+
+    .sc-summary { margin: 22px 0 0; max-width: 62ch; color: var(--text-soft); font-size: 16px; line-height: 1.8; }
+
+    .shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    @media (min-width: 720px)  { .shot-grid { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; } }
+    @media (min-width: 1100px) { .shot-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+
+    .shot {
+      position: relative; display: block; overflow: hidden; cursor: zoom-in;
+      border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card);
+      aspect-ratio: var(--ar, 3/2);
+      transition: transform .3s cubic-bezier(.2,.8,.3,1), border-color .3s;
+    }
+    .shot:hover { transform: translateY(-3px); border-color: var(--gold-line); }
+    .shot img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.8,.3,1); }
+    .shot:hover img { transform: scale(1.06); }
+
+    /* A 360 booth clip is vertical, seconds long and silent. Giving it the
+       landscape treatment the rest of the grid uses makes it look broken, so
+       it gets its own shape and its own row. */
+    .booth-rail { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+    .booth-rail::-webkit-scrollbar { height: 6px; }
+    .booth-rail::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 3px; }
+    .booth-clip {
+      flex: 0 0 auto; width: 190px; aspect-ratio: 9/16; scroll-snap-align: start;
+      border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line);
+      background: var(--card); position: relative; cursor: pointer;
+    }
+    .booth-clip video, .booth-clip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .play-badge { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+    .play-badge span {
+      width: 48px; height: 48px; border-radius: 50%; background: rgba(8,8,15,.62);
+      display: grid; place-items: center; border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(5px);
+    }
+
+    .kit-card {
+      border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px;
+      background: linear-gradient(135deg, var(--gold-soft), transparent 62%), var(--card);
+    }
+    .kit-chip {
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
+      border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+      color: var(--text-soft); font-size: 14px; font-weight: 600; text-decoration: none;
+      transition: border-color .2s, color .2s, transform .2s;
+    }
+    .kit-chip:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
+    .kit-chip i { color: var(--gold); font-size: 12px; }
+
+    .more-card {
+      display: block; border-radius: var(--r-md); overflow: hidden;
+      border: 1px solid var(--line); background: var(--card); text-decoration: none;
+      transition: transform .3s, border-color .3s;
+    }
+    .more-card:hover { transform: translateY(-4px); border-color: var(--gold-line); }
+    .more-card img { width: 100%; aspect-ratio: 3/2; object-fit: cover; display: block; }
+
+    .skeleton { background: linear-gradient(90deg, var(--card) 25%, rgba(255,255,255,.05) 37%, var(--card) 63%);
+                background-size: 400% 100%; animation: sk 1.4s ease infinite; border-radius: var(--r-md); }
+    @keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+    .lg-backdrop { background: rgba(4,4,10,.97) !important; }
+  </style>
+</head>
+<body>
+
+<a href="#main" class="sr-only focus:not-sr-only skip-link">Skip to content</a>
+
+<header class="site-header" id="header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Lawie Sounds — home">
+      <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="">
+      <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/services">Services</a>
+      <a href="/gallery">Our work</a>
+      <a href="/#reviews">Reviews</a>
+    </nav>
+    <a href="/book" class="btn btn-primary btn-sm" style="margin-left:auto">Get a quote</a>
+  </div>
+</header>
+
+<main id="main">
+  <section id="loading" class="sc-hero">
+    <div class="wrap">
+      <div class="skeleton" style="height:20px;width:150px"></div>
+      <div class="skeleton" style="height:44px;width:min(520px,88%);margin-top:16px"></div>
+      <div class="skeleton" style="height:16px;width:min(300px,60%);margin-top:14px"></div>
+    </div>
+  </section>
+
+  <section id="missing" class="hidden" style="padding:calc(var(--header-h) + 90px) 0 100px">
+    <div class="wrap" style="max-width:520px;text-align:center">
+      <i class="fas fa-camera-retro" style="font-size:34px;color:var(--text-faint)"></i>
+      <h1 style="font-family:Sora,Inter,sans-serif;font-size:26px;margin:18px 0 10px">We could not find that event</h1>
+      <p style="color:var(--text-soft);line-height:1.75">It may have been taken down. Everything else we have run is on the work page.</p>
+      <a href="/gallery" class="btn btn-primary" style="margin-top:22px">See our work</a>
+    </div>
+  </section>
+
+  <article id="event" class="hidden">
+    <section class="sc-hero" id="hero">
+      <div class="wrap">
+        <a href="/gallery" style="color:var(--text-muted);font-size:13.5px;text-decoration:none;display:inline-flex;gap:8px;align-items:center">
+          <i class="fas fa-arrow-left" style="font-size:11px"></i> All our work
+        </a>
+        <p class="eyebrow" id="scType" style="margin-top:18px"></p>
+        <h1 class="sc-title" id="scTitle"></h1>
+        <div class="sc-facts" id="scFacts"></div>
+        <p class="sc-summary" id="scSummary"></p>
+      </div>
+    </section>
+
+    <section style="padding:44px 0 0">
+      <div class="wrap">
+        <div class="shot-grid" id="shots"></div>
+      </div>
+    </section>
+
+    <section id="boothSection" class="hidden" style="padding:48px 0 0">
+      <div class="wrap">
+        <h2 style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;margin:0 0 6px">
+          <i class="fas fa-camera-rotate" style="color:var(--gold);font-size:18px"></i> From the 360 booth
+        </h2>
+        <p style="color:var(--text-muted);font-size:14px;margin:0 0 18px">Tap to play. These are the clips guests took home.</p>
+        <div class="booth-rail" id="boothRail"></div>
+      </div>
+    </section>
+
+    <!-- THE LOOP. Not "book us" — "this exact setup, which you have just
+         spent a minute looking at". Specific beats generic, and the services
+         are read from the booking that produced this event, so the list is
+         what was actually on site. -->
+    <section id="kitSection" class="hidden" style="padding:52px 0">
+      <div class="wrap">
+        <div class="kit-card">
+          <p class="eyebrow">What we brought</p>
+          <h2 style="font-family:Sora,Inter,sans-serif;font-size:clamp(20px,3vw,26px);font-weight:800;margin:8px 0 18px">
+            Everything you can see here, on your date.
+          </h2>
+          <div id="kitChips" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <a id="quoteSame" class="btn btn-primary" href="/book">
+              <i class="fas fa-arrow-right-long"></i> Quote me for this setup
+            </a>
+            <a class="btn btn-ghost" href="/wa"><i class="fab fa-whatsapp"></i> Ask a question</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="moreSection" class="hidden" style="padding:0 0 70px">
+      <div class="wrap">
+        <h2 style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;margin:0 0 18px">More events like this</h2>
+        <div id="moreGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px"></div>
+      </div>
+    </section>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap" style="text-align:center">
+    <a href="/" class="brand" style="justify-content:center">
+      <img src="/IMAGES/LOGO/2.jpg" width="38" height="38" loading="lazy" alt="">
+      <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+    </a>
+    <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:18px">
+      <a href="/services" style="color:var(--text-muted);font-size:13.5px">Services</a>
+      <a href="/gallery" style="color:var(--text-muted);font-size:13.5px">Our work</a>
+      <a href="/book" style="color:var(--text-muted);font-size:13.5px">Get a quote</a>
+      <a href="/review" style="color:var(--text-muted);font-size:13.5px">Leave a review</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/site.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.umd.js"></script>
+<script>
+(() => {
+  'use strict';
+  const { $, esc, api, prettyDate, mediaSrc, mediaSrcset } = window.LS;
+
+  // /w/<slug>, or ?event=<slug> when the rewrite is bypassed.
+  const params = new URLSearchParams(location.search);
+  const SLUG = decodeURIComponent(location.pathname.split('/')[2] || params.get('event') || '').trim();
+
+  const show = (id) => { for (const s of ['loading', 'missing', 'event']) $(s).classList.toggle('hidden', s !== id); };
+
+  function shotHtml(m, i) {
+    const isVideo = m.mediaRole === 'video' || m.mediaRole === 'reel' || m.type === 'video';
+    const thumb = mediaSrc(m, isVideo ? 'poster' : 'thumb');
+    const full  = isVideo ? mediaSrc(m, 'preview') : mediaSrc(m, 'web');
+    const srcset = isVideo ? '' : mediaSrcset(m);
+    const ar = m.width && m.height ? `${m.width} / ${m.height}` : '3 / 2';
+    const alt = m.altText || m.caption || m.title || 'Photograph from this event';
+
+    const lg = isVideo
+      ? `data-video='${esc(JSON.stringify({ source: [{ src: full, type: 'video/mp4' }], attributes: { preload: 'none', controls: true } }))}' data-poster="${esc(thumb)}"`
+      : `data-src="${esc(full)}"`;
+
+    return `<div class="shot" style="--ar:${ar}" ${lg}>
+      <img src="${esc(thumb)}" ${srcset ? `srcset="${esc(srcset)}" sizes="(max-width:720px) 50vw, 25vw"` : ''}
+           alt="${esc(alt)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">
+      ${isVideo ? '<span class="play-badge"><span><i class="fas fa-play" style="color:#fff;margin-left:3px"></i></span></span>' : ''}
+    </div>`;
+  }
+
+  function boothHtml(m) {
+    const poster = mediaSrc(m, 'poster');
+    const src = mediaSrc(m, 'preview');
+    // preload="none" and no autoplay: a rail of eight clips that all start
+    // buffering is the most expensive thing this page could do on mobile data.
+    return `<div class="booth-clip">
+      <video src="${esc(src)}" poster="${esc(poster)}" preload="none" playsinline loop controls
+             aria-label="${esc(m.caption || m.title || '360 booth clip')}"></video>
+    </div>`;
+  }
+
+  function render(ev) {
+    document.title = `${ev.title} | Lawie Sounds`;
+    const canonical = `https://lawiesounds.com/w/${encodeURIComponent(ev.slug)}`;
+    const desc = ev.summary || `${ev.eventType || 'An event'} delivered by Lawie Sounds${ev.venue ? ' at ' + ev.venue : ''}.`;
+    $('metaDesc').setAttribute('content', desc);
+    $('canonicalLink').setAttribute('href', canonical);
+    $('ogTitle').setAttribute('content', `${ev.title} | Lawie Sounds`);
+    $('ogDesc').setAttribute('content', desc);
+    $('ogUrl').setAttribute('content', canonical);
+
+    const cover = ev.highlights?.[0] || ev.media?.[0];
+    const coverUrl = cover ? mediaSrc(cover, 'card') : ev.coverUrl;
+    if (coverUrl) {
+      $('hero').style.setProperty('--cover', `url("${coverUrl}")`);
+      $('ogImage').setAttribute('content', coverUrl);
+    }
+
+    $('scType').textContent = ev.eventType || 'Event';
+    $('scTitle').textContent = ev.title;
+
+    const facts = [];
+    if (ev.eventDate) facts.push(`<span><i class="fas fa-calendar"></i>${esc(prettyDate(ev.eventDate))}</span>`);
+    if (ev.venue)     facts.push(`<span><i class="fas fa-location-dot"></i>${esc(ev.venue)}${ev.town ? ', ' + esc(ev.town) : ''}</span>`);
+    if (ev.guestCount) facts.push(`<span><i class="fas fa-users"></i>${ev.guestCount} guests</span>`);
+    // Named only when the client agreed to be named; the API sends null otherwise.
+    if (ev.clientDisplay) facts.push(`<span><i class="fas fa-heart"></i>${esc(ev.clientDisplay)}</span>`);
+    $('scFacts').innerHTML = facts.join('');
+
+    if (ev.summary) $('scSummary').textContent = ev.summary;
+    else $('scSummary').remove();
+
+    const stills = (ev.media || []).filter(m => m.mediaRole !== 'booth-360');
+    $('shots').innerHTML = stills.map(shotHtml).join('');
+
+    if (ev.booth?.length) {
+      $('boothRail').innerHTML = ev.booth.map(boothHtml).join('');
+      $('boothSection').classList.remove('hidden');
+    }
+
+    if (ev.services?.length) {
+      $('kitChips').innerHTML = ev.services
+        .map(s => `<a class="kit-chip" href="/s/${esc(s.slug)}"><i class="fas fa-check"></i>${esc(s.name)}</a>`).join('');
+      const slugs = ev.services.map(s => s.slug).join(',');
+      // channel=showcase:<slug> so the analytics layer can already tell which
+      // event earned the enquiry — it groups by channel and needs no change.
+      $('quoteSame').href = `/book?service=${encodeURIComponent(slugs)}` +
+                            `&channel=${encodeURIComponent('showcase:' + ev.slug)}` +
+                            (ev.eventType ? `&event=${encodeURIComponent(ev.eventType)}` : '');
+      $('kitSection').classList.remove('hidden');
+    }
+
+    show('event');
+
+    if (window.lightGallery && stills.length) {
+      lightGallery($('shots'), {
+        selector: '.shot', plugins: [window.lgZoom].filter(Boolean),
+        speed: 300, download: false, licenseKey: '0000-0000-000-0000',
+      });
+    }
+
+    writeSchema(ev, coverUrl);
+    loadMore(ev);
+  }
+
+  // An event we actually ran is a real Event with a real location, so it is
+  // described as one. Nothing here is asserted that the page does not show.
+  function writeSchema(ev, coverUrl) {
+    const node = {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: ev.title,
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      organizer: { '@type': 'LocalBusiness', name: 'Lawie Sounds', url: 'https://lawiesounds.com' },
+    };
+    if (ev.eventDate) node.startDate = ev.eventDate;
+    if (ev.summary)   node.description = ev.summary;
+    if (coverUrl)     node.image = [coverUrl];
+    if (ev.venue) {
+      node.location = {
+        '@type': 'Place', name: ev.venue,
+        address: { '@type': 'PostalAddress', addressLocality: ev.town || 'Nyeri', addressCountry: 'KE' },
+      };
+    }
+    const tag = document.createElement('script');
+    tag.type = 'application/ld+json';
+    tag.textContent = JSON.stringify(node);
+    document.head.appendChild(tag);
+  }
+
+  async function loadMore(ev) {
+    // Same event type first — someone reading about a wedding wants weddings.
+    const res = await api(`/api/showcases?limit=7${ev.eventType ? '&type=' + encodeURIComponent(ev.eventType) : ''}`);
+    let others = (res?.data || []).filter(s => s.slug !== ev.slug);
+    if (others.length < 3) {
+      const all = await api('/api/showcases?limit=7');
+      const seen = new Set(others.map(o => o.slug));
+      others = others.concat((all?.data || []).filter(s => s.slug !== ev.slug && !seen.has(s.slug)));
+    }
+    others = others.slice(0, 3);
+    if (!others.length) return;
+
+    $('moreGrid').innerHTML = others.map(s => {
+      const cover = s.highlights?.[0];
+      const img = cover ? mediaSrc(cover, 'card') : (s.coverUrl || '/IMAGES/LOGO/2.jpg');
+      return `<a class="more-card" href="/w/${esc(s.slug)}">
+        <img src="${esc(img)}" alt="" loading="lazy" decoding="async">
+        <div style="padding:14px 16px 16px">
+          <p style="font-weight:700;font-size:14.5px;margin:0 0 4px;color:var(--text)">${esc(s.title)}</p>
+          <p style="font-size:12.5px;color:var(--text-faint);margin:0">
+            ${s.eventType ? esc(s.eventType) : ''}${s.eventDate ? ' · ' + esc(prettyDate(s.eventDate)) : ''}
+          </p>
+        </div>
+      </a>`;
+    }).join('');
+    $('moreSection').classList.remove('hidden');
+  }
+
+  (async () => {
+    if (!SLUG) return show('missing');
+    const res = await api(`/api/showcases/${encodeURIComponent(SLUG)}`);
+    if (!res?.data) return show('missing');
+    render(res.data);
+    if (history.replaceState && location.pathname !== `/w/${SLUG}`) {
+      history.replaceState(null, '', `/w/${encodeURIComponent(SLUG)}`);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

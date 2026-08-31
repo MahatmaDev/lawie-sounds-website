@@ -6,7 +6,7 @@
   <title>Dashboard | Lawie Sounds</title>
 
   <link rel="manifest" href="/admin/admin.webmanifest">
-  <meta name="theme-color" content="#7c4dff">
+  <meta name="theme-color" content="#08080f">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,6 +17,58 @@
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/theme.css">
+  <script>
+    /* ══════════════════════════════════════════════════════════════════════
+       THE PALETTE, REMAPPED AT SOURCE
+
+       This dashboard carried eight hues: 311 purple utility classes, 182
+       yellow, 172 green, 151 red, 65 blue, 33 orange, 8 indigo, 5 pink. Its
+       primary was violet while the entire public brand is gold, so the tool
+       the owner works in every day looked like a different company from the
+       site his clients see.
+
+       Rewriting seven hundred call sites would be a week of risk for a colour
+       change. Remapping the palettes Tailwind generates from is thirty lines
+       and cannot miss one. `bg-purple-600` still exists and still means
+       "primary" — it now resolves to gold.
+
+       THE RULE: ink, gold, cool. Plus red, which is reserved for irreversible
+       actions and failed states and appears nowhere else. Every other hue is
+       aliased onto one of the three, so a future screen written with
+       `text-orange-400` out of habit lands inside the system instead of
+       widening it.
+       ══════════════════════════════════════════════════════════════════════ */
+    const GOLD = { 50:'#fefce8',100:'#fef9c3',200:'#fef08a',300:'#fde047',400:'#facc15',
+                   500:'#eab308',600:'#facc15',700:'#eab308',800:'#a16207',900:'#713f12' };
+    const COOL = { 50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',
+                   500:'#0ea5e9',600:'#38bdf8',700:'#0284c7',800:'#075985',900:'#0c4a6e' };
+    const DANGER = { 50:'#fef2f2',100:'#fee2e2',200:'#fecaca',300:'#fca5a5',400:'#f87171',
+                     500:'#ef4444',600:'#ef4444',700:'#b91c1c',800:'#991b1b',900:'#7f1d1d' };
+    /* The ink ramp. 800/900/950 are the surfaces the whole dashboard is built
+       from, and they match --card-hi / --card / --ink in theme.css exactly, so
+       a Tailwind panel and a hand-written one sit on the same ground. */
+    const INK  = { 50:'#f8fafc',100:'#eeeef4',200:'#d9d9e6',300:'#a1a1b5',400:'#8a8a9e',
+                   500:'#6c6c82',600:'#4a4a5c',700:'#2a2a3a',800:'#17172a',900:'#12121f',950:'#08080f' };
+
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            /* primary → gold */
+            purple: GOLD, violet: GOLD, yellow: GOLD, amber: GOLD, orange: GOLD,
+            /* informational / positive → cool */
+            green: COOL, emerald: COOL, blue: COOL, sky: COOL, indigo: COOL,
+            teal: COOL, cyan: COOL, pink: COOL,
+            /* reserved */
+            red: DANGER, rose: DANGER,
+            /* ground */
+            gray: INK, slate: INK, zinc: INK, neutral: INK,
+          },
+        },
+      },
+    };
+  </script>
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Google Fonts -->
@@ -32,18 +84,18 @@
     * { font-family: 'Inter', sans-serif; }
     
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #1e1e2a; }
-    ::-webkit-scrollbar-thumb { background: #7c4dff; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: var(--card); }
+    ::-webkit-scrollbar-thumb { background: var(--gold-deep); border-radius: 3px; }
     
-    .table-row:hover { background-color: rgba(124, 77, 255, 0.05); }
+    .table-row:hover { background-color: rgba(250, 204, 21, 0.05); }
     
-    .spinner { width: 40px; height: 40px; border: 3px solid rgba(124, 77, 255, 0.2); border-top-color: #7c4dff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(250, 204, 21, 0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     
     .fade-in { animation: fadeIn 0.3s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     
-    .tab-active { border-bottom-color: #7c4dff !important; color: #7c4dff !important; }
+    .tab-active { border-bottom-color: var(--gold) !important; color: var(--gold) !important; }
     .modal-enter { animation: modalFadeIn 0.2s ease-out; }
     @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     
@@ -51,7 +103,7 @@
     .logo-img:hover { transform: scale(1.05); }
     .value-card { transition: all 0.3s ease; }
     .value-card:hover { transform: translateY(-4px); }
-    .welcome-banner { background: linear-gradient(135deg, #1e1e2a 0%, #2d2d3a 100%); }
+    .welcome-banner { background: linear-gradient(135deg, var(--card) 0%, var(--card-hi) 100%); }
 
     /* ── Welcome hero ────────────────────────────────────────────────────────
        The first thing either of them sees each day. It has to feel like their
@@ -130,14 +182,33 @@
     
     /* Modal draggable styles */
     .modal-header { cursor: move; user-select: none; }
-    .modal-resize-handle { position: absolute; bottom: 0; right: 0; width: 16px; height: 16px; cursor: se-resize; background-color: #7c4dff; border-radius: 4px 0 0 0; }
+    .modal-resize-handle { position: absolute; bottom: 0; right: 0; width: 16px; height: 16px; cursor: se-resize; background-color: var(--gold); border-radius: 4px 0 0 0; }
     .modal-resize-handle:hover { background-color: #6c3ce0; width: 20px; height: 20px; }
     
     /* Badge styles */
-    .badge-pending { background: rgba(245,158,11,0.2); color:#f59e0b; padding:2px 8px; border-radius:999px; font-size:0.75rem; }
-    .badge-confirmed { background: rgba(34,197,94,0.2); color:#22c55e; padding:2px 8px; border-radius:999px; font-size:0.75rem; }
-    .badge-completed { background: rgba(59,130,246,0.2); color:#3b82f6; padding:2px 8px; border-radius:999px; font-size:0.75rem; }
-    .badge-cancelled { background: rgba(239,68,68,0.2); color:#ef4444; padding:2px 8px; border-radius:999px; font-size:0.75rem; }
+    /* Status badges. Colour is NOT the only channel: each carries an icon and
+       the word itself, because around one man in twelve cannot separate the
+       green and red these used to rely on — and because a screenshot pasted
+       into WhatsApp loses nothing this way. Palette per theme.css: gold means
+       "needs you", cool means "agreed", quiet means "done", red means lost. */
+    .badge-pending, .badge-confirmed, .badge-completed, .badge-cancelled {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600; text-transform: capitalize;
+      border: 1px solid transparent;
+    }
+    .badge-pending::before, .badge-confirmed::before,
+    .badge-completed::before, .badge-cancelled::before {
+      font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.65rem;
+    }
+    .badge-pending   { background: var(--gold-soft);   color: var(--gold);       border-color: var(--gold-line); }
+    .badge-pending::before   { content: '017'; }
+    .badge-confirmed { background: var(--cool-soft);   color: var(--cool);       border-color: var(--cool-line); }
+    .badge-confirmed::before { content: '00c'; }
+    .badge-completed { background: rgba(255,255,255,.06); color: var(--text-muted); border-color: var(--line); }
+    .badge-completed::before { content: '560'; }
+    .badge-cancelled { background: var(--danger-soft); color: var(--danger);     border-color: var(--danger-line); }
+    .badge-cancelled::before { content: '00d'; }
     
     /* Responsive table */
     @media (max-width: 768px) {
@@ -227,6 +298,8 @@
       <button type="button" data-tab="events" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📅 Events</button>
       <button type="button" data-tab="services" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🎧 Services</button>
       <button type="button" data-tab="gallery" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🖼️ Gallery</button>
+      <button type="button" data-tab="work" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">🏆 Work</button>
+      <button type="button" data-tab="albums" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📁 Albums</button>
       <button type="button" data-tab="reviews" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">⭐ Reviews</button>
       <button type="button" data-tab="marketing" class="tab-btn px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium hover:text-purple-400 transition border-b-2 border-transparent whitespace-nowrap">📢 Marketing</button>
       <!-- Posters tab removed: folded into Marketing as a sub-view. Banners and
@@ -860,7 +933,7 @@
         </div>
       </div>`;
       const chartCanvas = document.getElementById('bookingsChart');
-      if (chartCanvas) { if (bookingsChart) bookingsChart.destroy(); bookingsChart = new Chart(chartCanvas, { type: 'line', data: { labels: last6.map(m => m.label), datasets: [{ label: 'Bookings', data: chartCounts, borderColor: '#7c4dff', backgroundColor: 'rgba(124, 77, 255, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' }, beginAtZero: true, precision: 0 }, x: { ticks: { color: '#9ca3af' } } } } }); }
+      if (chartCanvas) { if (bookingsChart) bookingsChart.destroy(); bookingsChart = new Chart(chartCanvas, { type: 'line', data: { labels: last6.map(m => m.label), datasets: [{ label: 'Bookings', data: chartCounts, borderColor: '#facc15', backgroundColor: 'rgba(250, 204, 21, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { ticks: { color: '#9ca3af' }, beginAtZero: true, precision: 0 }, x: { ticks: { color: '#9ca3af' } } } } }); }
     }
 
     // ==================== MANAGER DASHBOARD ====================
@@ -2576,7 +2649,714 @@ function visibleGalleryItems() {
     : [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  WORK — events delivered, and the one screen where they get curated
+//
+//  This tab exists because of an operational fact, not a technical one. If
+//  building the client's album and choosing the public highlights are two
+//  separate jobs on two separate screens, the second one never happens, and
+//  the website stays a pile of loose photographs no matter how good the
+//  schema underneath it is.
+//
+//  So the curation screen shows ONE set of photographs with TWO switches:
+//  file it under this event, and star it for the public page. One pass, two
+//  outputs — the client's full album and the eight to twelve frames a
+//  prospect actually looks at.
+// ══════════════════════════════════════════════════════════════════════
+
+const workUI = { list: [], loaded: false, settings: [] };
+
+async function renderWork() {
+  const container = document.getElementById('sectionContent');
+  if (!container) return;
+
+  if (!workUI.loaded) {
+    container.innerHTML = '<div class="flex justify-center py-12"><div class="spinner"></div></div>';
+    const [shows, settings] = await Promise.all([
+      apiRequest('GET', '/api/admin/showcases'),
+      apiRequest('GET', '/api/admin/site-settings'),
+    ]);
+    workUI.list = shows?._error ? [] : (shows.data || []);
+    workUI.settings = settings?._error ? [] : (settings.data || []);
+    workUI.loaded = true;
+  }
+
+  const w = workUI.list;
+  const live = w.filter(x => x.status === 'published');
+  const unstarred = w.filter(x => x.status === 'draft' && x.mediaCount > 0 && x.highlightCount === 0);
+  const baseline = workUI.settings.find(s => s.key === 'events_baseline');
+
+  container.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div>
+        <h2 class="text-2xl font-bold">🏆 Work</h2>
+        <p class="text-gray-400 text-sm mt-1">One page per event you have delivered. This is what the gallery is built from.</p>
+      </div>
+      <button type="button" onclick="openWorkForm()" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition">
+        <i class="fas fa-plus mr-1"></i> Add an event
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      ${albumStat('Events', w.length, 'fa-trophy', 'purple')}
+      ${albumStat('Live on the site', live.length, 'fa-globe', 'green')}
+      ${albumStat('Waiting on highlights', unstarred.length, 'fa-star', unstarred.length ? 'yellow' : 'gray')}
+      ${albumStat('Shown as delivered', (baseline?.value ?? 0) + live.length, 'fa-chart-line', 'blue')}
+    </div>
+
+    ${unstarred.length ? `
+      <div class="bg-yellow-500/10 border border-yellow-600/30 rounded-xl p-4 mb-6 text-sm text-yellow-200">
+        <i class="fas fa-star mr-1"></i>
+        ${unstarred.length} event${unstarred.length === 1 ? ' has' : 's have'} photos filed but nothing starred, so
+        ${unstarred.length === 1 ? 'it cannot' : 'they cannot'} go live. Open one and star the best eight or ten.
+      </div>` : ''}
+
+    <!-- The number behind the homepage counter, editable where it is used
+         rather than buried in markup nobody remembers. -->
+    ${baseline ? `
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="max-w-2xl">
+            <h3 class="font-bold text-sm">The homepage says "${(baseline.value + live.length).toLocaleString()}+ events delivered"</h3>
+            <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">
+              ${escapeHtml(baseline.value.toLocaleString())} from before this website existed, plus
+              ${live.length} published here. The first figure is yours to state — it is not derived from
+              anything in the system, and it is the only number on the site that is not.
+            </p>
+          </div>
+          <button type="button" onclick="editBaseline()" class="text-xs px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition flex-shrink-0">
+            <i class="fas fa-pen mr-1"></i>Correct it
+          </button>
+        </div>
+      </div>` : ''}
+
+    ${w.length === 0 ? `
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center">
+        <i class="fas fa-trophy text-4xl text-gray-700"></i>
+        <h3 class="font-bold mt-4">No events written up yet</h3>
+        <p class="text-gray-400 text-sm mt-2 max-w-lg mx-auto leading-relaxed">
+          Add the last wedding or corporate day you ran, file its photographs under it, and star the
+          best few. That page becomes the proof a visitor actually reads — far more convincing than
+          loose photos in a grid.
+        </p>
+        <button type="button" onclick="openWorkForm()" class="mt-5 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition">Add your first event</button>
+      </div>` : `
+      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">${w.map(workCard).join('')}</div>`}
+  `;
+}
+
+function workCard(sc) {
+  const badge = sc.status === 'published'
+    ? 'bg-green-600/20 text-green-400 border-green-600/30'
+    : 'bg-gray-700/40 text-gray-300 border-gray-600/40';
+  const ready = sc.highlightCount > 0;
+
+  return `
+    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+      <div class="relative h-36 bg-gray-800">
+        ${sc.coverUrl ? `<img src="${escapeHtml(sc.coverUrl)}" alt="" class="w-full h-full object-cover">`
+                      : '<div class="w-full h-full grid place-items-center text-gray-600"><i class="fas fa-image text-2xl"></i></div>'}
+        <span class="absolute top-2 right-2 text-[10px] font-bold uppercase px-2 py-1 rounded border ${badge}">${sc.status}</span>
+        ${sc.boothCount ? '<span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded bg-black/70 text-yellow-400"><i class="fas fa-camera-rotate"></i> 360</span>' : ''}
+      </div>
+
+      <div class="p-4 flex-1 flex flex-col">
+        <h3 class="font-bold text-sm truncate">${escapeHtml(sc.title)}</h3>
+        <p class="text-xs text-gray-400 mt-0.5 truncate">
+          ${sc.eventType ? escapeHtml(sc.eventType) : 'Event'}${sc.eventDate ? ' · ' + new Date(sc.eventDate).toLocaleDateString() : ''}${sc.venue ? ' · ' + escapeHtml(sc.venue) : ''}
+        </p>
+
+        <div class="flex flex-wrap gap-1.5 mt-3 text-[11px]">
+          <span class="px-2 py-1 rounded ${ready ? 'bg-yellow-600/15 text-yellow-300' : 'bg-gray-800 text-gray-500'}">
+            <i class="fas fa-star mr-1"></i>${sc.highlightCount} starred
+          </span>
+          <span class="px-2 py-1 rounded bg-gray-800 text-gray-400">${sc.mediaCount} filed</span>
+          ${sc.services.length ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-400">${sc.services.length} services</span>` : ''}
+          ${sc.status === 'published' ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-400"><i class="fas fa-eye mr-1"></i>${sc.viewCount}</span>` : ''}
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
+          <button type="button" onclick="curateWork('${sc.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 transition font-semibold">
+            <i class="fas fa-star mr-1"></i>Curate
+          </button>
+          ${sc.status === 'published'
+            ? `<a href="/w/${escapeHtml(sc.slug)}" target="_blank" rel="noopener" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition">View</a>
+               <button type="button" onclick="setWorkStatus('${sc.id}','draft')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition">Unpublish</button>`
+            : `<button type="button" onclick="setWorkStatus('${sc.id}','published')" class="text-xs px-3 py-1.5 rounded-lg bg-green-600/15 text-green-300 hover:bg-green-600/25 transition">Publish</button>`}
+          <button type="button" onclick="openWorkForm('${sc.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition ml-auto">Edit</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function editBaseline() {
+  const b = workUI.settings.find(s => s.key === 'events_baseline');
+  const { value } = await Swal.fire({
+    title: 'Events before this website',
+    width: 520, background: '#1e1e2a', color: '#fff',
+    html: `<div style="text-align:left;font-size:13px">
+      <p style="color:#9ca3af;line-height:1.7;margin:0 0 14px">${escapeHtml(b.note || '')}</p>
+      <input id="blValue" type="number" min="0" class="swal2-input" style="margin:0;width:100%" value="${b.value}">
+    </div>`,
+    showCancelButton: true, confirmButtonText: 'Save', confirmButtonColor: '#facc15',
+    preConfirm: () => {
+      const v = Number(document.getElementById('blValue').value);
+      if (!Number.isFinite(v) || v < 0) { Swal.showValidationMessage('Enter a whole number.'); return false; }
+      return v;
+    },
+  });
+  if (value === undefined) return;
+
+  const res = await apiRequest('PUT', '/api/admin/site-settings/events_baseline', { value });
+  if (res?._error) return Swal.fire({ icon: 'error', title: 'Could not save', text: res.message, background: '#1e1e2a', color: '#fff' });
+  workUI.loaded = false;
+  renderWork();
+}
+
+async function openWorkForm(id = null) {
+  const existing = id ? workUI.list.find(x => x.id === id) : null;
+  const bookings = (store.bookings || []).slice(0, 60);
+  const services = (store.services || []).filter(s => s.isActive !== false);
+  const chosen = new Set((existing?.services || []).map(s => s.slug));
+
+  const { value: form } = await Swal.fire({
+    title: existing ? 'Edit event' : 'Add an event',
+    width: 620, background: '#1e1e2a', color: '#fff',
+    html: `
+      <div style="text-align:left;font-size:13px;max-height:62vh;overflow:auto;padding-right:4px">
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Title</label>
+        <input id="wkTitle" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="Njeri &amp; Brian — Garden Wedding" value="${escapeHtml(existing?.title || '')}">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Type</label>
+            <input id="wkType" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="Wedding" value="${escapeHtml(existing?.eventType || '')}">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Date</label>
+            <input id="wkDate" type="date" class="swal2-input" style="margin:0 0 12px;width:100%" value="${existing?.eventDate || ''}">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Venue</label>
+            <input id="wkVenue" class="swal2-input" style="margin:0 0 12px;width:100%" value="${escapeHtml(existing?.venue || '')}">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Town</label>
+            <input id="wkTown" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="Nyeri" value="${escapeHtml(existing?.town || '')}">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Guests</label>
+            <input id="wkGuests" type="number" min="0" class="swal2-input" style="margin:0 0 12px;width:100%" value="${existing?.guestCount ?? ''}">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Name the client? <span style="color:#6b7280">optional</span></label>
+            <input id="wkClient" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="Leave blank" value="${escapeHtml(existing?.clientDisplay || '')}">
+          </div>
+        </div>
+        <p style="color:#6b7280;font-size:11px;margin:-6px 0 12px">Only name a client who has agreed to it on their album page.</p>
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">What the job was</label>
+        <textarea id="wkSummary" class="swal2-textarea" style="margin:0 0 12px;width:100%;height:74px" placeholder="Full sound, lighting and LED for a 180-guest garden wedding.">${escapeHtml(existing?.summary || '')}</textarea>
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">The booking it came from <span style="color:#6b7280">— fills in the services automatically</span></label>
+        <select id="wkBooking" class="swal2-input" style="margin:0 0 12px;width:100%">
+          <option value="">Not linked</option>
+          ${bookings.map(b => `<option value="${b.id}" ${existing?.bookingId === b.id ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(b.eventType || '')} ${b.eventDate ? new Date(b.eventDate).toLocaleDateString() : ''}</option>`).join('')}
+        </select>
+
+        <label style="display:block;margin-bottom:6px;color:#9ca3af">What you supplied</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${services.map(s => `
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid #374151;border-radius:999px;cursor:pointer;font-size:12px">
+              <input type="checkbox" class="wk-svc" value="${escapeHtml(s.slug)}" ${chosen.has(s.slug) ? 'checked' : ''} style="accent-color:#facc15">
+              ${escapeHtml(s.name)}
+            </label>`).join('')}
+        </div>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: existing ? 'Save' : 'Create',
+    confirmButtonColor: '#facc15',
+    preConfirm: () => {
+      const title = document.getElementById('wkTitle').value.trim();
+      if (title.length < 2) { Swal.showValidationMessage('Give this event a title.'); return false; }
+      return {
+        title,
+        eventType: document.getElementById('wkType').value.trim(),
+        eventDate: document.getElementById('wkDate').value || null,
+        venue: document.getElementById('wkVenue').value.trim(),
+        town: document.getElementById('wkTown').value.trim(),
+        guestCount: document.getElementById('wkGuests').value || null,
+        clientDisplay: document.getElementById('wkClient').value.trim(),
+        summary: document.getElementById('wkSummary').value.trim(),
+        bookingId: document.getElementById('wkBooking').value || null,
+        serviceSlugs: [...document.querySelectorAll('.wk-svc:checked')].map(c => c.value),
+      };
+    },
+  });
+  if (!form) return;
+
+  const { serviceSlugs, ...payload } = form;
+  const res = existing
+    ? await apiRequest('PUT', `/api/admin/showcases/${existing.id}`, payload)
+    : await apiRequest('POST', '/api/admin/showcases', payload);
+
+  if (res?._error) {
+    return Swal.fire({ icon: 'error', title: 'Could not save', text: res.fields ? Object.values(res.fields)[0] : res.message, background: '#1e1e2a', color: '#fff' });
+  }
+
+  // Sent after the event exists, and only when the owner actually touched the
+  // list — an empty array is a legitimate "none of these", so it must not be
+  // confused with "did not say".
+  if (serviceSlugs) await apiRequest('PUT', `/api/admin/showcases/${res.data.id}/services`, { serviceSlugs });
+
+  workUI.loaded = false;
+  await renderWork();
+  if (!existing) curateWork(res.data.id);
+}
+
+async function setWorkStatus(id, status) {
+  const res = await apiRequest('PUT', `/api/admin/showcases/${id}`, { status });
+  if (res?._error) {
+    return Swal.fire({
+      icon: 'warning',
+      title: res.status === 409 ? 'Nothing starred yet' : 'Could not update',
+      text: res.status === 409
+        ? 'Open Curate and star the photographs you want the public to see, then publish.'
+        : res.message,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+  workUI.loaded = false;
+  renderWork();
+}
+
+// THE CURATION SCREEN. One set of photographs, two switches.
+async function curateWork(id) {
+  const [detail, pool] = await Promise.all([
+    apiRequest('GET', `/api/admin/showcases/${id}`),
+    apiRequest('GET', '/api/admin/gallery?limit=100'),
+  ]);
+  if (detail?._error) return Swal.fire({ icon: 'error', title: 'Could not open', text: detail.message, background: '#1e1e2a', color: '#fff' });
+
+  const filed = detail.data.media || [];
+  const filedIds = new Set(filed.map(m => m.id));
+  const loose = (pool?.data || []).filter(g => !g.showcaseId && !filedIds.has(g.id));
+
+  const thumb = (g) => g.renditions?.thumb?.url || g.renditions?.card?.url || g.thumbUrl || g.imageUrl || '';
+
+  const tile = (g, starred) => `
+    <label style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid ${starred ? '#facc15' : '#374151'};cursor:pointer;display:block">
+      <input type="checkbox" class="cw-star" value="${g.id}" ${starred ? 'checked' : ''}
+             style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#facc15">
+      <img src="${escapeHtml(thumb(g))}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+      ${starred ? '<span style="position:absolute;bottom:3px;right:4px;color:#facc15;font-size:11px"><i class="fas fa-star"></i></span>' : ''}
+    </label>`;
+
+  const res = await Swal.fire({
+    title: `Curate — ${escapeHtml(detail.data.title)}`,
+    width: 780, background: '#1e1e2a', color: '#fff',
+    html: `
+      <div style="text-align:left;font-size:13px">
+        <p style="color:#9ca3af;line-height:1.65;margin:0 0 14px">
+          Tick a photograph to <strong style="color:#facc15">star it for the public page</strong>.
+          Eight to ten is plenty — a visitor deciding whether to hire you will not scroll past that,
+          and every extra one costs them mobile data. The client still gets the full set in their album.
+        </p>
+
+        <p style="color:#9ca3af;margin:0 0 8px">Filed under this event (${filed.length}) — starred ones go on the website</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:230px;overflow:auto;padding:2px">
+          ${filed.length ? filed.map(g => tile(g, g.isHighlight)).join('')
+                         : '<p style="color:#6b7280;grid-column:1/-1;margin:0">Nothing filed here yet — add some from below.</p>'}
+        </div>
+
+        <p style="color:#9ca3af;margin:18px 0 8px">Add from the library (${loose.length} unfiled)</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:200px;overflow:auto;padding:2px">
+          ${loose.length ? loose.map(g => `
+            <label style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;cursor:pointer;display:block">
+              <input type="checkbox" class="cw-add" value="${g.id}" style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#38bdf8">
+              <img src="${escapeHtml(thumb(g))}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+            </label>`).join('')
+            : '<p style="color:#6b7280;grid-column:1/-1;margin:0">Every photograph is already filed under an event.</p>'}
+        </div>
+      </div>`,
+    showCancelButton: true, confirmButtonText: 'Save curation', confirmButtonColor: '#facc15',
+    preConfirm: () => {
+      const starred = new Set([...document.querySelectorAll('.cw-star:checked')].map(c => c.value));
+      return {
+        assign: [...document.querySelectorAll('.cw-add:checked')].map(c => c.value),
+        highlight: [...starred],
+        // Explicitly un-star what was starred before and is not now. Sending
+        // only the additions would make un-starring impossible from this screen.
+        unstar: filed.filter(g => g.isHighlight && !starred.has(g.id)).map(g => g.id),
+      };
+    },
+  });
+
+  if (!res.isConfirmed) return;
+
+  // Assign first, then star: a photograph must belong to the event before it
+  // can be starred for it — the API scopes starring to the event's own media.
+  if (res.value.assign.length) {
+    await apiRequest('POST', `/api/admin/showcases/${id}/curate`, { assign: res.value.assign });
+  }
+  const saved = await apiRequest('POST', `/api/admin/showcases/${id}/curate`, {
+    highlight: res.value.highlight, unstar: res.value.unstar,
+  });
+
+  if (saved?._error) {
+    return Swal.fire({
+      icon: 'warning', title: 'Could not save',
+      text: /last highlight/.test(saved.message || '')
+        ? 'This event is live and that was its last starred photograph. Star another one first, or unpublish the event.'
+        : saved.message,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+
+  workUI.loaded = false;
+  galleryUI.loaded = false;
+  renderWork();
+  Swal.fire({ icon: 'success', title: `${saved.data.highlightCount} on the website`, timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+}
+
 // ── Render ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+//  ALBUMS — the hand-over to a client after their event
+//
+//  Replaces "here is a Google Drive folder". The differences that matter to
+//  whoever is using this screen:
+//
+//    * The link can be withdrawn. Sent to the wrong WhatsApp group → Rotate.
+//    * The link is shown ONCE, at creation. It is stored hashed, so it cannot
+//      be read back out of the database any more than a password can. That is
+//      deliberate, and the reason Rotate exists rather than "show link".
+//    * An album cannot be published empty — the server refuses it.
+//    * Consent to public use belongs to the client and is set on THEIR page.
+//      This screen reports it and cannot grant it.
+// ══════════════════════════════════════════════════════════════════════
+
+const albumsUI = { list: [], loaded: false, open: null, pool: [], poolLoaded: false };
+
+async function renderAlbums() {
+  const container = document.getElementById('sectionContent');
+  if (!container) return;
+
+  if (!albumsUI.loaded) {
+    container.innerHTML = '<div class="flex justify-center py-12"><div class="spinner"></div></div>';
+    const res = await apiRequest('GET', '/api/admin/albums');
+    albumsUI.list = res?._error ? [] : (res.data || []);
+    albumsUI.loaded = true;
+  }
+
+  const a = albumsUI.list;
+  const live = a.filter(x => x.status === 'live').length;
+  const unopened = a.filter(x => x.status === 'live' && !x.viewCount).length;
+  const consented = a.filter(x => x.publicConsent).length;
+
+  container.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div>
+        <h2 class="text-2xl font-bold">📁 Client Albums</h2>
+        <p class="text-gray-400 text-sm mt-1">Private photo hand-overs. Each album is one client, one link.</p>
+      </div>
+      <button type="button" onclick="openAlbumForm()" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition">
+        <i class="fas fa-plus mr-1"></i> New album
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      ${albumStat('Albums', a.length, 'fa-folder', 'purple')}
+      ${albumStat('Live', live, 'fa-share-nodes', 'green')}
+      ${albumStat('Not opened yet', unopened, 'fa-envelope', unopened ? 'yellow' : 'gray')}
+      ${albumStat('Consented to public use', consented, 'fa-heart', 'blue')}
+    </div>
+
+    ${unopened ? `
+      <div class="bg-yellow-500/10 border border-yellow-600/30 rounded-xl p-4 mb-6 text-sm text-yellow-200">
+        <i class="fas fa-circle-info mr-1"></i>
+        ${unopened} live album${unopened === 1 ? ' has' : 's have'} never been opened. Worth resending the link —
+        an album nobody opens is a hand-over that did not happen.
+      </div>` : ''}
+
+    ${a.length === 0 ? `
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center">
+        <i class="fas fa-folder-open text-4xl text-gray-700"></i>
+        <h3 class="font-bold mt-4">No albums yet</h3>
+        <p class="text-gray-400 text-sm mt-2 max-w-md mx-auto">
+          After an event, create an album, add the photos, and send the client one link.
+          You can withdraw it at any time.
+        </p>
+      </div>` : `
+      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        ${a.map(albumCard).join('')}
+      </div>`}
+  `;
+}
+
+function albumStat(label, value, icon, tone) {
+  const tones = { purple: 'text-purple-400 bg-purple-600/15', green: 'text-green-400 bg-green-600/15',
+                  yellow: 'text-yellow-400 bg-yellow-600/15', blue: 'text-blue-400 bg-blue-600/15',
+                  gray: 'text-gray-500 bg-gray-700/25' };
+  return `<div class="bg-gray-900 rounded-xl p-4 border border-gray-800 flex items-center justify-between">
+    <div><p class="text-gray-400 text-xs">${escapeHtml(label)}</p><p class="text-2xl font-bold">${value}</p></div>
+    <div class="w-9 h-9 rounded-lg flex items-center justify-center ${tones[tone] || tones.gray}"><i class="fas ${icon}"></i></div>
+  </div>`;
+}
+
+function albumCard(al) {
+  const badge = { live: 'bg-green-600/20 text-green-400 border-green-600/30',
+                  draft: 'bg-gray-700/40 text-gray-300 border-gray-600/40',
+                  revoked: 'bg-red-600/20 text-red-400 border-red-600/30' }[al.status];
+
+  const seen = al.viewCount
+    ? `Opened ${al.viewCount}×${al.lastViewedAt ? ' · last ' + new Date(al.lastViewedAt).toLocaleDateString() : ''}`
+    : 'Not opened yet';
+
+  return `
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-bold truncate">${escapeHtml(al.title)}</h3>
+          <p class="text-xs text-gray-400 mt-0.5 truncate">
+            ${al.clientName ? escapeHtml(al.clientName) : 'No client name'}${al.eventDate ? ' · ' + new Date(al.eventDate).toLocaleDateString() : ''}
+          </p>
+        </div>
+        <span class="text-[10px] font-bold uppercase px-2 py-1 rounded border ${badge} flex-shrink-0">${al.status}</span>
+      </div>
+
+      <div class="flex flex-wrap gap-1.5 mt-3 text-[11px]">
+        <span class="px-2 py-1 rounded bg-gray-800 text-gray-300">${al.itemCount} photo${al.itemCount === 1 ? '' : 's'}</span>
+        ${al.hiddenCount ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-500">${al.hiddenCount} hidden</span>` : ''}
+        ${al.pinRequired ? '<span class="px-2 py-1 rounded bg-blue-600/15 text-blue-300"><i class="fas fa-lock mr-1"></i>PIN</span>' : ''}
+        ${al.publicConsent ? '<span class="px-2 py-1 rounded bg-pink-600/15 text-pink-300"><i class="fas fa-heart mr-1"></i>Consented</span>' : ''}
+        ${al.expiresAt ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-400">Expires ${new Date(al.expiresAt).toLocaleDateString()}</span>` : ''}
+      </div>
+
+      <p class="text-xs mt-3 ${al.viewCount ? 'text-gray-400' : 'text-yellow-500/80'}">
+        <i class="fas ${al.viewCount ? 'fa-eye' : 'fa-clock'} mr-1"></i>${escapeHtml(seen)}
+      </p>
+
+      <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
+        <button type="button" onclick="openAlbumItems('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition">
+          <i class="fas fa-images mr-1"></i>Photos
+        </button>
+        <button type="button" onclick="rotateAlbumLink('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Issue a new link. The old one stops working immediately.">
+          <i class="fas fa-rotate mr-1"></i>New link
+        </button>
+        ${al.status === 'live'
+          ? `<button type="button" onclick="setAlbumStatus('${al.id}','revoked')" class="text-xs px-3 py-1.5 rounded-lg bg-red-600/15 text-red-300 hover:bg-red-600/25 transition">Withdraw</button>`
+          : `<button type="button" onclick="setAlbumStatus('${al.id}','live')" class="text-xs px-3 py-1.5 rounded-lg bg-green-600/15 text-green-300 hover:bg-green-600/25 transition">Publish</button>`}
+        <button type="button" onclick="openAlbumForm('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition ml-auto">Edit</button>
+      </div>
+    </div>`;
+}
+
+// The link is displayed once and never again — it is stored hashed. Say so on
+// the same screen, or the owner will close this dialog expecting to find it
+// again in the list.
+function showAlbumLink(url, isNew) {
+  Swal.fire({
+    icon: 'success',
+    title: isNew ? 'Album created' : 'New link issued',
+    html: `
+      <p style="font-size:13px;color:#cbd5e1;margin-bottom:12px">
+        ${isNew ? 'Send this link to the client.' : 'The previous link no longer works.'}
+        <strong style="color:#facc15">It is shown only once</strong> — we store it hashed, so it
+        cannot be read back later. Copy it now.
+      </p>
+      <input id="albumLinkBox" readonly value="${escapeHtml(url)}"
+             style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b0b12;color:#fff;font-size:12px">`,
+    background: '#1e1e2a', color: '#fff',
+    confirmButtonText: 'Copy link', confirmButtonColor: '#7c3aed',
+    showCancelButton: true, cancelButtonText: 'Done',
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    navigator.clipboard.writeText(url)
+      .then(() => Swal.fire({ icon: 'success', title: 'Copied', timer: 1200, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }))
+      .catch(() => document.getElementById('albumLinkBox')?.select());
+  });
+}
+
+async function openAlbumForm(id = null) {
+  const existing = id ? albumsUI.list.find(x => x.id === id) : null;
+  const bookings = (store.bookings || []).slice(0, 60);
+
+  const { value: form } = await Swal.fire({
+    title: existing ? 'Edit album' : 'New album',
+    width: 560,
+    background: '#1e1e2a', color: '#fff',
+    html: `
+      <div style="text-align:left;font-size:13px">
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Album title</label>
+        <input id="alTitle" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="Njeri &amp; Brian — Wedding" value="${escapeHtml(existing?.title || '')}">
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Client name</label>
+        <input id="alClient" class="swal2-input" style="margin:0 0 12px;width:100%" value="${escapeHtml(existing?.clientName || '')}">
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Event date</label>
+        <input id="alDate" type="date" class="swal2-input" style="margin:0 0 12px;width:100%" value="${existing?.eventDate || ''}">
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Link it to the booking <span style="color:#6b7280">— this is what puts "the same setup" on their page</span></label>
+        <select id="alBooking" class="swal2-input" style="margin:0 0 12px;width:100%">
+          <option value="">No booking</option>
+          ${bookings.map(b => `<option value="${b.id}" ${existing?.bookingId === b.id ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(b.eventType || '')} ${b.eventDate ? new Date(b.eventDate).toLocaleDateString() : ''}</option>`).join('')}
+        </select>
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">A note for the client</label>
+        <textarea id="alMessage" class="swal2-textarea" style="margin:0 0 12px;width:100%;height:70px" placeholder="Thank you for having us — here are your photographs.">${escapeHtml(existing?.message || '')}</textarea>
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">PIN (optional, 4–8 digits)</label>
+        <input id="alPin" class="swal2-input" style="margin:0 0 4px;width:100%" inputmode="numeric" placeholder="${existing?.pinRequired ? 'A PIN is set — type a new one to change it' : 'Leave blank for no PIN'}">
+        <p style="color:#6b7280;font-size:11px;margin:0">Useful when the link will be forwarded around a family group.</p>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: existing ? 'Save' : 'Create album',
+    confirmButtonColor: '#7c3aed',
+    preConfirm: () => {
+      const title = document.getElementById('alTitle').value.trim();
+      if (title.length < 2) { Swal.showValidationMessage('Give the album a title.'); return false; }
+      const pin = document.getElementById('alPin').value.trim();
+      if (pin && !/^\d{4,8}$/.test(pin)) { Swal.showValidationMessage('A PIN must be 4 to 8 digits.'); return false; }
+      return {
+        title,
+        clientName: document.getElementById('alClient').value.trim(),
+        eventDate: document.getElementById('alDate').value || null,
+        bookingId: document.getElementById('alBooking').value || null,
+        message: document.getElementById('alMessage').value.trim(),
+        pin,
+      };
+    },
+  });
+  if (!form) return;
+
+  // An empty PIN box on EDIT means "leave it alone", not "remove it". Sending
+  // pin:'' would silently unlock an album the owner had deliberately protected.
+  const payload = { ...form };
+  if (existing && !form.pin) delete payload.pin;
+
+  const res = existing
+    ? await apiRequest('PUT', `/api/admin/albums/${existing.id}`, payload)
+    : await apiRequest('POST', '/api/admin/albums', payload);
+
+  if (res?._error) {
+    return Swal.fire({ icon: 'error', title: 'Could not save', text: res.fields ? Object.values(res.fields)[0] : res.message, background: '#1e1e2a', color: '#fff' });
+  }
+
+  albumsUI.loaded = false;
+  await renderAlbums();
+  if (!existing) showAlbumLink(res.data.url, true);
+}
+
+async function setAlbumStatus(id, status) {
+  if (status === 'revoked') {
+    const ok = await Swal.fire({
+      title: 'Withdraw this album?', icon: 'warning',
+      html: '<p style="font-size:13px;color:#cbd5e1">The client\'s link stops working immediately. The photographs are not deleted, and you can publish it again later.</p>',
+      showCancelButton: true, confirmButtonText: 'Withdraw', confirmButtonColor: '#ef4444',
+      background: '#1e1e2a', color: '#fff',
+    });
+    if (!ok.isConfirmed) return;
+  }
+
+  const res = await apiRequest('PUT', `/api/admin/albums/${id}`, { status });
+  if (res?._error) {
+    // 409 is the publish guard: an empty album. Say what to do about it.
+    return Swal.fire({
+      icon: 'warning', title: res.status === 409 ? 'Nothing to show yet' : 'Could not update',
+      text: res.status === 409 ? 'Add some processed photos to this album before publishing it.' : res.message,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+  albumsUI.loaded = false;
+  renderAlbums();
+}
+
+async function rotateAlbumLink(id) {
+  const ok = await Swal.fire({
+    title: 'Issue a new link?', icon: 'question',
+    html: '<p style="font-size:13px;color:#cbd5e1">The current link stops working straight away. Use this if it went to the wrong person.</p>',
+    showCancelButton: true, confirmButtonText: 'New link', confirmButtonColor: '#7c3aed',
+    background: '#1e1e2a', color: '#fff',
+  });
+  if (!ok.isConfirmed) return;
+
+  const res = await apiRequest('POST', `/api/admin/albums/${id}/rotate`);
+  if (res?._error) return Swal.fire({ icon: 'error', title: 'Could not rotate', text: res.message, background: '#1e1e2a', color: '#fff' });
+  showAlbumLink(res.data.url, false);
+}
+
+// ── Photos in an album ────────────────────────────────────────────────
+async function openAlbumItems(id) {
+  const [detail, pool] = await Promise.all([
+    apiRequest('GET', `/api/admin/albums/${id}`),
+    albumsUI.poolLoaded ? Promise.resolve({ data: albumsUI.pool }) : apiRequest('GET', '/api/admin/media?limit=60'),
+  ]);
+
+  if (detail?._error) return Swal.fire({ icon: 'error', title: 'Could not open', text: detail.message, background: '#1e1e2a', color: '#fff' });
+
+  if (!pool?._error) { albumsUI.pool = pool.data || []; albumsUI.poolLoaded = true; }
+
+  const inAlbum = new Set((detail.data.items || []).map(i => i.assetId));
+  const available = albumsUI.pool.filter(a => !inAlbum.has(a.assetId));
+
+  const thumb = (r) => r?.thumb?.url || r?.card?.url || r?.poster?.url || r?.web?.url || '';
+
+  const res = await Swal.fire({
+    title: escapeHtml(detail.data.title),
+    width: 720, background: '#1e1e2a', color: '#fff',
+    html: `
+      <div style="text-align:left;font-size:13px">
+        <p style="color:#9ca3af;margin:0 0 10px">In this album (${detail.data.items.length})</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;max-height:210px;overflow:auto;padding:2px">
+          ${detail.data.items.length ? detail.data.items.map(i => `
+            <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;${i.isHidden ? 'opacity:.35' : ''}">
+              ${thumb(i.renditions) ? `<img src="${escapeHtml(thumb(i.renditions))}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:grid;place-items:center;color:#6b7280;font-size:10px">processing</div>'}
+              <button type="button" data-remove="${i.id}" title="Remove from album"
+                      style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:5px;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:10px">✕</button>
+            </div>`).join('') : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>'}
+        </div>
+
+        <p style="color:#9ca3af;margin:16px 0 10px">Add from the library (${available.length} available)</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;max-height:210px;overflow:auto;padding:2px">
+          ${available.length ? available.map(a => `
+            <label style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;cursor:pointer;display:block">
+              <input type="checkbox" class="al-pick" value="${a.assetId}" style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#7c3aed">
+              ${thumb(a.renditions) ? `<img src="${escapeHtml(thumb(a.renditions))}" style="width:100%;height:100%;object-fit:cover">` : ''}
+            </label>`).join('')
+            : `<p style="color:#6b7280;grid-column:1/-1">
+                 Nothing available. Photos appear here after they are uploaded through the
+                 gallery with cloud storage switched on.
+               </p>`}
+        </div>
+      </div>`,
+    showCancelButton: true, confirmButtonText: 'Add selected', confirmButtonColor: '#7c3aed',
+    didOpen: () => {
+      // Removal is immediate rather than batched with the Add action — the two
+      // are different intentions and pairing them means an accidental ✕ is only
+      // undone by cancelling the whole dialog.
+      Swal.getHtmlContainer().addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-remove]');
+        if (!btn) return;
+        btn.disabled = true;
+        const del = await apiRequest('DELETE', `/api/admin/albums/${id}/items/${btn.dataset.remove}`);
+        if (del?._error) { btn.disabled = false; return; }
+        btn.closest('div[style*="position:relative"]')?.remove();
+        albumsUI.loaded = false;
+      });
+    },
+    preConfirm: () => [...document.querySelectorAll('.al-pick:checked')].map(c => c.value),
+  });
+
+  if (res.isConfirmed && res.value?.length) {
+    const add = await apiRequest('POST', `/api/admin/albums/${id}/items`, { assetIds: res.value });
+    if (add?._error) return Swal.fire({ icon: 'error', title: 'Could not add', text: add.message, background: '#1e1e2a', color: '#fff' });
+    Swal.fire({ icon: 'success', title: `Added ${add.data.added}`, timer: 1300, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+  }
+
+  albumsUI.loaded = false;
+  renderAlbums();
+}
+
 function renderGallery() {
   const container = document.getElementById('sectionContent');
   if (!container) return;
@@ -2953,8 +3733,131 @@ function putToStorage(signedUrl, blob, contentType, cacheControl, onProgress) {
   });
 }
 
+// ── Cloud media pipeline ──────────────────────────────────────────────────
+//
+// The path below this comment uploads the ORIGINAL file, untouched, and lets
+// the media worker derive the sizes the website serves.
+//
+// That is the whole difference. The legacy path further down re-encodes the
+// photo to 1800px JPEG in the browser and stores only that — the original is
+// discarded at the moment of upload, which is exactly the Google Drive problem
+// in miniature: one lossy copy, doing every job, and no way back to the
+// negative if a client ever asks for a print.
+//
+// If cloud storage is not configured the API answers 503 here and the upload
+// falls back to the legacy path, unchanged. Nothing about this is a flag day.
+
+const PIPELINE_HASH_LIMIT = 64 * 1024 * 1024;   // hashing reads the file into memory
+
+async function fileChecksum(file) {
+  // Content dedupe: re-adding a photo after a failed save, or the same shot
+  // arriving from two photographers, produces one asset instead of two.
+  if (!window.crypto?.subtle || file.size > PIPELINE_HASH_LIMIT) return null;
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch { return null; }
+}
+
+// Poll until the worker has produced the renditions. Bounded: if no worker is
+// running, the upload still succeeds and the row is saved as a draft rather
+// than the manager waiting on a spinner that will never resolve.
+async function waitForRenditions(assetId, onProgress, timeoutMs = 90000) {
+  const started = Date.now();
+  let wait = 1000;
+  while (Date.now() - started < timeoutMs) {
+    await new Promise(r => setTimeout(r, wait));
+    wait = Math.min(wait * 1.5, 6000);          // back off; encodes take tens of seconds
+    const res = await apiRequest('GET', `/api/admin/media/${assetId}`);
+    if (res?._error) continue;
+    if (res.data.status === 'ready')  return res.data;
+    if (res.data.status === 'failed') throw new Error('The file could not be processed. Try a different export.');
+    const secs = Math.round((Date.now() - started) / 1000);
+    onProgress(0.85, `Processing… (${secs}s)`);
+  }
+  return null;   // still working — caller saves an unpublished draft
+}
+
+// Returns a gallery payload, or null when the pipeline is not available so the
+// caller can use the legacy uploader.
+async function uploadViaPipeline(file, meta, onProgress) {
+  onProgress(0.02, 'Preparing…');
+  const checksum = await fileChecksum(file);
+
+  const signed = await apiRequest('POST', '/api/admin/media/upload-url', {
+    fileName: file.name, mimeType: file.type, fileSize: file.size, checksum,
+  });
+  if (signed?._error) {
+    if (signed.status === 503) return null;              // not configured
+    throw new Error(signed.message);
+  }
+
+  const { assetId, duplicate, uploadUrl, contentType, urls } = signed.data;
+
+  if (duplicate) {
+    onProgress(0.9, 'Already in the library — reusing it…');
+  } else {
+    onProgress(0.05, 'Uploading the original…');
+    // No Cache-Control: masters are private and never served to a browser.
+    await putToStorage(uploadUrl, file, contentType || file.type, null,
+      frac => onProgress(0.05 + frac * 0.75, 'Uploading the original…'));
+
+    const done = await apiRequest('POST', `/api/admin/media/${assetId}/complete`, {});
+    if (done?._error) throw new Error(done.message);
+  }
+
+  onProgress(0.85, 'Processing…');
+  const ready = await waitForRenditions(assetId, onProgress);
+  const isVideo = file.type.startsWith('video/');
+
+  return {
+    assetId,
+    // Deterministic keys mean this URL is correct whether the worker has
+    // finished or not — the row does not have to wait for the encode.
+    imageUrl: urls.primary,
+    thumbUrl: isVideo ? urls.poster : null,
+    width:  ready?.width  ?? null,
+    height: ready?.height ?? null,
+    mimeType: file.type,
+    fileSize: file.size,
+    processed: Boolean(ready),
+  };
+}
+
 async function uploadOneFile(file, meta, onProgress) {
   const isVideo = file.type.startsWith('video/');
+
+  // Try the cloud pipeline first; fall through to the legacy uploader when it
+  // is not configured.
+  const viaPipeline = await uploadViaPipeline(file, meta, onProgress).catch(err => {
+    console.warn('[media] pipeline upload failed, falling back to the legacy path:', err.message);
+    return null;
+  });
+
+  if (viaPipeline) {
+    onProgress(0.95, 'Saving…');
+    const row = await apiRequest('POST', '/api/admin/gallery', {
+      title: meta.title, category: meta.category, type: isVideo ? 'video' : 'image',
+      imageUrl: viaPipeline.imageUrl, thumbUrl: viaPipeline.thumbUrl,
+      assetId: viaPipeline.assetId,
+      mimeType: viaPipeline.mimeType, fileSize: viaPipeline.fileSize,
+      width: viaPipeline.width, height: viaPipeline.height,
+      altText: meta.altText || meta.title, caption: meta.caption || null,
+      serviceSlug: meta.serviceSlug || null, eventDate: meta.eventDate || null,
+      isFeatured: meta.isFeatured,
+      // Publishing a row whose renditions do not exist yet shows visitors a
+      // broken image. If the encode has not finished, it goes in as a draft and
+      // the manager publishes it once the thumbnail appears.
+      isPublished: meta.isPublished && viaPipeline.processed,
+    });
+    if (row?._error) {
+      const detail = row.fields ? Object.values(row.fields)[0] : row.message;
+      throw new Error(detail || 'Could not save');
+    }
+    onProgress(1, viaPipeline.processed ? 'Done' : 'Saved as a draft — still processing');
+    return row.data;
+  }
+
   onProgress(0.02, 'Preparing…');
 
   let blob, width, height, mimeType, thumbUrl = null;
@@ -7174,7 +8077,7 @@ function duplicateMarketingBanner(id) {
             <h3 class="font-semibold mb-3">Pipeline</h3>
             <div class="space-y-2.5">
               ${[
-                { l: 'Enquiries received', n: d.enquiries.total, c: '#7c4dff' },
+                { l: 'Enquiries received', n: d.enquiries.total, c: '#facc15' },
                 { l: 'Awaiting your reply', n: d.enquiries.pending, c: '#f59e0b' },
                 { l: 'Confirmed',           n: d.enquiries.confirmed, c: '#22c55e' },
                 { l: 'Completed',           n: d.enquiries.completed, c: '#3b82f6' },
@@ -7298,7 +8201,7 @@ function duplicateMarketingBanner(id) {
             { name: 'Enquiries', type: 'line', data: d.series.map(p => p.enquiries) },
           ],
           stroke: { width: [0, 2], curve: 'smooth' },
-          colors: ['#22c55e', '#7c4dff'],
+          colors: ['#38bdf8', '#facc15'],
           xaxis: {
             categories: labels,
             labels: {
@@ -7345,7 +8248,7 @@ function duplicateMarketingBanner(id) {
             chart: { type: 'donut', height: 240, background: 'transparent' },
             series: rows.map(r => r.count),
             labels: rows.map(r => r.label),
-            colors: ['#7c4dff', '#22c55e', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6'],
+            colors: ['#facc15', '#38bdf8', '#eab308', '#0ea5e9', '#fde047', '#7dd3fc', '#a16207'],
             dataLabels: { enabled: true, formatter: (_v, o) => rows[o.seriesIndex].count },
             legend: { labels: { colors: '#9ca3af' }, position: 'bottom', fontSize: '11px' },
             theme: { mode: 'dark' },
@@ -7573,7 +8476,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
 
     // ==================== SWITCH TAB & CLOSE MODAL ====================
-    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') { marketingUI.view = 'posters'; currentTab = 'marketing'; renderMarketing(); } else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); else if (tab === 'beta') renderBeta(); else if (tab === 'updates') renderUpdates(); }
+    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('tab-active', 'border-purple-500', 'text-purple-400'); btn.classList.add('border-transparent'); }); const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`); if (activeBtn) { activeBtn.classList.add('tab-active', 'border-purple-500', 'text-purple-400'); activeBtn.classList.remove('border-transparent'); } if (tab === 'dashboard') renderDashboard(); else if (tab === 'events') renderEvents(); else if (tab === 'services') renderServices(); else if (tab === 'gallery') renderGallery(); else if (tab === 'work') renderWork(); else if (tab === 'albums') renderAlbums(); else if (tab === 'reviews') renderReviews(); else if (tab === 'marketing') renderMarketing(); else if (tab === 'posters') { marketingUI.view = 'posters'; currentTab = 'marketing'; renderMarketing(); } else if (tab === 'bookings') renderBookings(); else if (tab === 'employees') renderEmployees(); else if (tab === 'payroll') renderPayroll(); else if (tab === 'analytics') { destroyAnalyticsCharts(); renderAnalytics(); } else if (tab === 'training') renderTraining(); else if (tab === 'beta') renderBeta(); else if (tab === 'updates') renderUpdates(); }
     function closeModal() { document.getElementById('formModal').classList.add('hidden'); currentEditId = null; }
     function logout() { localStorage.removeItem('lawie_admin_session'); sessionStorage.removeItem('lawie_admin_session'); window.location.href = 'login.html?logout=1'; }
 
@@ -7623,7 +8526,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
       await loadAllDataFromAPI();
       updateStats();
       const urlTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['dashboard','events','services','gallery','reviews','marketing','posters','bookings','employees','payroll','analytics','training','beta','updates'];
+      const validTabs = ['dashboard','events','services','gallery','work','albums','reviews','marketing','posters','bookings','employees','payroll','analytics','training','beta','updates'];
       switchTab(validTabs.includes(urlTab) ? urlTab : 'dashboard');
       updateNotifBadge();
       updateBadge();

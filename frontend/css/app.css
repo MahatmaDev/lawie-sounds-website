@@ -17,48 +17,11 @@
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ── Tokens ─────────────────────────────────────────────────────────── */
-:root {
-  /* Brand */
-  --gold:        #facc15;
-  --gold-deep:   #eab308;
-  --gold-ink:    #78600a;
-  --gold-soft:   rgba(250, 204, 21, 0.12);
-  --gold-line:   rgba(250, 204, 21, 0.28);
-
-  /* Stage — the dark ground the whole site sits on */
-  --ink:         #08080f;
-  --ink-raised:  #0f0f1a;
-  --ink-deep:    #05050a;
-  --card:        #12121f;
-  --card-hi:     #17172a;
-  --line:        rgba(255, 255, 255, 0.08);
-  --line-hi:     rgba(255, 255, 255, 0.16);
-
-  /* Text */
-  --text:        #f8fafc;
-  --text-soft:   #d9d9e6;
-  --text-muted:  #a1a1b5;
-  --text-faint:  #6c6c82;
-
-  /* Signals */
-  --live:        #22c55e;
-  --wa:          #25d366;
-  --warn:        #fb923c;
-  --bad:         #f87171;
-
-  /* Elevation */
-  --sh-1: 0 2px 8px rgba(0,0,0,.35);
-  --sh-2: 0 12px 32px rgba(0,0,0,.45);
-  --sh-3: 0 28px 70px rgba(0,0,0,.55);
-  --sh-gold: 0 18px 50px rgba(250,204,21,.22);
-
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 24px;
-  --r-xl: 32px;
-
-  --header-h: 72px;
-}
+/* Design tokens live in /css/theme.css — the single source of colour for the
+   public site and the dashboard alike. This file must not redefine them: it
+   loads after theme.css, so anything declared here would silently win and the
+   two surfaces would drift apart again, which is exactly the problem theme.css
+   was created to end. */
 
 /* ── Base ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }

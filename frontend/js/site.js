@@ -505,11 +505,45 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
 
+  // ── Media renditions ──────────────────────────────────────────────
+  //
+  // A row from the API carries either `renditions` — produced by the media
+  // worker, one entry per size — or only `imageUrl`, which is every row written
+  // before the cloud pipeline existed. Both cases go through here so no page
+  // has to know which kind it is holding, and so the grid can stop loading
+  // full-size photographs to paint 480px tiles.
+
+  const LADDER = ['thumb', 'card', 'web', 'poster', 'preview'];
+
+  function mediaSrc(item, variant = 'thumb') {
+    const r = item && item.renditions;
+    if (r) {
+      if (r[variant] && r[variant].url) return r[variant].url;
+      // Walk the ladder. A small source never produces the larger steps, and a
+      // video has poster/preview rather than thumb/card/web — so asking for a
+      // variant that does not exist must degrade rather than return nothing.
+      for (const v of LADDER) if (r[v] && r[v].url) return r[v].url;
+    }
+    return (item && item.imageUrl) || '';
+  }
+
+  // Let the browser pick. It knows the viewport, the device pixel ratio and
+  // whether the connection is worth spending on; we do not.
+  function mediaSrcset(item) {
+    const r = item && item.renditions;
+    if (!r) return '';
+    return ['thumb', 'card', 'web']
+      .filter(v => r[v] && r[v].url && r[v].width)
+      .map(v => `${r[v].url} ${r[v].width}w`)
+      .join(', ');
+  }
+
   // ── Public surface ────────────────────────────────────────────────
   window.LS = {
     WA_NUMBER, SITE, BOOK_URL,
     $, $$, esc, safeHref, api,
     timeAgo, prettyDate, prettyDateTime, fullDate, isNew, endsIn, countdown, stamp, hydrateStamps, parseDate,
     observeReveals, scrollToSection, toast, lightbox, track,
+    mediaSrc, mediaSrcset,
   };
 })();

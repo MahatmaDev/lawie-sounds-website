@@ -1,0 +1,19 @@
+# The build context is the repository root, and almost none of it belongs in
+# the worker image. Gallery/ and IMAGES/ alone are hundreds of megabytes of
+# media that would be copied into every layer for nothing.
+.git
+.github
+.vercel
+node_modules
+**/node_modules
+frontend
+Gallery
+IMAGES
+invoices
+handover
+database
+api
+*.log
+.env
+.env.*
+**/.env

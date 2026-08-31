@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <title>Your event album | Lawie Sounds</title>
+
+  <!-- A private page reached by capability URL. It must never be indexed, and
+       the referrer must never carry the token to another site — a referrer leak
+       would hand the album to whatever the client clicks next. -->
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+
+  <link rel="icon" type="image/jpeg" href="/IMAGES/LOGO/2.jpg">
+  <meta name="theme-color" content="#08080f">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-zoom.min.css">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/app.css">
+
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       ALBUM ONLY. Header, footer, buttons, pills and timestamps all
+       come from /css/app.css — this is the grid and the two panels
+       that exist nowhere else on the site.
+       ══════════════════════════════════════════════════════════════ */
+
+    .album-hero {
+      padding: calc(var(--header-h) + 44px) 0 34px;
+      background:
+        radial-gradient(1100px 420px at 50% -10%, rgba(250,204,21,.10), transparent 65%),
+        var(--ink);
+      border-bottom: 1px solid var(--line);
+    }
+    .album-hero h1 { font-family: Sora, Inter, system-ui, sans-serif; font-weight: 800; letter-spacing: -.02em; margin: 0 0 6px; }
+    .album-note {
+      margin: 20px 0 0; padding: 16px 18px; max-width: 62ch;
+      border-left: 3px solid var(--gold);
+      background: rgba(250,204,21,.05);
+      border-radius: 0 var(--r-md) var(--r-md) 0;
+      color: var(--text-soft); line-height: 1.75; font-size: 14.5px;
+    }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (min-width: 720px)  { .photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+    @media (min-width: 1100px) { .photo-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+    .photo {
+      position: relative; display: block; overflow: hidden;
+      border-radius: var(--r-md); background: var(--card);
+      border: 1px solid var(--line);
+      /* Reserving the box from the stored dimensions is what stops the whole
+         grid jumping as each photograph arrives. */
+      aspect-ratio: var(--ar, 3 / 2);
+      cursor: zoom-in;
+    }
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s cubic-bezier(.2,.7,.3,1); }
+    .photo:hover img { transform: scale(1.045); }
+
+    .photo-actions {
+      position: absolute; inset: auto 0 0 0; display: flex; gap: 6px; justify-content: flex-end;
+      padding: 26px 8px 8px;
+      background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
+      opacity: 0; transition: opacity .2s;
+    }
+    .photo:hover .photo-actions, .photo:focus-within .photo-actions { opacity: 1; }
+    /* Touch has no hover, and the download is the entire reason the client is
+       here — so on a phone the control is always visible. */
+    @media (hover: none) { .photo-actions { opacity: 1; } }
+
+    .icon-btn {
+      width: 34px; height: 34px; display: grid; place-items: center;
+      border-radius: 9px; border: 1px solid rgba(255,255,255,.18);
+      background: rgba(10,10,18,.72); color: #fff; font-size: 13px;
+      backdrop-filter: blur(6px); cursor: pointer;
+    }
+    .icon-btn:hover { background: var(--gold); color: #14110a; border-color: var(--gold); }
+
+    .play-badge {
+      position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+    }
+    .play-badge span {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(10,10,18,.6); backdrop-filter: blur(6px);
+      display: grid; place-items: center; border: 1px solid rgba(255,255,255,.2);
+    }
+
+    .panel {
+      border: 1px solid var(--line); border-radius: var(--r-lg);
+      background: var(--card); padding: 22px;
+    }
+
+    .lock-card { max-width: 420px; margin: 0 auto; text-align: center; }
+    .pin-input {
+      width: 100%; text-align: center; letter-spacing: .5em; font-size: 22px; font-weight: 700;
+      padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line);
+      background: var(--ink); color: var(--text); margin: 16px 0 10px;
+    }
+    .pin-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+    .setup-chip {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 13px; border-radius: 999px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.03);
+      color: var(--text-soft); font-size: 13.5px; font-weight: 600;
+      text-decoration: none;
+    }
+    .setup-chip:hover { border-color: var(--gold); color: var(--gold); }
+
+    .skeleton { background: linear-gradient(90deg, var(--card) 25%, rgba(255,255,255,.05) 37%, var(--card) 63%); background-size: 400% 100%; animation: sk 1.4s ease infinite; border-radius: var(--r-md); }
+    @keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+    @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } .photo:hover img { transform: none; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header" id="header">
+  <div class="wrap header-inner">
+    <a href="/" class="brand">
+      <img src="/IMAGES/LOGO/2.jpg" width="40" height="40" alt="Lawie Sounds">
+      <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Your album</span></span>
+    </a>
+    <a href="/wa" class="btn btn-ghost btn-sm" style="margin-left:auto">
+      <i class="fab fa-whatsapp"></i> <span class="hide-sm">Message us</span>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- Loading -->
+  <section id="loading" class="album-hero">
+    <div class="wrap">
+      <div class="skeleton" style="height:34px;width:min(340px,70%)"></div>
+      <div class="skeleton" style="height:16px;width:min(220px,50%);margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- Unavailable: unknown, revoked or expired. Deliberately one message. -->
+  <section id="gone" class="hidden" style="padding:calc(var(--header-h) + 80px) 0 90px">
+    <div class="wrap" style="max-width:520px;text-align:center">
+      <i class="fas fa-link-slash" style="font-size:34px;color:var(--text-faint)"></i>
+      <h1 style="font-family:Sora,Inter,sans-serif;font-size:26px;margin:18px 0 10px">This album link is not available</h1>
+      <p style="color:var(--text-soft);line-height:1.75">
+        It may have expired, or been replaced with a newer link. Send us a message and we will
+        get your photos back to you.
+      </p>
+      <a href="/wa" class="btn btn-primary" style="margin-top:22px"><i class="fab fa-whatsapp"></i> Message us on WhatsApp</a>
+    </div>
+  </section>
+
+  <!-- PIN -->
+  <section id="locked" class="hidden" style="padding:calc(var(--header-h) + 70px) 0 90px">
+    <div class="wrap">
+      <div class="panel lock-card">
+        <i class="fas fa-lock" style="font-size:24px;color:var(--gold)"></i>
+        <h1 id="lockTitle" style="font-family:Sora,Inter,sans-serif;font-size:22px;margin:14px 0 6px">Your album</h1>
+        <p id="lockSub" style="color:var(--text-soft);font-size:14px;margin:0"></p>
+        <form id="pinForm" autocomplete="off">
+          <input id="pin" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+                 placeholder="••••" aria-label="Album PIN" required>
+          <p id="pinError" class="hidden" style="color:#f87171;font-size:13px;margin:0 0 10px"></p>
+          <button class="btn btn-primary" style="width:100%" type="submit">Open my album</button>
+        </form>
+        <p style="color:var(--text-faint);font-size:12.5px;margin:14px 0 0">
+          The PIN is in the message we sent with this link.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- The album -->
+  <div id="album" class="hidden">
+    <section class="album-hero">
+      <div class="wrap">
+        <p id="albumKicker" class="eyebrow"></p>
+        <h1 id="albumTitle" style="font-size:clamp(28px,5vw,44px)"></h1>
+        <p id="albumMeta" style="color:var(--text-soft);font-size:15px;margin:0"></p>
+        <div id="albumNote" class="album-note hidden"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:26px">
+          <button id="shareBtn" class="btn btn-primary btn-sm"><i class="fas fa-share-nodes"></i> Share with family</button>
+          <a id="waShare" class="btn btn-ghost btn-sm" href="#" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Send on WhatsApp</a>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding:34px 0 10px">
+      <div class="wrap">
+        <div id="grid" class="photo-grid"></div>
+      </div>
+    </section>
+
+    <!-- Retention, said plainly. This is the visible consequence of the
+         12-month master window: the client is told, before it matters. -->
+    <section id="retention" class="hidden" style="padding:26px 0 0">
+      <div class="wrap">
+        <p style="color:var(--text-faint);font-size:13px;display:flex;gap:8px;align-items:flex-start;max-width:70ch">
+          <i class="fas fa-circle-info" style="margin-top:3px"></i>
+          <span id="retentionText"></span>
+        </p>
+      </div>
+    </section>
+
+    <!-- Consent. The client's to give, and asked for in their own words. -->
+    <section style="padding:40px 0">
+      <div class="wrap">
+        <div class="panel" style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+          <i class="fas fa-heart" style="color:var(--gold);font-size:18px;margin-top:3px"></i>
+          <div style="flex:1;min-width:260px">
+            <h3 style="font-family:Sora,Inter,sans-serif;font-size:17px;margin:0 0 6px">May we show a few of these?</h3>
+            <p style="color:var(--text-soft);font-size:14px;line-height:1.7;margin:0 0 14px">
+              We would love to use one or two of your photographs in our gallery so other people can
+              see the work. Only if you are happy with it — and you can change your mind any time on
+              this page.
+            </p>
+            <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:var(--text)">
+              <input type="checkbox" id="consent" style="width:18px;height:18px;accent-color:var(--gold)">
+              <span>Yes, you may use my photos publicly</span>
+            </label>
+            <p id="consentSaved" class="hidden" style="color:#4ade80;font-size:13px;margin:10px 0 0"><i class="fas fa-check"></i> Saved — thank you.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE LOOP: album -> the services that produced it -> a quote.
+         This is the only part of the album that sells anything, and it works
+         because it is specific: not "book us", but "the same setup you had". -->
+    <section id="setup" class="hidden" style="padding:0 0 60px">
+      <div class="wrap">
+        <div class="panel" style="background:linear-gradient(135deg,rgba(250,204,21,.07),transparent 60%)">
+          <p class="eyebrow">The setup at your event</p>
+          <h3 style="font-family:Sora,Inter,sans-serif;font-size:20px;margin:6px 0 16px">
+            Planning another one? We can bring exactly this.
+          </h3>
+          <div id="setupChips" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:20px"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a id="quoteSame" class="btn btn-primary" href="/book">
+              <i class="fas fa-arrow-right-long"></i> Get a quote for the same setup
+            </a>
+            <a class="btn btn-ghost" href="/services">See everything we do</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap" style="text-align:center">
+    <a href="/" class="brand" style="justify-content:center">
+      <img src="/IMAGES/LOGO/2.jpg" width="38" height="38" loading="lazy" alt="">
+      <span><span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span><span class="brand-sub">Nyeri · Kenya</span></span>
+    </a>
+    <p style="color:var(--text-faint);font-size:13px;margin:16px 0 0">
+      This page is private to you. <a href="/wa" style="color:var(--gold)">Message us</a> if anything is missing.
+    </p>
+  </div>
+</footer>
+
+<script src="/js/site.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.umd.js"></script>
+<script>
+(() => {
+  'use strict';
+  const { $, esc, toast, prettyDate, mediaSrc, mediaSrcset } = window.LS;
+
+  // /a/<token>
+  const TOKEN = decodeURIComponent((location.pathname.split('/')[2] || '').trim());
+  // sessionStorage, not localStorage: a PIN unlock should not outlive the tab
+  // on a shared family phone.
+  const KEY_STORE = `lawie_album_key_${TOKEN}`;
+
+  const show = (id) => { for (const s of ['loading', 'gone', 'locked', 'album']) $(s).classList.toggle('hidden', s !== id); };
+
+  function albumKey() { try { return sessionStorage.getItem(KEY_STORE) || ''; } catch { return ''; } }
+
+  async function call(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    const key = albumKey();
+    if (key) headers['X-Album-Key'] = key;
+    const res = await fetch(`/api/albums/${encodeURIComponent(TOKEN)}${path}`, { ...opts, headers });
+    const json = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, json };
+  }
+
+  // ── Render ──────────────────────────────────────────────────────
+  function photoHtml(item, i) {
+    const isVideo = item.kind === 'video';
+    const thumb = mediaSrc(item, isVideo ? 'poster' : 'thumb');
+    const full  = isVideo ? mediaSrc(item, 'preview') : mediaSrc(item, 'web');
+    const srcset = isVideo ? '' : mediaSrcset(item);
+    const ar = item.width && item.height ? `${item.width} / ${item.height}` : '3 / 2';
+    const alt = item.caption || 'Photograph from your event';
+
+    // lightGallery reads these attributes; the anchor is the trigger.
+    const lg = isVideo
+      ? `data-video='${esc(JSON.stringify({ source: [{ src: full, type: 'video/mp4' }], attributes: { preload: 'none', controls: true } }))}' data-poster="${esc(thumb)}"`
+      : `data-src="${esc(full)}"`;
+
+    return `
+      <div class="photo" style="--ar:${ar}" ${lg} data-index="${i}">
+        <img src="${esc(thumb)}" ${srcset ? `srcset="${esc(srcset)}" sizes="(max-width:720px) 50vw, 25vw"` : ''}
+             alt="${esc(alt)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">
+        ${isVideo ? '<span class="play-badge"><span><i class="fas fa-play" style="color:#fff;margin-left:3px"></i></span></span>' : ''}
+        <div class="photo-actions">
+          <button class="icon-btn js-dl" data-asset="${esc(item.assetId)}" data-size="web"
+                  title="Download" aria-label="Download this photo"><i class="fas fa-download"></i></button>
+          ${item.originalAvailable ? `
+          <button class="icon-btn js-dl" data-asset="${esc(item.assetId)}" data-size="original"
+                  title="Download the full-resolution original" aria-label="Download the original"><i class="fas fa-maximize"></i></button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderAlbum(a) {
+    $('albumKicker').textContent = a.clientName ? `For ${a.clientName}` : 'Your event';
+    $('albumTitle').textContent  = a.title || 'Your album';
+    document.title = `${a.title || 'Your album'} | Lawie Sounds`;
+
+    const bits = [];
+    if (a.eventDate) bits.push(prettyDate(a.eventDate));
+    bits.push(`${a.items.length} ${a.items.length === 1 ? 'photo' : 'photos'}`);
+    $('albumMeta').textContent = bits.join(' · ');
+
+    if (a.message) { $('albumNote').textContent = a.message; $('albumNote').classList.remove('hidden'); }
+
+    $('grid').innerHTML = a.items.map(photoHtml).join('');
+
+    // Retention, in the client's terms rather than ours.
+    if (a.originalsUntil) {
+      $('retentionText').textContent =
+        `Full-resolution originals can be downloaded until ${prettyDate(a.originalsUntil)}. ` +
+        `After that these web copies stay here for you — so save anything you want at full size before then.`;
+      $('retention').classList.remove('hidden');
+    }
+
+    $('consent').checked = a.publicConsent === true;
+
+    // The loop.
+    if (a.services?.length) {
+      $('setupChips').innerHTML = a.services
+        .map(s => `<a class="setup-chip" href="/s/${esc(s.slug)}"><i class="fas fa-check" style="color:var(--gold);font-size:11px"></i> ${esc(s.name)}</a>`)
+        .join('');
+      const slugs = a.services.map(s => s.slug).join(',');
+      // channel=album:<id> is what makes word of mouth measurable. The
+      // analytics layer already breaks enquiries down by channel, so a booking
+      // that started in someone's album is attributable rather than a mystery.
+      $('quoteSame').href = `/book?service=${encodeURIComponent(slugs)}&channel=${encodeURIComponent('album:' + a.id)}`;
+      $('setup').classList.remove('hidden');
+    }
+
+    const shareText = `Photos from ${a.title || 'our event'} by Lawie Sounds`;
+    $('waShare').href = `https://wa.me/?text=${encodeURIComponent(shareText + ' — ' + location.href)}`;
+
+    show('album');
+
+    if (window.lightGallery) {
+      lightGallery($('grid'), {
+        selector: '.photo', plugins: [window.lgZoom].filter(Boolean),
+        speed: 300, download: false, licenseKey: '0000-0000-000-0000',
+      });
+    }
+  }
+
+  // ── Downloads ───────────────────────────────────────────────────
+  // The link is minted per click and expires in ten minutes, so a URL that
+  // leaks out of someone's history is already dead.
+  $('grid').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.js-dl');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();          // do not also open the lightbox
+
+    btn.disabled = true;
+    const { ok, status, json } = await call(
+      `/download/${encodeURIComponent(btn.dataset.asset)}?size=${encodeURIComponent(btn.dataset.size)}`);
+    btn.disabled = false;
+
+    if (!ok) {
+      toast(status === 410
+        ? 'The full-resolution original is no longer stored — the large copy is still available.'
+        : (json?.error || 'Could not prepare that download.'), 'bad');
+      return;
+    }
+    window.location.href = json.data.url;
+  }, true);
+
+  // ── Consent ─────────────────────────────────────────────────────
+  $('consent').addEventListener('change', async (e) => {
+    const granted = e.target.checked;
+    const { ok, json } = await call('/consent', { method: 'POST', body: JSON.stringify({ consent: granted }) });
+    if (!ok) {
+      e.target.checked = !granted;
+      return toast(json?.error || 'Could not save that just now.', 'bad');
+    }
+    $('consentSaved').classList.toggle('hidden', !granted);
+    if (granted) toast('Thank you — that means a lot.', 'good');
+  });
+
+  // ── Share ───────────────────────────────────────────────────────
+  $('shareBtn').addEventListener('click', async () => {
+    const data = { title: document.title, text: 'Our event photos', url: location.href };
+    if (navigator.share) { try { await navigator.share(data); return; } catch { /* dismissed */ } }
+    try { await navigator.clipboard.writeText(location.href); toast('Link copied.', 'good'); }
+    catch { toast('Copy the address from your browser bar to share it.', 'good'); }
+  });
+
+  // ── PIN ─────────────────────────────────────────────────────────
+  $('pinForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('pinError').classList.add('hidden');
+    const { ok, json } = await call('/unlock', { method: 'POST', body: JSON.stringify({ pin: $('pin').value }) });
+    if (!ok) {
+      $('pinError').textContent = json?.error || 'That PIN did not work.';
+      $('pinError').classList.remove('hidden');
+      $('pin').value = '';
+      return;
+    }
+    try { sessionStorage.setItem(KEY_STORE, json.data.key); } catch { /* private mode */ }
+    load();
+  });
+
+  // ── Boot ────────────────────────────────────────────────────────
+  async function load() {
+    show('loading');
+    if (!TOKEN) return show('gone');
+
+    const { ok, json } = await call('');
+    if (!ok || !json?.data) return show('gone');
+
+    if (json.data.locked) {
+      $('lockTitle').textContent = json.data.title || 'Your album';
+      $('lockSub').textContent = json.data.clientName
+        ? `For ${json.data.clientName}. Enter your PIN to open it.`
+        : 'Enter your PIN to open it.';
+      show('locked');
+      $('pin').focus();
+      return;
+    }
+    renderAlbum(json.data);
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

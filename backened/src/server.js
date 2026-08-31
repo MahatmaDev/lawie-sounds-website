@@ -6,6 +6,12 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
+// The media pipeline (plan phase P3). Both modules are dependency-free and
+// inert until R2 is configured, so requiring them cannot affect a deploy that
+// has not switched storage on yet.
+const media = require('./media/store');
+const { VARIANT_FOR } = require('./media/renditions');
+
 require('dotenv').config();
 
 // The signing key for every admin session. The fallback is a literal in a public
@@ -102,7 +108,19 @@ function adminOnly(req, res, next) {
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
   service: (r) => r && ({ id: r.id, name: r.name, slug: r.slug, category: r.category, icon: r.icon, shortDesc: r.short_desc, longDesc: r.long_desc, mainImage: r.image, isActive: r.is_active, displayOrder: r.display_order, priceDisplay: r.price_display || 'from', budgetNote: r.budget_note, packages: r.packages || [], features: r.features || [], faqs: r.faqs || [], createdAt: r.created_at }),
-  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, altText: r.alt_text, caption: r.caption, width: r.width, height: r.height, isPublished: r.is_published, storagePath: r.storage_path, mimeType: r.mime_type, fileSize: r.file_size, thumbUrl: r.thumb_url, eventDate: r.event_date, createdAt: r.created_at }),
+  // One delivered event. `highlights` is attached by attachShowcaseCovers()
+  // for listings; the detail route sends the full `media` array instead.
+  showcase: (r) => r && ({ id: r.id, slug: r.slug, title: r.title, eventType: r.event_type, eventDate: r.event_date, venue: r.venue, town: r.town, summary: r.summary, clientDisplay: r.client_display, guestCount: r.guest_count, status: r.status, isFeatured: r.is_featured, displayOrder: r.display_order, viewCount: r.view_count, services: r.services || [], highlightCount: Number(r.highlight_count ?? 0), mediaCount: Number(r.media_count ?? 0), boothCount: Number(r.booth_count ?? 0), coverUrl: r.cover_url || null, coverAssetId: r.cover_asset_id || null, coverGalleryId: r.cover_gallery_id || null, bookingId: r.booking_id, albumId: r.album_id, highlights: r.highlights || undefined, createdAt: r.created_at }),
+  // Reads from album_view, which does not select token_hash or pin_hash — so
+  // this mapper has no way to leak either even if a field were added carelessly.
+  // Callers pass either an album_view row or a raw albums row (the latter comes
+  // back from insert/update). pin_required exists only on the view, so it is
+  // derived when absent — and pin_hash itself is never copied out either way.
+  album: (r) => r && ({ id: r.id, title: r.title, clientName: r.client_name, eventDate: r.event_date, status: r.status, tokenHint: r.token_hint, message: r.message, expiresAt: r.expires_at, pinRequired: r.pin_required !== undefined ? r.pin_required : r.pin_hash != null, publicConsent: r.public_consent, consentAt: r.consent_at, viewCount: r.view_count ?? 0, lastViewedAt: r.last_viewed_at, itemCount: r.item_count ?? 0, hiddenCount: r.hidden_count ?? 0, services: r.services || [], originalsUntil: r.originals_until ?? null, bookingId: r.booking_id, coverAssetId: r.cover_asset_id, createdAt: r.created_at, createdBy: r.created_by }),
+  // renditions is attached by attachAssets() before mapping, not read from the
+  // gallery table. A row with renditions should be rendered from them; imageUrl
+  // stays as the fallback for every row written before the media pipeline.
+  gallery: (r) => r && ({ id: r.id, title: r.title, category: r.category, type: r.type, mediaRole: r.media_role || (r.type === 'video' ? 'video' : 'photo'), showcaseId: r.showcase_id || null, isHighlight: r.is_highlight === true, imageUrl: r.image_url, serviceSlug: r.service_slug, isFeatured: r.is_featured, displayOrder: r.display_order, altText: r.alt_text, caption: r.caption, width: r.width, height: r.height, isPublished: r.is_published, storagePath: r.storage_path, mimeType: r.mime_type, fileSize: r.file_size, thumbUrl: r.thumb_url, eventDate: r.event_date, assetId: r.asset_id || null, renditions: r.renditions || null, createdAt: r.created_at }),
   galleryCategory: (r) => r && ({ slug: r.slug, label: r.label, emoji: r.emoji, displayOrder: r.display_order }),
   payment: (r) => r && ({ id: r.id, bookingId: r.booking_id, amount: Number(r.amount), paidOn: r.paid_on, method: r.method, reference: r.reference, note: r.note, recordedBy: r.recorded_by, createdAt: r.created_at }),
   // ADMIN view. Includes the real name so the manager can recognise a client.
@@ -236,6 +254,10 @@ function toGalleryDB(b, isUpdate = false) {
   // create, or on an edit that replaces the image.
   if (b.imageUrl)    row.image_url    = b.imageUrl;
   if (b.storagePath) row.storage_path = b.storagePath;
+  // Links the row to the media pipeline. Set only by the new upload path; the
+  // 42 legacy rows pointing at /IMAGES/ and the 2 on Supabase Storage keep
+  // asset_id NULL and keep rendering from image_url exactly as before.
+  if (b.assetId)     row.asset_id     = b.assetId;
   if (b.mimeType)    row.mime_type    = b.mimeType;
   if (Number.isFinite(+b.fileSize)) row.file_size = +b.fileSize;
   if (Number.isFinite(+b.width))    row.width     = +b.width;
@@ -504,6 +526,29 @@ function hashSubmitter(ip) {
   if (!ip) return null;
   const salt = process.env.REVIEW_HASH_SALT || process.env.JWT_SECRET || 'lawie-fallback-salt';
   return crypto.createHmac('sha256', salt).update(String(ip)).digest('hex').slice(0, 32);
+}
+
+// `channel` records which page drove an enquiry. It is deliberately an OPEN
+// set — 'booking-form', 'service:<slug>+<slug>', 'album:<uuid>' — because
+// constraining it would mean a migration every time a new surface starts
+// earning enquiries, and the attribution would silently be lost in the
+// meantime.
+//
+// Open is not the same as unvalidated. The value reaches the dashboard and
+// groups rows in the analytics functions, and since P4 it can be set from a URL
+// parameter, so it is bounded to a prefix:suffix shape of sane length. Anything
+// else becomes the default: an enquiry attributed to nothing is a small loss,
+// an enquiry that puts arbitrary text on the owner's screen is not.
+const CHANNEL_SHAPE = /^[a-z][a-z0-9-]{0,20}(:[A-Za-z0-9_+:.-]{1,120})?$/;
+
+function safeChannel(value) {
+  const channel = String(value || '').trim();
+  if (!channel) return 'booking-form';
+  if (!CHANNEL_SHAPE.test(channel)) {
+    console.warn(`[BOOKINGS] ignoring malformed channel ${JSON.stringify(channel.slice(0, 60))}`);
+    return 'booking-form';
+  }
+  return channel;
 }
 
 // Data minimisation applied at the point of storage, not at the point of
@@ -781,12 +826,16 @@ app.get('/api/services/:slug', publicCache(60), async (req, res) => {
   // backfilled it, so this block silently returned nothing on every request.
   const { data: gallery } = await supabase
     .from('gallery')
-    .select('id,title,category,type,image_url,alt_text,width,height,thumb_url')
+    .select('id,title,category,type,image_url,alt_text,width,height,thumb_url,asset_id')
     .eq('service_slug', data.slug)
     .eq('is_published', true)
     .order('display_order', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(12);
+  // The service page's gallery is the strongest proof this business has that it
+  // can do the job, so it gets renditions too rather than falling back to the
+  // full-size image_url the way it did before the media pipeline.
+  await attachAssets(gallery || []);
   // Packages come from service_packages now. Served under the same `packages`
   // key and the same shape the pages already read, so the public frontend needs
   // no change and the JSONB column can be retired without a flag day.
@@ -871,6 +920,8 @@ app.get('/api/gallery', publicCache(60), async (req, res) => {
 
   const { data, error, count } = await q;
   if (error) return handleError(res, error);
+
+  await attachAssets(data);
 
   res.json({
     success: true,
@@ -1082,7 +1133,14 @@ app.post('/api/bookings', bookingLimiter, async (req, res) => {
     // attribution the form has always sent and it is deliberately preserved
     // as-is; an earlier draft overwrote it with a fixed value and threw away
     // the only record of which page actually earns enquiries.
-    channel:          req.body.channel         || 'booking-form',
+    //
+    // Bounded, though. It is an open vocabulary, not free text: the value now
+    // arrives from a URL parameter (a client album links here as
+    // ?channel=album:<id>), it is displayed in the dashboard, and it groups
+    // rows in the analytics layer. Anything outside the shape falls back to the
+    // default rather than being stored — an unrecognised channel is worth less
+    // than a wrong one is harmful.
+    channel:          safeChannel(req.body.channel),
     // How the enquiry reached us at all, on a fixed vocabulary. A different
     // question from both `channel` above and `source` above it.
     entry_channel:    'web-form',
@@ -1483,6 +1541,7 @@ app.get('/api/admin/gallery', adminAuth, async (req, res) => {
 
   const { data, error, count } = await q;
   if (error) return handleError(res, error);
+  await attachAssets(data);
   res.json({
     success: true,
     data: data.map(map.gallery),
@@ -1666,6 +1725,1114 @@ app.delete('/api/admin/gallery/:id', adminAuth, async (req, res) => {
   // removeGalleryObject no-ops on those rather than trying to delete them.
   await removeGalleryObject(cur.storage_path);
   res.json({ success: true });
+});
+
+// ==================== MEDIA PIPELINE (plan phase P3) ====================
+//
+// The upload path is three calls and no file ever touches this server:
+//
+//   1. POST /api/admin/media/upload-url   we mint a presigned PUT and write an
+//                                         asset row in status 'uploading'
+//   2. the browser PUTs the bytes straight to R2
+//   3. POST /api/admin/media/:id/complete we HEAD the object to confirm it
+//                                         landed, then enqueue a derive job
+//
+// Step 2 bypassing this server is the point. Vercel caps a serverless request
+// body at 4.5 MB; a 6 MB camera original cannot be proxied through here at all,
+// and a 400 MB reel could not be proxied through anything.
+//
+// Step 3 exists because step 2 can fail silently — the tab closes, the phone
+// loses signal — and an asset row pointing at bytes that never arrived would
+// otherwise sit in the queue until a worker discovered it minutes later.
+
+// Every media route resolves keys to URLs, and that needs the endpoint and the
+// credentials. Without them requireConfig() throws from deep inside a response
+// builder, which surfaces as a 500 with no explanation. One guard, phrased as
+// the configuration problem it is.
+function mediaConfigured(req, res, next) {
+  if (media.isConfigured()) return next();
+  res.status(503).json({
+    error: 'Cloud storage is not configured yet. Set R2_ENDPOINT, R2_ACCESS_KEY_ID and ' +
+           'R2_SECRET_ACCESS_KEY, or keep using the existing gallery upload.',
+  });
+}
+
+// Confirming what actually landed rather than trusting the browser's claim.
+async function confirmMasterUpload(asset) {
+  const stat = await media.head(asset.master_bucket, asset.master_key);
+  if (!stat) return { ok: false, reason: 'The upload did not finish — no object at that key.' };
+  if (stat.bytes === 0) return { ok: false, reason: 'The uploaded file is empty.' };
+  return { ok: true, bytes: stat.bytes };
+}
+
+// Turn the view's renditions jsonb into URLs a browser can load. Keys are
+// resolved to URLs here, at the edge of the system, rather than being stored as
+// URLs — a stored URL bakes in today's CDN hostname, and moving domains would
+// mean rewriting every row.
+function renditionUrls(renditions) {
+  if (!renditions || typeof renditions !== 'object') return null;
+  // Resolving a key to a URL needs the endpoint. Callers reached through
+  // mediaConfigured cannot get here unconfigured, but the public album route
+  // can — and a client's album answering 500 because storage is not set up is
+  // far worse than one that renders without renditions.
+  if (!media.isConfigured()) return null;
+  const out = {};
+  for (const [variant, r] of Object.entries(renditions)) {
+    if (!r?.key) continue;
+    out[variant] = {
+      url: media.publicUrl(r.key),
+      width: r.width, height: r.height, bytes: r.bytes, format: r.format,
+    };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Rendition keys are deterministic, so the URL a gallery row will eventually
+// point at is known before the worker has produced anything. That is what lets
+// the dashboard write the row straight away instead of holding the manager on a
+// spinner until an encode finishes — and why the archival variant is guaranteed
+// to be produced for every asset, however small.
+function expectedUrls(assetId, kind) {
+  const video = kind === 'video';
+  return {
+    primary: media.publicUrl(media.renditionKey(assetId, video ? 'preview' : 'web', video ? 'mp4' : 'webp')),
+    poster:  video ? media.publicUrl(media.renditionKey(assetId, 'poster', 'webp')) : null,
+  };
+}
+
+// Attach renditions to any rows carrying an asset_id.
+//
+// Two queries rather than an embedded select: media_asset_view is a view, and
+// PostgREST cannot traverse a foreign key into one. At a page size of 24 the
+// second query is a single indexed IN lookup, which is cheaper than the N+1 an
+// embedded resource would produce anyway.
+async function attachAssets(rows) {
+  const ids = [...new Set(rows.map(r => r.asset_id).filter(Boolean))];
+  if (!ids.length || !media.isConfigured()) return rows;
+
+  const { data, error } = await supabase
+    .from('media_asset_view')
+    .select('id, kind, status, width, height, duration_ms, renditions')
+    .in('id', ids);
+
+  if (error) {
+    // A gallery that renders without renditions is degraded; one that 500s is
+    // broken. Legacy image_url is still on every row, so fall through.
+    console.error('[MEDIA] could not attach renditions (serving legacy URLs):', error.message);
+    return rows;
+  }
+
+  const byId = new Map((data || []).map(a => [a.id, a]));
+  for (const row of rows) {
+    const asset = row.asset_id && byId.get(row.asset_id);
+    if (!asset || asset.status !== 'ready') continue;
+    row.renditions = renditionUrls(asset.renditions);
+    row.width  = row.width  || asset.width;
+    row.height = row.height || asset.height;
+  }
+  return rows;
+}
+
+app.post('/api/admin/media/upload-url', adminAuth, mediaConfigured, async (req, res) => {
+  const { fileName, mimeType, fileSize, checksum } = req.body || {};
+  const kind = media.kindForMime(mimeType);
+
+  if (!kind || !media.MIME_EXT[mimeType]) {
+    return res.status(400).json({
+      error: `Unsupported file type${mimeType ? ` (${mimeType})` : ''}. ` +
+             'Use JPG, PNG, WebP, HEIC, MP4, WebM or MOV.',
+    });
+  }
+  if (Number.isFinite(+fileSize) && +fileSize > media.MAX_UPLOAD_BYTES) {
+    return res.status(400).json({
+      error: `File is ${(+fileSize / 1048576).toFixed(0)} MB — the limit is ` +
+             `${Math.round(media.MAX_UPLOAD_BYTES / 1048576)} MB.`,
+    });
+  }
+
+  // Dedupe on content, not on filename. The browser hashes the file before
+  // uploading, so re-adding a photo after a failed save — or the same shot
+  // arriving from two photographers — costs nothing and produces one asset.
+  if (checksum && /^[a-f0-9]{64}$/i.test(checksum)) {
+    const { data: existing } = await supabase
+      .from('media_assets').select('id, status').eq('checksum_sha256', checksum.toLowerCase())
+      .maybeSingle();
+    if (existing) {
+      const { data: kindRow } = await supabase
+        .from('media_assets').select('kind').eq('id', existing.id).maybeSingle();
+      return res.json({
+        success: true,
+        data: {
+          assetId: existing.id, status: existing.status, duplicate: true,
+          urls: expectedUrls(existing.id, kindRow?.kind || kind),
+        },
+      });
+    }
+  }
+
+  const cfg     = media.config();
+  const assetId = media.newAssetId();
+  const key     = media.masterKey(assetId, mimeType);
+
+  const { error } = await supabase.from('media_assets').insert({
+    id:                assetId,
+    kind,
+    status:            'uploading',
+    master_bucket:     cfg.masters,
+    master_key:        key,
+    master_mime:       mimeType,
+    master_bytes:      Number.isFinite(+fileSize) ? +fileSize : null,
+    checksum_sha256:   checksum && /^[a-f0-9]{64}$/i.test(checksum) ? checksum.toLowerCase() : null,
+    original_name:     String(fileName || '').slice(0, 200) || null,
+    uploaded_by:       req.admin?.username || req.admin?.role || null,
+    master_expires_at: media.masterExpiry()?.toISOString() || null,
+  });
+  if (error) return handleError(res, error);
+
+  res.json({
+    success: true,
+    data: {
+      assetId,
+      key,
+      uploadUrl:   media.uploadUrl(cfg.masters, key),
+      contentType: mimeType,
+      duplicate:   false,
+      urls:        expectedUrls(assetId, kind),
+    },
+  });
+});
+
+app.post('/api/admin/media/:id/complete', adminAuth, mediaConfigured, async (req, res) => {
+  const { data: asset, error } = await supabase
+    .from('media_assets').select('*').eq('id', req.params.id).maybeSingle();
+  if (error) return handleError(res, error);
+  if (!asset) return res.status(404).json({ error: 'Unknown asset.' });
+
+  // Idempotent: a retried call on an asset already in the queue is a success,
+  // not a duplicate job. The unique partial index would refuse the second job
+  // anyway; answering cleanly saves the client from having to know that.
+  if (asset.status !== 'uploading') {
+    return res.json({ success: true, data: { assetId: asset.id, status: asset.status } });
+  }
+
+  let confirmed;
+  try {
+    confirmed = await confirmMasterUpload(asset);
+  } catch (e) {
+    return handleError(res, e, 502);
+  }
+  if (!confirmed.ok) return res.status(409).json({ error: confirmed.reason });
+
+  const { error: upErr } = await supabase.from('media_assets')
+    .update({ status: 'queued', master_bytes: confirmed.bytes })
+    .eq('id', asset.id);
+  if (upErr) return handleError(res, upErr);
+
+  const { error: jobErr } = await supabase.from('media_jobs')
+    .insert({ asset_id: asset.id, job_type: 'derive' });
+  // 23505 is the live-job unique index doing its job: something already
+  // enqueued this asset. That is the desired end state, so it is not an error.
+  if (jobErr && jobErr.code !== '23505') return handleError(res, jobErr);
+
+  res.json({
+    success: true,
+    data: {
+      assetId: asset.id, status: 'queued', bytes: confirmed.bytes,
+      urls: expectedUrls(asset.id, asset.kind),
+    },
+  });
+});
+
+// Polled by the dashboard while the worker runs. Returns the renditions as soon
+// as they exist so the upload UI can swap its placeholder for the real thumb.
+app.get('/api/admin/media/:id', adminAuth, mediaConfigured, async (req, res) => {
+  const { data, error } = await supabase
+    .from('media_asset_view').select('*').eq('id', req.params.id).maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Unknown asset.' });
+
+  res.json({
+    success: true,
+    data: {
+      assetId: data.id,
+      kind: data.kind,
+      status: data.status,
+      width: data.width,
+      height: data.height,
+      durationMs: data.duration_ms,
+      masterBytes: data.master_bytes,
+      masterPurged: data.master_purged,
+      renditionBytes: data.rendition_bytes,
+      renditions: renditionUrls(data.renditions),
+      urls: expectedUrls(data.id, data.kind),
+      previewVariant: VARIANT_FOR[data.kind === 'video' ? 'video' : 'grid'],
+    },
+  });
+});
+
+// The pool an album is built from: processed assets, newest first. Distinct
+// from /api/admin/gallery, which lists what is on the public website — most of
+// what an event produces is handed to the client and never published.
+app.get('/api/admin/media', adminAuth, mediaConfigured, async (req, res) => {
+  const { limit, offset } = pageParams(req.query, 60);
+
+  let q = supabase.from('media_asset_view').select('*', { count: 'exact' });
+  if (req.query.status) q = q.eq('status', req.query.status);
+  else                  q = q.eq('status', 'ready');
+  if (req.query.kind)   q = q.eq('kind', req.query.kind);
+
+  const { data, error, count } = await q
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (error) return handleError(res, error);
+
+  res.json({
+    success: true,
+    data: (data || []).map(a => ({
+      assetId: a.id, kind: a.kind, status: a.status,
+      width: a.width, height: a.height, capturedAt: a.captured_at,
+      originalName: a.original_name, createdAt: a.created_at,
+      renditions: renditionUrls(a.renditions),
+    })),
+    meta: { total: count ?? 0, limit, offset, hasMore: offset + (data?.length || 0) < (count ?? 0) },
+  });
+});
+
+// What the archive costs and where it is heading. This is the screen that
+// replaces "the Google Drive is full again".
+app.get('/api/admin/media/storage/summary', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.rpc('media_storage_summary');
+  if (error) return handleError(res, error);
+  res.json({
+    success: true,
+    data: {
+      ...data,
+      configured: media.isConfigured(),
+      retentionMonths: media.MASTER_RETENTION_MONTHS,
+    },
+  });
+});
+
+// Manual retention sweep. Enqueues purge jobs; it does not delete anything —
+// the worker does that, under the media_master_guard trigger. Admin-only,
+// because it is the one control in the system that leads to data being removed.
+app.post('/api/admin/media/sweep', adminAuth, adminOnly, async (req, res) => {
+  const { data, error } = await supabase.rpc('enqueue_expired_masters', { p_limit: 200 });
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: { enqueued: data ?? 0 } });
+});
+
+// ==================== CLIENT ALBUMS (plan phase P4) ====================
+//
+// A client gets one album, once, reached by capability URL: /a/<token>. Holding
+// the link is the authorisation — no accounts, because a login wall would lose
+// most clients at the first form field and hand this business a password
+// database to protect for nothing.
+//
+// Three things make it better than the Drive link it replaces: the token is
+// stored hashed, it can be revoked, and it can expire.
+
+const ALBUM_TOKEN_BYTES = 12;                 // 96 bits, base64url -> 16 chars
+const ALBUM_SESSION_HOURS = 12;
+
+// A SEPARATE signing secret, derived from JWT_SECRET.
+//
+// This is not decoration. adminAuth() verifies a token's signature and then
+// trusts its claims; it does not check the audience. An album session signed
+// with the SAME secret would therefore be accepted by every adminAuth route
+// that does not also call adminOnly — a client's photo-album cookie would read
+// the bookings table. Signing album sessions with a different key makes that
+// impossible rather than merely unlikely.
+const ALBUM_SECRET = crypto.createHmac('sha256', JWT_SECRET).update('lawie-album-scope-v1').digest('hex');
+
+const hashAlbumToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+
+function newAlbumToken() {
+  return crypto.randomBytes(ALBUM_TOKEN_BYTES).toString('base64url');
+}
+
+// scrypt rather than a fast hash: a 4-digit PIN has 10,000 possibilities, so
+// the only thing standing between a leaked table and every PIN is how long each
+// guess takes.
+function hashPin(pin) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(String(pin), salt, 32);
+  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
+}
+
+function verifyPin(pin, stored) {
+  try {
+    const [scheme, saltHex, hashHex] = String(stored).split('$');
+    if (scheme !== 'scrypt') return false;
+    const expected = Buffer.from(hashHex, 'hex');
+    const actual = crypto.scryptSync(String(pin), Buffer.from(saltHex, 'hex'), expected.length);
+    // Constant-time: a length-dependent early return would leak the hash.
+    return crypto.timingSafeEqual(expected, actual);
+  } catch { return false; }
+}
+
+// The client's guests are not the subject of this record. What is worth knowing
+// is how many different people opened the album, which a hash answers exactly
+// as well as an address does.
+function hashIp(req) {
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+  if (!ip) return null;
+  return crypto.createHmac('sha256', ALBUM_SECRET).update(ip).digest('hex').slice(0, 32);
+}
+
+const albumLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 120,
+  message: { error: 'Too many requests. Please wait a moment.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+// A PIN is four digits. Without a limiter here the whole keyspace is reachable
+// in under a minute.
+const albumPinLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { error: 'Too many incorrect PINs. Please wait 15 minutes, or ask us to resend the link.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+// Resolve a capability token to a live album. Returns null for unknown, revoked
+// and expired alike — an album that once existed must not be distinguishable
+// from one that never did.
+async function albumByToken(token) {
+  if (!token || typeof token !== 'string' || token.length < 8 || token.length > 64) return null;
+
+  const { data } = await supabase
+    .from('albums').select('*').eq('token_hash', hashAlbumToken(token)).maybeSingle();
+
+  if (!data) return null;
+  if (data.status !== 'live') return null;
+  if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
+  return data;
+}
+
+function albumSession(albumId) {
+  return jwt.sign({ albumId, scope: 'album' }, ALBUM_SECRET, { expiresIn: `${ALBUM_SESSION_HOURS}h` });
+}
+
+function hasAlbumSession(req, albumId) {
+  const key = req.headers['x-album-key'];
+  if (!key) return false;
+  try {
+    const decoded = jwt.verify(String(key), ALBUM_SECRET);
+    return decoded.scope === 'album' && decoded.albumId === albumId;
+  } catch { return false; }
+}
+
+// The items, shaped for the page. Hidden items and assets the worker has not
+// finished are both omitted — a broken tile in a client's album is worse than a
+// shorter album.
+async function albumItems(albumId) {
+  const { data: items, error } = await supabase
+    .from('album_items')
+    .select('id, asset_id, caption, display_order')
+    .eq('album_id', albumId).eq('is_hidden', false)
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !items?.length) return [];
+
+  const { data: assets } = await supabase
+    .from('media_asset_view')
+    .select('id, kind, status, width, height, duration_ms, captured_at, master_purged, renditions')
+    .in('id', items.map(i => i.asset_id));
+
+  const byId = new Map((assets || []).map(a => [a.id, a]));
+
+  // flatMap rather than reduce-and-push: the accumulator version silently
+  // returned undefined from the branch that appended, so the whole album came
+  // back with no items key at all.
+  return items.flatMap((item) => {
+    const asset = byId.get(item.asset_id);
+    if (!asset || asset.status !== 'ready') return [];
+    return [{
+      id: item.id,
+      assetId: asset.id,
+      kind: asset.kind,
+      caption: item.caption,
+      width: asset.width,
+      height: asset.height,
+      durationMs: asset.duration_ms,
+      capturedAt: asset.captured_at,
+      // Whether the full-resolution original still exists. The album page says
+      // so plainly rather than offering a download that 404s.
+      originalAvailable: !asset.master_purged,
+      renditions: renditionUrls(asset.renditions),
+    }];
+  });
+}
+
+// ── Public: the client's own album ─────────────────────────────────────────
+app.get('/api/albums/:token', albumLimiter, async (req, res) => {
+  const album = await albumByToken(req.params.token);
+  // One message for unknown, revoked and expired. Telling the difference would
+  // confirm that a guessed token was once real.
+  if (!album) return res.status(404).json({ error: 'This album link is not available. Please ask us for a new one.' });
+
+  const { data: view } = await supabase.from('album_view').select('*').eq('id', album.id).maybeSingle();
+
+  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+    return res.json({
+      success: true,
+      data: {
+        locked: true,
+        title: view?.title,
+        clientName: view?.client_name,
+        eventDate: view?.event_date,
+        itemCount: view?.item_count ?? 0,
+      },
+    });
+  }
+
+  // Counted once per page load, not per photograph.
+  await supabase.rpc('record_album_view', {
+    p_album: album.id,
+    p_ip_hash: hashIp(req),
+    p_ua: String(req.headers['user-agent'] || '').slice(0, 300),
+  });
+
+  res.set('Cache-Control', 'private, no-store');
+  res.json({
+    success: true,
+    data: {
+      locked: false,
+      id: album.id,
+      title: view?.title,
+      clientName: view?.client_name,
+      eventDate: view?.event_date,
+      message: view?.message,
+      publicConsent: view?.public_consent,
+      originalsUntil: view?.originals_until,
+      // The loop back to bookings: what was actually set up at this event.
+      services: view?.services || [],
+      items: await albumItems(album.id),
+    },
+  });
+});
+
+app.post('/api/albums/:token/unlock', albumPinLimiter, async (req, res) => {
+  const album = await albumByToken(req.params.token);
+  if (!album) return res.status(404).json({ error: 'This album link is not available.' });
+  if (!album.pin_hash) return res.json({ success: true, data: { key: albumSession(album.id) } });
+
+  if (!verifyPin(req.body?.pin, album.pin_hash)) {
+    return res.status(401).json({ error: 'That PIN does not match. Check the message we sent you.' });
+  }
+  res.json({ success: true, data: { key: albumSession(album.id) } });
+});
+
+// Consent is the CLIENT's to give, so it is granted here and nowhere else. The
+// dashboard can read it; it cannot set it.
+app.post('/api/albums/:token/consent', albumLimiter, async (req, res) => {
+  const album = await albumByToken(req.params.token);
+  if (!album) return res.status(404).json({ error: 'This album link is not available.' });
+  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+    return res.status(401).json({ error: 'Please enter the PIN first.' });
+  }
+
+  const granted = req.body?.consent === true;
+  const { error } = await supabase.from('albums')
+    .update({ public_consent: granted, consent_at: granted ? new Date().toISOString() : null })
+    .eq('id', album.id);
+  if (error) return handleError(res, error);
+
+  res.json({ success: true, data: { publicConsent: granted } });
+});
+
+// A download link, minted on demand and short-lived. The bytes come straight
+// from storage — proxying them through the API would mean paying for the same
+// transfer twice and would cap a video at Vercel's response limit.
+app.get('/api/albums/:token/download/:assetId', albumLimiter, async (req, res) => {
+  if (!media.isConfigured()) return res.status(503).json({ error: 'Downloads are not available.' });
+
+  const album = await albumByToken(req.params.token);
+  if (!album) return res.status(404).json({ error: 'This album link is not available.' });
+  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+    return res.status(401).json({ error: 'Please enter the PIN first.' });
+  }
+
+  // The asset must belong to THIS album. Without this check the token would
+  // grant access to every photograph in the archive by id.
+  const { data: item } = await supabase.from('album_items')
+    .select('asset_id').eq('album_id', album.id).eq('asset_id', req.params.assetId)
+    .eq('is_hidden', false).maybeSingle();
+  if (!item) return res.status(404).json({ error: 'That photo is not in this album.' });
+
+  const { data: asset } = await supabase.from('media_assets')
+    .select('id, kind, master_bucket, master_key, master_mime, master_deleted_at, original_name')
+    .eq('id', req.params.assetId).maybeSingle();
+  if (!asset) return res.status(404).json({ error: 'That photo is not in this album.' });
+
+  const wantOriginal = req.query.size === 'original';
+
+  if (wantOriginal) {
+    // The honest answer when the retention window has closed, rather than a
+    // link that 404s at storage.
+    if (asset.master_deleted_at) {
+      return res.status(410).json({
+        error: 'The full-resolution original is no longer stored. The large web copy is still available.',
+      });
+    }
+    const name = asset.original_name || `${asset.id}.${media.MIME_EXT[asset.master_mime] || 'jpg'}`;
+    return res.json({ success: true, data: { url: media.attachmentUrl(asset.master_bucket, asset.master_key, name, 600) } });
+  }
+
+  const cfg = media.config();
+  const variant = asset.kind === 'video' ? 'preview' : 'web';
+  const format  = asset.kind === 'video' ? 'mp4' : 'webp';
+  const key = media.renditionKey(asset.id, variant, format);
+  res.json({
+    success: true,
+    data: { url: media.attachmentUrl(cfg.derivatives, key, `${album.title || 'photo'}-${asset.id.slice(0, 8)}.${format}`, 600) },
+  });
+});
+
+// ── Admin ───────────────────────────────────────────────────────────────────
+app.get('/api/admin/albums', adminAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('album_view').select('*').order('created_at', { ascending: false }).limit(200);
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: (data || []).map(map.album) });
+});
+
+app.get('/api/admin/albums/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('album_view').select('*').eq('id', req.params.id).maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Album not found' });
+
+  // The dashboard needs hidden items too — that is how the owner puts one back.
+  const { data: items } = await supabase.from('album_items')
+    .select('id, asset_id, caption, display_order, is_hidden')
+    .eq('album_id', req.params.id)
+    .order('display_order').order('created_at');
+
+  const ids = (items || []).map(i => i.asset_id);
+  const { data: assets } = ids.length
+    ? await supabase.from('media_asset_view').select('id, kind, status, width, height, renditions').in('id', ids)
+    : { data: [] };
+  const byId = new Map((assets || []).map(a => [a.id, a]));
+
+  res.json({
+    success: true,
+    data: {
+      ...map.album(data),
+      items: (items || []).map(i => {
+        const a = byId.get(i.asset_id);
+        return {
+          id: i.id, assetId: i.asset_id, caption: i.caption,
+          displayOrder: i.display_order, isHidden: i.is_hidden,
+          status: a?.status || 'missing', kind: a?.kind,
+          renditions: a ? renditionUrls(a.renditions) : null,
+        };
+      }),
+    },
+  });
+});
+
+app.post('/api/admin/albums', adminAuth, async (req, res) => {
+  const title = String(req.body?.title || '').trim();
+  if (title.length < 2) return res.status(400).json({ fields: { title: 'Give the album a title.' } });
+
+  const pin = String(req.body?.pin || '').trim();
+  if (pin && !/^\d{4,8}$/.test(pin)) {
+    return res.status(400).json({ fields: { pin: 'A PIN must be 4 to 8 digits, or leave it blank.' } });
+  }
+
+  const token = newAlbumToken();
+  const { data, error } = await supabase.from('albums').insert({
+    token_hash:  hashAlbumToken(token),
+    token_hint:  token.slice(0, 4),
+    title,
+    client_name: req.body?.clientName?.trim() || null,
+    event_date:  req.body?.eventDate || null,
+    booking_id:  req.body?.bookingId || null,
+    message:     req.body?.message?.trim() || null,
+    expires_at:  req.body?.expiresAt || null,
+    pin_hash:    pin ? hashPin(pin) : null,
+    created_by:  req.admin?.username || req.admin?.role || null,
+  }).select().single();
+  if (error) return handleError(res, error);
+
+  res.status(201).json({
+    success: true,
+    data: {
+      ...map.album(data),
+      // Shown once. It is not recoverable from the row, by design — the same
+      // reasoning that applies to a password.
+      token,
+      url: `${(process.env.FRONTEND_URL || 'https://lawiesounds.com').replace(/\/+$/, '')}/a/${token}`,
+    },
+  });
+});
+
+app.put('/api/admin/albums/:id', adminAuth, async (req, res) => {
+  const patch = {};
+  if (req.body.title !== undefined)      patch.title = String(req.body.title).trim();
+  if (req.body.clientName !== undefined) patch.client_name = req.body.clientName?.trim() || null;
+  if (req.body.eventDate !== undefined)  patch.event_date = req.body.eventDate || null;
+  if (req.body.message !== undefined)    patch.message = req.body.message?.trim() || null;
+  if (req.body.expiresAt !== undefined)  patch.expires_at = req.body.expiresAt || null;
+  if (req.body.bookingId !== undefined)  patch.booking_id = req.body.bookingId || null;
+  if (req.body.coverAssetId !== undefined) patch.cover_asset_id = req.body.coverAssetId || null;
+
+  if (req.body.status !== undefined) {
+    if (!['draft', 'live', 'revoked'].includes(req.body.status)) {
+      return res.status(400).json({ error: 'Status must be draft, live or revoked.' });
+    }
+    patch.status = req.body.status;
+  }
+
+  // Deliberately absent: public_consent. It belongs to the client, and the only
+  // route that can set it is the one they use.
+  if (req.body.pin !== undefined) {
+    const pin = String(req.body.pin || '').trim();
+    if (pin && !/^\d{4,8}$/.test(pin)) {
+      return res.status(400).json({ fields: { pin: 'A PIN must be 4 to 8 digits, or leave it blank to remove it.' } });
+    }
+    patch.pin_hash = pin ? hashPin(pin) : null;
+  }
+
+  // A body naming no editable field is a no-op, not a failure. It happens for a
+  // real reason: publicConsent is deliberately not editable here, so a client
+  // sending only that would otherwise get "Album not found" — which is both
+  // wrong and alarming.
+  if (!Object.keys(patch).length) {
+    const { data: unchanged } = await supabase.from('album_view').select('*').eq('id', req.params.id).maybeSingle();
+    if (!unchanged) return res.status(404).json({ error: 'Album not found' });
+    return res.json({ success: true, data: map.album(unchanged) });
+  }
+
+  const { data, error } = await supabase.from('albums').update(patch).eq('id', req.params.id).select().maybeSingle();
+  // The publish guard speaks in plain language; pass it through rather than
+  // flattening it to "Something went wrong".
+  if (error) return handleError(res, error, /refusing to publish/.test(error.message || '') ? 409 : 500);
+  if (!data) return res.status(404).json({ error: 'Album not found' });
+  res.json({ success: true, data: map.album(data) });
+});
+
+// Rotate rather than delete: the link went to the wrong WhatsApp group, but the
+// album itself is fine. The old URL stops working the moment this returns.
+app.post('/api/admin/albums/:id/rotate', adminAuth, async (req, res) => {
+  const token = newAlbumToken();
+  const { data, error } = await supabase.from('albums')
+    .update({ token_hash: hashAlbumToken(token), token_hint: token.slice(0, 4) })
+    .eq('id', req.params.id).select().maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Album not found' });
+
+  res.json({
+    success: true,
+    data: {
+      token,
+      url: `${(process.env.FRONTEND_URL || 'https://lawiesounds.com').replace(/\/+$/, '')}/a/${token}`,
+    },
+  });
+});
+
+app.post('/api/admin/albums/:id/items', adminAuth, async (req, res) => {
+  const assetIds = Array.isArray(req.body?.assetIds) ? req.body.assetIds.filter(Boolean) : [];
+  if (!assetIds.length) return res.status(400).json({ error: 'Choose at least one photo.' });
+
+  const { data: last } = await supabase.from('album_items')
+    .select('display_order').eq('album_id', req.params.id)
+    .order('display_order', { ascending: false }).limit(1).maybeSingle();
+  let order = (last?.display_order ?? -1) + 1;
+
+  const { data, error } = await supabase.from('album_items')
+    .upsert(
+      assetIds.map(assetId => ({ album_id: req.params.id, asset_id: assetId, display_order: order++ })),
+      // Adding a photo already in the album is a no-op, not a failure — the
+      // owner selecting a batch twice should not have to care.
+      { onConflict: 'album_id,asset_id', ignoreDuplicates: true }
+    ).select();
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: { added: data?.length || 0 } });
+});
+
+app.patch('/api/admin/albums/:id/items/:itemId', adminAuth, async (req, res) => {
+  const patch = {};
+  if (req.body.isHidden !== undefined)     patch.is_hidden = req.body.isHidden === true;
+  if (req.body.caption !== undefined)      patch.caption = req.body.caption?.trim() || null;
+  if (req.body.displayOrder !== undefined) patch.display_order = +req.body.displayOrder || 0;
+
+  const { data, error } = await supabase.from('album_items')
+    .update(patch).eq('id', req.params.itemId).eq('album_id', req.params.id).select().maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Photo not found in this album' });
+  res.json({ success: true, data: { id: data.id, isHidden: data.is_hidden, caption: data.caption } });
+});
+
+app.delete('/api/admin/albums/:id/items/:itemId', adminAuth, async (req, res) => {
+  const { error } = await supabase.from('album_items')
+    .delete().eq('id', req.params.itemId).eq('album_id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/albums/:id', adminAuth, adminOnly, async (req, res) => {
+  const { error } = await supabase.from('albums').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+// Promote chosen album photographs into the PUBLIC gallery.
+//
+// Gated on the client's consent, checked here rather than trusted from the
+// request: this is the one operation that takes a private wedding photograph
+// and puts it on the front page, and the check belongs next to the effect.
+app.post('/api/admin/albums/:id/publish-to-gallery', adminAuth, async (req, res) => {
+  const { data: album } = await supabase.from('album_view').select('*').eq('id', req.params.id).maybeSingle();
+  if (!album) return res.status(404).json({ error: 'Album not found' });
+
+  if (!album.public_consent) {
+    return res.status(403).json({
+      error: 'This client has not agreed to their photos being shown publicly. ' +
+             'Ask them to tick the box on their album page first.',
+    });
+  }
+
+  const assetIds = Array.isArray(req.body?.assetIds) ? req.body.assetIds.filter(Boolean) : [];
+  if (!assetIds.length) return res.status(400).json({ error: 'Choose at least one photo.' });
+
+  const { data: owned } = await supabase.from('album_items')
+    .select('asset_id').eq('album_id', album.id).in('asset_id', assetIds);
+  const allowed = new Set((owned || []).map(r => r.asset_id));
+
+  const { data: assets } = await supabase.from('media_asset_view')
+    .select('id, kind, width, height, status').in('id', [...allowed]);
+
+  // The service the album's booking used, so a promoted photograph lands on the
+  // right service page instead of in an untagged pile.
+  const serviceSlug = req.body?.serviceSlug || album.services?.[0]?.slug || null;
+
+  const rows = (assets || [])
+    .filter(a => a.status === 'ready')
+    .map(a => ({
+      title: album.title,
+      category: req.body?.category || 'General',
+      type: a.kind === 'video' ? 'video' : 'image',
+      image_url: media.publicUrl(media.renditionKey(a.id, a.kind === 'video' ? 'preview' : 'web', a.kind === 'video' ? 'mp4' : 'webp')),
+      thumb_url: a.kind === 'video' ? media.publicUrl(media.renditionKey(a.id, 'poster', 'webp')) : null,
+      asset_id: a.id,
+      service_slug: serviceSlug,
+      event_date: album.event_date,
+      alt_text: album.title,
+      width: a.width, height: a.height,
+      // Into the moderation queue, not straight onto the front page. Consent to
+      // being shown is not the same as the owner having chosen the shot.
+      is_published: false,
+    }));
+
+  if (!rows.length) return res.status(400).json({ error: 'None of those photos have finished processing yet.' });
+
+  const { data, error } = await supabase.from('gallery').insert(rows).select('id');
+  if (error) return handleError(res, error);
+  res.status(201).json({ success: true, data: { added: data?.length || 0, needsPublishing: true } });
+});
+
+// ==================== SHOWCASES — the gallery's event spine ====================
+//
+// The gallery used to be a parts catalogue: 44 photographs filed under Media,
+// Audio, Visual, Equipment. It could show a speaker; it could not show a
+// wedding. A showcase is one delivered event, and it is what the booking, the
+// client's album, the public highlights and the services supplied all hang off.
+//
+// ONE UPLOAD, TWO CURATIONS. The album carries everything for the client. The
+// showcase carries the starred subset for the public. `gallery.is_highlight` is
+// the only difference, which is what lets the owner do both in one pass instead
+// of curating twice and therefore never.
+
+function slugify(text, fallback = 'event') {
+  const slug = String(text || '').toLowerCase().trim()
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')   // strip accents
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 70).replace(/-+$/, '');
+  return slug || fallback;
+}
+
+// Slugs are permanent public URLs, so a collision has to be resolved rather
+// than rejected — the owner naming two events "Corporate Gala" is normal.
+async function uniqueShowcaseSlug(base) {
+  const root = slugify(base);
+  for (let n = 0; n < 40; n++) {
+    const candidate = n === 0 ? root : `${root}-${n + 1}`;
+    const { data } = await supabase.from('showcases').select('id').eq('slug', candidate).maybeSingle();
+    if (!data) return candidate;
+  }
+  return `${root}-${Date.now().toString(36)}`;
+}
+
+// Attach the highlight media to a set of showcases in one query rather than one
+// per card — the listing page shows a cover each, and N+1 there is the whole
+// page's latency.
+async function attachShowcaseCovers(rows) {
+  const ids = rows.map(r => r.id);
+  if (!ids.length) return rows;
+
+  const { data: media } = await supabase.from('gallery')
+    .select('id, showcase_id, image_url, thumb_url, alt_text, width, height, asset_id, media_role, type, display_order')
+    .in('showcase_id', ids).eq('is_highlight', true).eq('is_published', true)
+    .order('display_order', { ascending: true });
+
+  await attachAssets(media || []);
+
+  const byShowcase = new Map();
+  for (const m of media || []) {
+    if (!byShowcase.has(m.showcase_id)) byShowcase.set(m.showcase_id, []);
+    byShowcase.get(m.showcase_id).push(map.gallery(m));
+  }
+  for (const row of rows) row.highlights = byShowcase.get(row.id) || [];
+  return rows;
+}
+
+// ── Public ──────────────────────────────────────────────────────────────────
+
+// Every number the public site displays, from one place. The homepage renders
+// what this returns and computes nothing itself — the same rule the statistics
+// layer enforces for rates, applied to counters.
+app.get('/api/stats', publicCache(300), async (req, res) => {
+  const { data, error } = await supabase.rpc('site_stats');
+  if (error) return handleError(res, error);
+  res.json({ success: true, data });
+});
+
+app.get('/api/showcases', publicCache(120), async (req, res) => {
+  const { limit, offset } = pageParams(req.query, 12);
+
+  let q = supabase.from('showcase_view').select('*', { count: 'exact' }).eq('status', 'published');
+  if (req.query.type) q = q.eq('event_type', req.query.type);
+
+  // Filtering by service goes through the join table, never by name matching.
+  if (req.query.service) {
+    const { data: svc } = await supabase.from('services').select('id').eq('slug', req.query.service).maybeSingle();
+    if (!svc) return res.json({ success: true, data: [], meta: { total: 0, limit, offset, hasMore: false } });
+    const { data: ids } = await supabase.from('showcase_services').select('showcase_id').eq('service_id', svc.id);
+    const list = (ids || []).map(r => r.showcase_id);
+    if (!list.length) return res.json({ success: true, data: [], meta: { total: 0, limit, offset, hasMore: false } });
+    q = q.in('id', list);
+  }
+
+  const { data, error, count } = await q
+    .order('is_featured', { ascending: false })
+    .order('display_order', { ascending: true })
+    .order('event_date', { ascending: false, nullsFirst: false })
+    .range(offset, offset + limit - 1);
+  if (error) return handleError(res, error);
+
+  await attachShowcaseCovers(data || []);
+  res.json({
+    success: true,
+    data: (data || []).map(map.showcase),
+    meta: { total: count ?? 0, limit, offset, hasMore: offset + (data?.length || 0) < (count ?? 0) },
+  });
+});
+
+app.get('/api/showcases/:slug', publicCache(120), async (req, res) => {
+  const { data, error } = await supabase.from('showcase_view')
+    .select('*').eq('slug', req.params.slug).eq('status', 'published').maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Event not found' });
+
+  const { data: media } = await supabase.from('gallery')
+    .select('*').eq('showcase_id', data.id).eq('is_highlight', true).eq('is_published', true)
+    .order('display_order', { ascending: true }).order('created_at', { ascending: true });
+
+  await attachAssets(media || []);
+
+  // Fire and forget: a view counter must never delay or fail the page.
+  supabase.rpc('bump_showcase_view', { p_slug: req.params.slug })
+    .then(({ error: e }) => { if (e) console.error('[SHOWCASE] view count failed (non-fatal):', e.message); });
+
+  res.json({
+    success: true,
+    data: {
+      ...map.showcase(data),
+      // Split by role so the page can give a 360 booth clip its own player
+      // rather than treating it as a landscape video that happens to be tall.
+      media: (media || []).map(map.gallery),
+      booth: (media || []).filter(m => m.media_role === 'booth-360').map(map.gallery),
+    },
+  });
+});
+
+// ── Admin ───────────────────────────────────────────────────────────────────
+app.get('/api/admin/showcases', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('showcase_view')
+    .select('*').order('event_date', { ascending: false, nullsFirst: false }).limit(200);
+  if (error) return handleError(res, error);
+  res.json({ success: true, data: (data || []).map(map.showcase) });
+});
+
+app.get('/api/admin/showcases/:id', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('showcase_view').select('*').eq('id', req.params.id).maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Showcase not found' });
+
+  // Everything filed under this event, starred or not — the curation screen
+  // needs to show what is available as well as what is chosen.
+  const { data: media } = await supabase.from('gallery')
+    .select('*').eq('showcase_id', req.params.id)
+    .order('is_highlight', { ascending: false }).order('display_order');
+  await attachAssets(media || []);
+
+  res.json({ success: true, data: { ...map.showcase(data), media: (media || []).map(map.gallery) } });
+});
+
+app.post('/api/admin/showcases', adminAuth, async (req, res) => {
+  const title = String(req.body?.title || '').trim();
+  if (title.length < 2) return res.status(400).json({ fields: { title: 'Give this event a title.' } });
+
+  const { data, error } = await supabase.from('showcases').insert({
+    slug:        await uniqueShowcaseSlug(req.body?.slug || title),
+    title,
+    event_type:  req.body?.eventType || null,
+    event_date:  req.body?.eventDate || null,
+    venue:       req.body?.venue?.trim() || null,
+    town:        req.body?.town?.trim() || null,
+    summary:     req.body?.summary?.trim() || null,
+    client_display: req.body?.clientDisplay?.trim() || null,
+    guest_count: Number.isFinite(+req.body?.guestCount) ? +req.body.guestCount : null,
+    booking_id:  req.body?.bookingId || null,
+    album_id:    req.body?.albumId || null,
+    created_by:  req.admin?.username || req.admin?.role || null,
+  }).select().single();
+  if (error) return handleError(res, error);
+
+  // The booking already knows what was supplied. Copying it beats re-typing it,
+  // because re-typed data can disagree with the invoice.
+  if (data.booking_id) await supabase.rpc('sync_showcase_services', { p_showcase: data.id });
+
+  // Answer from the read model, not from the row just inserted. The raw table
+  // has no services, no counts and no resolved cover — returning it told the
+  // caller a freshly created showcase had zero services even when four had
+  // just been inherited from its booking.
+  const { data: view } = await supabase.from('showcase_view').select('*').eq('id', data.id).maybeSingle();
+  res.status(201).json({ success: true, data: map.showcase(view || data) });
+});
+
+app.put('/api/admin/showcases/:id', adminAuth, async (req, res) => {
+  const patch = {};
+  const fields = {
+    title: 'title', eventType: 'event_type', eventDate: 'event_date', venue: 'venue',
+    town: 'town', summary: 'summary', clientDisplay: 'client_display',
+    bookingId: 'booking_id', albumId: 'album_id', coverGalleryId: 'cover_gallery_id',
+  };
+  for (const [api, col] of Object.entries(fields)) {
+    if (req.body[api] !== undefined) {
+      patch[col] = typeof req.body[api] === 'string' ? (req.body[api].trim() || null) : (req.body[api] || null);
+    }
+  }
+  if (req.body.guestCount !== undefined) patch.guest_count = Number.isFinite(+req.body.guestCount) ? +req.body.guestCount : null;
+  if (req.body.isFeatured !== undefined) patch.is_featured = req.body.isFeatured === true;
+  if (req.body.displayOrder !== undefined) patch.display_order = +req.body.displayOrder || 0;
+  if (req.body.status !== undefined) {
+    if (!['draft', 'published'].includes(req.body.status)) {
+      return res.status(400).json({ error: 'Status must be draft or published.' });
+    }
+    patch.status = req.body.status;
+  }
+
+  if (!Object.keys(patch).length) {
+    const { data: unchanged } = await supabase.from('showcase_view').select('*').eq('id', req.params.id).maybeSingle();
+    if (!unchanged) return res.status(404).json({ error: 'Showcase not found' });
+    return res.json({ success: true, data: map.showcase(unchanged) });
+  }
+
+  const { data, error } = await supabase.from('showcases').update(patch).eq('id', req.params.id).select().maybeSingle();
+  // The publish guard speaks plainly; pass it through instead of flattening it.
+  if (error) return handleError(res, error, /refusing to publish/.test(error.message || '') ? 409 : 500);
+  if (!data) return res.status(404).json({ error: 'Showcase not found' });
+
+  if (req.body.bookingId !== undefined && data.booking_id) {
+    await supabase.rpc('sync_showcase_services', { p_showcase: data.id });
+  }
+  // Same reason as the create route: the derived fields live in the view.
+  const { data: view } = await supabase.from('showcase_view').select('*').eq('id', data.id).maybeSingle();
+  res.json({ success: true, data: map.showcase(view || data) });
+});
+
+app.delete('/api/admin/showcases/:id', adminAuth, adminOnly, async (req, res) => {
+  // Photographs survive. gallery.showcase_id is ON DELETE SET NULL, so deleting
+  // the event un-files its media rather than destroying it.
+  const { error } = await supabase.from('showcases').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error);
+  res.json({ success: true });
+});
+
+// THE CURATION CALL. One request files media under an event and stars the
+// public subset, because the owner is doing one pass over one set of
+// photographs and should not have to visit two screens to express it.
+app.post('/api/admin/showcases/:id/curate', adminAuth, async (req, res) => {
+  const assign    = Array.isArray(req.body?.assign)    ? req.body.assign.filter(Boolean)    : [];
+  const highlight = Array.isArray(req.body?.highlight) ? req.body.highlight.filter(Boolean) : [];
+  const unstar    = Array.isArray(req.body?.unstar)    ? req.body.unstar.filter(Boolean)    : [];
+
+  const { data: showcase } = await supabase.from('showcases').select('id').eq('id', req.params.id).maybeSingle();
+  if (!showcase) return res.status(404).json({ error: 'Showcase not found' });
+
+  if (assign.length) {
+    const { error } = await supabase.from('gallery').update({ showcase_id: showcase.id }).in('id', assign);
+    if (error) return handleError(res, error);
+  }
+  // Starring is scoped to this showcase's own media, so a stray id in the body
+  // cannot promote somebody else's photograph onto this event's page.
+  if (highlight.length) {
+    const { error } = await supabase.from('gallery')
+      .update({ is_highlight: true }).in('id', highlight).eq('showcase_id', showcase.id);
+    if (error) return handleError(res, error);
+  }
+  if (unstar.length) {
+    const { error } = await supabase.from('gallery')
+      .update({ is_highlight: false }).in('id', unstar).eq('showcase_id', showcase.id);
+    if (error) return handleError(res, error);
+  }
+
+  const { data: fresh } = await supabase.from('showcase_view').select('*').eq('id', showcase.id).maybeSingle();
+  res.json({ success: true, data: map.showcase(fresh) });
+});
+
+// Services supplied. Replaces the whole set — a checkbox list that only ever
+// adds would make removing a mistake impossible from the UI.
+app.put('/api/admin/showcases/:id/services', adminAuth, async (req, res) => {
+  const slugs = Array.isArray(req.body?.serviceSlugs) ? req.body.serviceSlugs.filter(Boolean) : [];
+  const { data: services } = await supabase.from('services').select('id, slug').in('slug', slugs);
+
+  await supabase.from('showcase_services').delete().eq('showcase_id', req.params.id);
+  if (services?.length) {
+    const { error } = await supabase.from('showcase_services')
+      .insert(services.map(s => ({ showcase_id: req.params.id, service_id: s.id })));
+    if (error) return handleError(res, error);
+  }
+  res.json({ success: true, data: { services: services?.length || 0 } });
+});
+
+// The owner-supplied baselines behind the public counters. Kept admin-only and
+// annotated, because the alternative is a number nobody can explain.
+app.get('/api/admin/site-settings', adminAuth, async (req, res) => {
+  const { data, error } = await supabase.from('site_settings').select('*').order('key');
+  if (error) return handleError(res, error);
+  res.json({
+    success: true,
+    data: (data || []).map(r => ({
+      key: r.key, value: r.value_int, label: r.label, note: r.note,
+      updatedAt: r.updated_at, updatedBy: r.updated_by,
+    })),
+  });
+});
+
+app.put('/api/admin/site-settings/:key', adminAuth, adminOnly, async (req, res) => {
+  const value = Number(req.body?.value);
+  if (!Number.isFinite(value) || value < 0) {
+    return res.status(400).json({ error: 'That must be a whole number of zero or more.' });
+  }
+  const { data, error } = await supabase.from('site_settings')
+    .update({ value_int: Math.round(value), updated_at: new Date().toISOString(), updated_by: req.admin?.username || null })
+    .eq('key', req.params.key).select().maybeSingle();
+  if (error) return handleError(res, error);
+  if (!data) return res.status(404).json({ error: 'Unknown setting' });
+  res.json({ success: true, data: { key: data.key, value: data.value_int } });
 });
 
 // ==================== ADMIN — REVIEWS ====================

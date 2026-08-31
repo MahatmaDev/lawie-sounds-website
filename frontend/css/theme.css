@@ -1,0 +1,149 @@
+/* ============================================================================
+   LAWIE SOUNDS — THE THEME
+   The single source of colour for every page: the public site AND the admin
+   dashboard. Nothing else may define a brand colour.
+
+   WHY THIS FILE EXISTS
+   --------------------
+   Before it, the public site was gold on near-black and the dashboard was
+   violet on grey, using eight hues: 311 purple utilities, 182 yellow, 172
+   green, 151 red, 65 blue, 33 orange, 8 indigo, 5 pink. The tool the owner
+   worked in every day looked like a different company from the site his
+   clients saw — and every new screen picked whichever hue felt right that
+   afternoon, so the drift compounded.
+
+   THREE BRAND COLOURS. ONE SAFETY COLOUR. THAT IS ALL.
+
+     --ink     the ground everything sits on, and its neutral ramp
+     --gold    the brand, and every primary action
+     --cool    information, links, positive states
+     --danger  RESERVED. Irreversible actions and failed states, nothing else.
+
+   Danger is not a fourth brand colour and must not be used decoratively. It
+   earns its place by being rare: if red appears on a screen, something on that
+   screen destroys data or has failed. Making Delete look like Save on a
+   dashboard that deletes client bookings would be a safety regression, which
+   is the one reason the palette is 3 + 1 rather than 3.
+
+   COLOUR IS NEVER THE ONLY CHANNEL. Status badges carry an icon and a word as
+   well as a hue — roughly one man in twelve cannot separate the red and green
+   the old badges relied on, and a colour-only signal fails for all of them.
+   ============================================================================ */
+
+:root {
+  /* ── The three ────────────────────────────────────────────────────────── */
+  --ink:         #08080f;
+  --gold:        #facc15;
+  --cool:        #38bdf8;
+
+  /* ── The fourth, reserved ─────────────────────────────────────────────── */
+  --danger:      #f87171;
+
+  /* ── Ink ramp: surfaces and neutral text ──────────────────────────────── */
+  --ink-deep:    #05050a;
+  --ink-raised:  #0f0f1a;
+  --card:        #12121f;
+  --card-hi:     #17172a;
+  --line:        rgba(255, 255, 255, 0.08);
+  --line-hi:     rgba(255, 255, 255, 0.16);
+
+  --text:        #f8fafc;
+  --text-soft:   #d9d9e6;
+  --text-muted:  #a1a1b5;
+  --text-faint:  #6c6c82;
+
+  /* ── Gold, expanded ───────────────────────────────────────────────────── */
+  --gold-deep:   #eab308;
+  --gold-ink:    #78600a;   /* text on a gold fill */
+  --gold-soft:   rgba(250, 204, 21, 0.12);
+  --gold-line:   rgba(250, 204, 21, 0.28);
+
+  /* ── Cool, expanded ───────────────────────────────────────────────────── */
+  --cool-deep:   #0ea5e9;
+  --cool-soft:   rgba(56, 189, 248, 0.12);
+  --cool-line:   rgba(56, 189, 248, 0.30);
+
+  /* ── Danger, expanded ─────────────────────────────────────────────────── */
+  --danger-deep: #ef4444;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --danger-line: rgba(248, 113, 113, 0.32);
+
+  /* ── Signals kept out of the brand ────────────────────────────────────── */
+  /* WhatsApp's own green. Not ours to restyle: a WhatsApp button that is not
+     WhatsApp green stops being recognised as one, and recognition is the whole
+     value of that button. It appears nowhere except on WhatsApp affordances. */
+  --wa:          #25d366;
+  /* "Live" pulses. Mapped onto cool so it stays inside the palette. */
+  --live:        var(--cool);
+  --warn:        var(--gold);
+  --bad:         var(--danger);
+
+  /* ── Elevation ────────────────────────────────────────────────────────── */
+  --sh-1: 0 2px 8px rgba(0,0,0,.35);
+  --sh-2: 0 12px 32px rgba(0,0,0,.45);
+  --sh-3: 0 28px 70px rgba(0,0,0,.55);
+  --sh-gold: 0 18px 50px rgba(250,204,21,.22);
+
+  /* ── Geometry ─────────────────────────────────────────────────────────── */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+
+  --header-h: 72px;
+}
+
+/* ============================================================================
+   STATUS
+   One vocabulary, used by the dashboard and by any public surface that shows
+   state. Each carries a colour AND an icon AND a word, so none of the three is
+   load-bearing on its own.
+   ============================================================================ */
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1.5;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.status::before { font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 10px; }
+
+/* Waiting on us. Gold, because it is the thing the owner should act on. */
+.status-pending   { background: var(--gold-soft);   color: var(--gold);   border-color: var(--gold-line); }
+.status-pending::before   { content: '\f017'; }        /* clock */
+
+/* Agreed and on the books. */
+.status-confirmed { background: var(--cool-soft);   color: var(--cool);   border-color: var(--cool-line); }
+.status-confirmed::before { content: '\f00c'; }        /* check */
+
+/* Done. Deliberately quiet — a finished job needs no attention. */
+.status-completed { background: rgba(255,255,255,.06); color: var(--text-muted); border-color: var(--line); }
+.status-completed::before { content: '\f560'; }        /* flag-checkered */
+
+/* Lost or withdrawn. The one non-destructive use of danger, because a
+   cancelled job IS the negative terminal state and reads as one. */
+.status-cancelled { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
+.status-cancelled::before { content: '\f00d'; }        /* times */
+
+.status-draft     { background: rgba(255,255,255,.05); color: var(--text-faint); border-color: var(--line); }
+.status-draft::before     { content: '\f044'; }        /* pen-to-square */
+
+.status-live      { background: var(--cool-soft);   color: var(--cool);   border-color: var(--cool-line); }
+.status-live::before      { content: '\f111'; }        /* circle */
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-zoom.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lg-thumbnail.min.css">
+  <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/app.css">
 
   <style>
@@ -201,10 +202,50 @@
         <div class="stat-lab">Categories</div>
       </div>
       <div>
-        <div class="stat-val">500+</div>
+        <!-- Served by /api/stats. There is no number in this markup that the
+             database does not own. -->
+        <div class="stat-val" id="statEventsDone">—</div>
         <div class="stat-lab">Events delivered</div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ══════════════ EVENTS — the work, organised ══════════════
+     This section is the point of the rebuild. Before it, the page opened with
+     44 photographs filed under Media, Audio, Visual and Equipment — a parts
+     catalogue that could show a speaker but not a wedding.
+
+     A visitor deciding whether to hire this company is asking "what does one
+     of your events look like, end to end?". That question is answered by an
+     event, so events come first and the loose library sits underneath where it
+     belongs.
+
+     Each card shows the starred highlights only. The full set of a job lives in
+     the client's private album, which is theirs — publishing all 400 frames
+     here would cost the visitor attention and mobile data, and cost the client
+     the thing they paid for. -->
+<section id="events" style="padding:40px 0 8px">
+  <div class="wrap">
+    <div class="section-heading">
+      <span>Recent events</span>
+      <span id="eventsCount" style="font-size:13px;font-weight:600;color:var(--text-faint)"></span>
+    </div>
+
+    <div id="eventsSkeleton" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+      <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
+      <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
+      <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
+    </div>
+
+    <div id="eventsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px" hidden></div>
+
+    <!-- Shown only when no event has been published yet. It explains the
+         library below rather than leaving the page looking broken. -->
+    <p id="eventsEmpty" hidden style="color:var(--text-muted);font-size:14.5px;max-width:60ch;margin:0">
+      We are still writing up our recent events. In the meantime, here is the
+      full library of photographs from our jobs.
+    </p>
   </div>
 </section>
 
@@ -225,9 +266,15 @@
   </div>
 </div>
 
-<!-- ══════════════ GRID ══════════════ -->
+<!-- ══════════════ THE LIBRARY ══════════════ -->
 <section style="padding:36px 0 72px">
   <div class="wrap">
+    <div class="section-heading" style="margin-bottom:14px">
+      <span>Everything else</span>
+    </div>
+    <p style="color:var(--text-muted);font-size:14px;max-width:62ch;margin:-8px 0 24px">
+      Kit, setups and moments from jobs across Nyeri and Kenya. Filter by what you need.
+    </p>
 
     <div id="loadingSkeleton" class="masonry">
       <div class="skel" style="grid-row:span 26"></div>
@@ -386,7 +433,7 @@
   //   2. Every <img> carries width/height, so nothing shifts as it loads.
   //   3. Visual order matches DOM order, so tabbing through makes sense.
   // ══════════════════════════════════════════════════════════════════
-  const { $, esc, api, timeAgo, prettyDate, stamp, observeReveals, hydrateStamps } = window.LS;
+  const { $, esc, api, timeAgo, prettyDate, stamp, observeReveals, hydrateStamps, mediaSrc, mediaSrcset } = window.LS;
 
   const PAGE_SIZE = 24;
 
@@ -432,8 +479,13 @@
     // A video's grid tile shows its poster, never the video itself —
     // loading video bytes to paint a thumbnail is the most expensive
     // mistake a gallery can make.
-    const src  = isVideo ? (item.thumbUrl || item.imageUrl) : item.imageUrl;
-    const full = item.imageUrl;
+    // Renditions when the media worker has produced them, the legacy imageUrl
+    // otherwise — mediaSrc resolves both. The grid asks for the smallest step
+    // and the lightbox for the largest, so a tile no longer downloads a 2048px
+    // photograph to fill 480 pixels of screen.
+    const src    = mediaSrc(item, isVideo ? 'poster' : 'thumb');
+    const full   = isVideo ? mediaSrc(item, 'preview') : mediaSrc(item, 'web');
+    const srcset = isVideo ? '' : mediaSrcset(item);
     const alt  = item.altText || item.title || item.category || 'Event photo';
     const w = item.width || 1200;
     const h = item.height || 1500;
@@ -454,6 +506,7 @@
       <a ${lgAttrs} class="masonry-item gallery-card" data-w="${w}" data-h="${h}"
          aria-label="${escAttr(alt)}${isVideo ? ' (video)' : ''}${when ? ', ' + escAttr(prettyDate(when)) : ''}">
         <img src="${escAttr(src)}" alt="${escAttr(alt)}" width="${w}" height="${h}"
+             ${srcset ? `srcset="${escAttr(srcset)}" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"` : ''}
              loading="${eager ? 'eager' : 'lazy'}" decoding="async" ${eager ? 'fetchpriority="high"' : ''}
              onerror="this.closest('a').dataset.broken='1'">
         ${isVideo ? '<span class="play-badge"><span><i class="fas fa-play" style="color:#fff;margin-left:3px"></i></span></span>' : ''}
@@ -739,7 +792,75 @@
     $('statImgCount').textContent = state.total || state.items.length || '—';
     $('statCatCount').textContent = state.categories.length || '—';
 
+    loadEvents();
+    loadStats();
+
     observeReveals();
+  }
+
+  // ── Events ────────────────────────────────────────────────────────
+  // Independent of the library grid on purpose: an event listing that fails
+  // must not stop the photographs rendering, and photographs that fail must
+  // not hide the events. Two sections, two fetches, two failure modes.
+  function eventCardHtml(sc) {
+    const cover = sc.highlights?.[0];
+    const img   = cover ? mediaSrc(cover, 'card') : (sc.coverUrl || '/IMAGES/LOGO/2.jpg');
+    const srcset = cover ? mediaSrcset(cover) : '';
+
+    // Only what the record actually holds. A card that invents "180 guests"
+    // for an event with no guest count is worse than a shorter card.
+    const facts = [];
+    if (sc.eventDate) facts.push(prettyDate(sc.eventDate));
+    if (sc.venue)     facts.push(sc.venue);
+    else if (sc.town) facts.push(sc.town);
+
+    const kit = (sc.services || []).slice(0, 3).map(x => esc(x.name)).join(' · ');
+    const more = Math.max(0, (sc.services || []).length - 3);
+
+    return `
+      <a class="gallery-card reveal" href="/w/${esc(sc.slug)}"
+         style="display:block;text-decoration:none"
+         aria-label="${esc(sc.title)}${sc.eventType ? ', ' + esc(sc.eventType) : ''}">
+        <div style="position:relative;aspect-ratio:4/3;overflow:hidden">
+          <img src="${esc(img)}" ${srcset ? `srcset="${esc(srcset)}" sizes="(max-width:640px) 100vw, 300px"` : ''}
+               alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">
+          ${sc.boothCount ? `<span style="position:absolute;top:10px;left:10px;background:rgba(8,8,15,.78);backdrop-filter:blur(6px);border:1px solid var(--gold-line);color:var(--gold);font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px">
+            <i class="fas fa-camera-rotate" style="font-size:10px"></i> 360 booth</span>` : ''}
+          ${sc.eventType ? `<span style="position:absolute;top:10px;right:10px;background:rgba(8,8,15,.78);backdrop-filter:blur(6px);color:var(--text-soft);font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px">${esc(sc.eventType)}</span>` : ''}
+        </div>
+        <div style="padding:15px 16px 17px">
+          <p style="font-family:Sora,Inter,sans-serif;font-weight:800;font-size:15.5px;color:var(--text);margin:0 0 5px;line-height:1.35">${esc(sc.title)}</p>
+          ${facts.length ? `<p style="font-size:12.5px;color:var(--text-faint);margin:0 0 10px">${esc(facts.join(' · '))}</p>` : ''}
+          ${kit ? `<p style="font-size:12px;color:var(--gold);margin:0;font-weight:600">${kit}${more ? ` +${more}` : ''}</p>` : ''}
+        </div>
+      </a>`;
+  }
+
+  async function loadEvents() {
+    const res = await api('/api/showcases?limit=9');
+    const list = res?.data || [];
+    $('eventsSkeleton').hidden = true;
+
+    if (!list.length) {
+      // Nothing published yet. Say so once, plainly, and let the library
+      // below carry the page rather than showing an empty grid.
+      $('eventsEmpty').hidden = false;
+      $('events').querySelector('.section-heading span').textContent = 'Our work';
+      return;
+    }
+
+    $('eventsGrid').innerHTML = list.map(eventCardHtml).join('');
+    $('eventsGrid').hidden = false;
+    $('eventsCount').textContent =
+      `${res.meta?.total ?? list.length} event${(res.meta?.total ?? list.length) === 1 ? '' : 's'}`;
+    observeReveals();
+  }
+
+  async function loadStats() {
+    const res = await api('/api/stats');
+    if (Number.isFinite(res?.data?.eventsDelivered)) {
+      $('statEventsDone').textContent = res.data.eventsDelivered + '+';
+    }
   }
 
   init();

@@ -1,0 +1,89 @@
+# =============================================================================
+#  LOCAL MEDIA STACK
+#
+#      docker compose up
+#
+#  Brings up MinIO standing in for Cloudflare R2, creates the two buckets with
+#  the same public/private split production uses, and runs the media worker
+#  against them.
+#
+#  WHY MINIO IS HERE AND NOT IN PRODUCTION
+#  ---------------------------------------
+#  MinIO speaks the S3 API, which is the whole interface this system has to
+#  object storage — the same presigner signs for both, so the local stack
+#  exercises the real code path rather than a mock. That makes it an excellent
+#  test fixture and a poor production store: in production somebody has to own
+#  the disks, the replication and the backups, and losing a photograph is not
+#  recoverable. R2 owns that for less than the electricity would cost.
+#
+#  This file is development-only. Nothing here is deployed.
+# =============================================================================
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console, http://localhost:9001
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Creates the buckets and applies the access split. Runs once and exits.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing local/lawie-masters;
+      mc mb --ignore-existing local/lawie-derivatives;
+      mc anonymous set none     local/lawie-masters;
+      mc anonymous set download local/lawie-derivatives;
+      echo 'buckets ready: masters private, derivatives public-read';
+      "
+
+  worker:
+    build:
+      # Repository root, because the worker shares backened/src/media with the API.
+      context: .
+      dockerfile: worker/Dockerfile
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      # Postgres. Point these at the Supabase project, or at a branch of it —
+      # the worker writes rendition rows and marks assets ready.
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+
+      # Object storage. Same variables production uses; only the values differ.
+      R2_ENDPOINT: http://minio:9000
+      R2_ACCESS_KEY_ID: minioadmin
+      R2_SECRET_ACCESS_KEY: minioadmin
+      # MinIO validates the region in the signature. R2 requires the literal
+      # 'auto'; MinIO defaults to us-east-1.
+      R2_REGION: us-east-1
+      R2_PATH_STYLE: "true"
+      R2_BUCKET_MASTERS: lawie-masters
+      R2_BUCKET_DERIVATIVES: lawie-derivatives
+      # Reachable from the host browser, not from inside the compose network.
+      R2_PUBLIC_BASE: http://localhost:9000/lawie-derivatives
+
+      POLL_MS: "2000"
+      MASTER_RETENTION_MONTHS: "12"
+    ports:
+      - "8080:8080"
+
+volumes:
+  minio-data:

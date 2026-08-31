@@ -1,0 +1,21 @@
+{
+  "name": "lawie-media-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Containerised media worker: turns uploaded masters into web renditions and enforces master retention.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "once": "node src/index.js --once",
+    "test": "node test/run.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
+    "exif-reader": "^2.0.2",
+    "sharp": "^0.34.1"
+  }
+}

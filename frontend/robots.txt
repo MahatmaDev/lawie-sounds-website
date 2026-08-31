@@ -19,4 +19,10 @@ Disallow: /withdraw
 Disallow: /review-withdraw.html
 Disallow: /*token=
 
+# Client albums. /a/<token> is a private hand-over of one client's photographs,
+# reached by an unguessable link. Crawling one would put a wedding into a search
+# index. The page also sends noindex and no-referrer headers — this line is the
+# polite first layer, not the control.
+Disallow: /a/
+
 Sitemap: https://lawiesounds.com/sitemap.xml

@@ -43,6 +43,7 @@
        the timestamp atoms live in one file so every page agrees about what
        gold is and what a card looks like. Only what is unique to the
        homepage stays below. -->
+  <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/app.css">
 
   <style>
@@ -302,11 +303,17 @@
         </button>
       </div>
 
+      <!-- Every figure here is served by /api/stats, which is backed by
+           site_stats() in Postgres. The values below are only what renders
+           before that call returns; nothing on this page is the source of a
+           number any more. Activating a tenth service now moves this counter
+           with no code change, which is the whole point — the hard-coded 9
+           was already one activation away from being a lie. -->
       <div class="stat-grid">
-        <div><div class="stat-n" data-count="500" data-suffix="+">0</div><div class="stat-l">Events run</div></div>
-        <div><div class="stat-n" data-count="50" data-suffix="K+">0</div><div class="stat-l">Guests reached</div></div>
-        <div><div class="stat-n" id="statServices" data-count="9" data-suffix="">0</div><div class="stat-l">Services</div></div>
-        <div><div class="stat-n" data-count="2" data-suffix="hr">0</div><div class="stat-l">Reply time</div></div>
+        <div><div class="stat-n" id="statEvents"   data-count="500" data-suffix="+">0</div><div class="stat-l">Events run</div></div>
+        <div><div class="stat-n" id="statGuests"   data-count="50"  data-suffix="K+">0</div><div class="stat-l">Guests reached</div></div>
+        <div><div class="stat-n" id="statServices" data-count="9"   data-suffix="">0</div><div class="stat-l">Services</div></div>
+        <div><div class="stat-n" id="statReply"    data-count="2"   data-suffix="hr">0</div><div class="stat-l">Reply time</div></div>
       </div>
     </div>
   </div>
@@ -833,6 +840,37 @@
   }, { threshold: 0.6 });
   $$('[data-count]').forEach(el => statObserver.observe(el));
 
+  // ── The real numbers ──────────────────────────────────────────────
+  // Fetched, not asserted. Two of these are owner-supplied baselines for
+  // work done before this system existed plus everything recorded since;
+  // one is a live count; one is a stated commitment. The API decides
+  // which is which — this page only draws them.
+  //
+  // The counter may already have animated by the time this resolves, so
+  // each value is written to BOTH the dataset (for a count-up that has
+  // not run yet) and the text (for one that has). Setting only the
+  // dataset is why the services figure used to freeze on its default.
+  const applyStat = (el, value, suffix) => {
+    if (!el || !Number.isFinite(value)) return;
+    el.dataset.count = String(value);
+    if (suffix !== undefined) el.dataset.suffix = suffix;
+    if (el.textContent !== '0') el.textContent = value + (el.dataset.suffix || '');
+  };
+
+  api('/api/stats').then(res => {
+    const s = res?.data;
+    if (!s) return;
+    applyStat($('statEvents'), s.eventsDelivered, '+');
+    // Shown in thousands, so the suffix carries the magnitude.
+    if (Number.isFinite(s.guestsReached)) {
+      applyStat($('statGuests'), Math.round(s.guestsReached / 1000), 'K+');
+    }
+    applyStat($('statServices'), s.services, '');
+    // A promise, not a measurement. The measured median lives in the
+    // dashboard where somebody can act on it.
+    applyStat($('statReply'), s.replyPromiseHours, 'hr');
+  }).catch(() => { /* the defaults in the markup stand */ });
+
   // ══════════════════════════════════════════════════════════════════
   // THE QUOTE TRAY
   // Selection survives a reload within the session, so someone who
@@ -1011,13 +1049,9 @@
     const live = (res?.data || []).filter(s => s.isActive !== false);
     SERVICES = live.length ? live : FALLBACK_SERVICES;
 
-    // The services counter is the one stat that is a live figure rather
-    // than a standing claim. It may resolve after the count-up has
-    // already run, so correct the rendered value too — otherwise the
-    // hero would sit on the hard-coded 9 forever.
-    const statEl = $('statServices');
-    statEl.dataset.count = String(SERVICES.length);
-    if (statEl.textContent !== '0') statEl.textContent = String(SERVICES.length);
+    // The hero's services counter is no longer corrected here: /api/stats
+    // is the one source for it, and having two writers meant the number
+    // depended on which request came back last.
 
     renderFilters();
     renderServices();

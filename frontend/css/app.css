@@ -24,6 +24,22 @@
    was created to end. */
 
 /* ── Base ───────────────────────────────────────────────────────────── */
+/* The hidden attribute has to actually hide.
+
+   It only works through the user-agent rule [hidden]{display:none}, which is
+   the weakest rule in the cascade - any inline style:display on the same
+   element beats it and the element stays on screen with hidden set. The
+   gallery lost three empty skeleton cards to exactly that: loadEvents() set
+   .hidden = true on a div carrying style="display:grid", the attribute
+   landed, and the placeholders sat under "Our work" forever, reading as
+   cards whose photographs had failed to load.
+
+   Declaring it here makes the attribute authoritative for every page, so
+   toggling el.hidden means what it looks like it means whatever the element
+   carries inline. Revealing still works: removing the attribute removes this
+   rule along with it. */
+[hidden] { display: none !important; }
+
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {

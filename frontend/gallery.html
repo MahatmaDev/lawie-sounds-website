@@ -66,6 +66,11 @@
     @media (min-width: 1024px) { .masonry { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; } }
     .masonry-item { display: block; min-width: 0; }
 
+    /* The events grid and its skeleton. This lives in a class rather than
+       inline on the elements because both are toggled with el.hidden, and an
+       inline display beats the [hidden] rule that is supposed to hide them. */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+
     .gallery-card {
       position: relative; display: block; overflow: hidden;
       border-radius: var(--r-md); background: #0a0a13;
@@ -232,13 +237,13 @@
       <span id="eventsCount" style="font-size:13px;font-weight:600;color:var(--text-faint)"></span>
     </div>
 
-    <div id="eventsSkeleton" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+    <div id="eventsSkeleton" class="events-grid">
       <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
       <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
       <div class="skel" style="height:250px;border-radius:var(--r-md)"></div>
     </div>
 
-    <div id="eventsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px" hidden></div>
+    <div id="eventsGrid" class="events-grid" hidden></div>
 
     <!-- Shown only when no event has been published yet. It explains the
          library below rather than leaving the page looking broken. -->

@@ -1,2 +1,17 @@
 *.psd filter=lfs diff=lfs merge=lfs -text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
+
+# Video is NOT stored in LFS.
+#
+# It was, and the homepage reel broke because of it. Vercel served the 133-byte
+# pointer file instead of the video: the browser got `version
+# https://git-lfs.github.com/spec/v1` where it expected an ftyp atom, and the
+# player sat there dead. The previous production build had resolved the object
+# fine, so this surfaced only on the next deploy — long after the commit that
+# caused it.
+#
+# LFS was never earning anything here anyway. The 133 MB of jpgs under IMAGES/
+# and Gallery/ are plain git blobs; only *.mp4 was singled out, which made the
+# videos the one asset class whose delivery depended on the build host fetching
+# a second protocol correctly. `binary` keeps git from attempting any
+# line-ending conversion on them.
+*.mp4 binary

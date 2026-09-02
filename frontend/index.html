@@ -161,7 +161,7 @@
         "sameAs": [
           "https://instagram.com/lawie_sounds",
           "https://facebook.com/lawie.sounds",
-          "https://tiktok.com/@lawie_sounds"
+          "https://www.tiktok.com/@djlawie"
         ],
         "potentialAction": {
           "@type": "ReserveAction",
@@ -446,16 +446,25 @@
 </section>
 
 <!-- ══════════════ REEL ══════════════ -->
+<!-- The reel is a vertical phone clip (464x848). It used to sit in a 16/9
+     box with object-fit:cover, which center-cropped it into a letterbox strip
+     with heads and feet cut off. It is now shown at its own aspect ratio,
+     width-capped so a portrait video does not swallow the viewport on desktop.
+     The source is faststart-encoded (moov atom first) — without that the
+     browser has to reach the far end of the file before it can start, which is
+     why preload="metadata" is safe here and was not before. -->
 <section style="padding:0 0 88px">
   <div class="wrap">
     <div class="reveal" style="position:relative;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--line);background:#05050a">
-      <video controls playsinline preload="none" poster="/Gallery/equipment/Dj%20decks%20setup.jpg"
-             style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">
-        <source src="/Gallery/videos/Reel.mp4" type="video/mp4">
-        Your browser cannot play this video.
-      </video>
+      <div style="display:grid;place-items:center;padding:26px 22px 22px">
+        <video controls playsinline preload="metadata" poster="/Gallery/videos/reel-poster.jpg"
+               style="width:100%;max-width:340px;aspect-ratio:464/848;background:#000;border-radius:var(--r-lg);display:block">
+          <source src="/Gallery/videos/Reel.mp4" type="video/mp4">
+          Your browser cannot play this video.
+        </video>
+      </div>
       <div style="padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line)">
-        <p style="margin:0;font-size:14px;color:var(--text-muted)"><i class="fas fa-circle-play gold" style="margin-right:9px"></i>90 seconds of Lawie Sounds on the job</p>
+        <p style="margin:0;font-size:14px;color:var(--text-muted)"><i class="fas fa-circle-play gold" style="margin-right:9px"></i>Lawie Sounds on the job — the 360 booth, live</p>
         <a href="/book" class="btn btn-primary btn-sm">Book this energy <i class="fas fa-arrow-right" style="font-size:11px"></i></a>
       </div>
     </div>
@@ -623,7 +632,7 @@
         <div class="foot-social">
           <a href="https://instagram.com/lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Instagram"><i class="fab fa-instagram"></i></a>
           <a href="https://facebook.com/lawie.sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on Facebook"><i class="fab fa-facebook"></i></a>
-          <a href="https://tiktok.com/@lawie_sounds" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
+          <a href="https://www.tiktok.com/@djlawie" target="_blank" rel="noopener noreferrer" aria-label="Lawie Sounds on TikTok"><i class="fab fa-tiktok"></i></a>
           <a href="/wa" aria-label="Message Lawie Sounds on WhatsApp"><i class="fab fa-whatsapp"></i></a>
         </div>
       </div>

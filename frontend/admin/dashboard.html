@@ -3172,6 +3172,16 @@ function albumCard(al) {
         <button type="button" onclick="openAlbumItems('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition">
           <i class="fas fa-images mr-1"></i>Photos
         </button>
+        ${/* Shown whether or not consent is in hand. Hiding it would leave the
+             owner with a "Consented" tile on this very screen and no idea what
+             it unlocks; disabled-with-a-reason teaches the loop instead. */''}
+        <button type="button" ${al.publicConsent ? `onclick="publishAlbumToGallery('${al.id}')"` : 'disabled'}
+                title="${al.publicConsent ? 'Promote chosen photographs into the public gallery' : 'The client has not agreed to public use yet. They tick the box on their own album page.'}"
+                class="text-xs px-3 py-1.5 rounded-lg transition ${al.publicConsent
+                  ? 'bg-pink-600/15 text-pink-300 hover:bg-pink-600/25'
+                  : 'bg-gray-800/60 text-gray-600 cursor-not-allowed'}">
+          <i class="fas fa-arrow-up-from-bracket mr-1"></i>To gallery
+        </button>
         <button type="button" onclick="rotateAlbumLink('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Issue a new link. The old one stops working immediately.">
           <i class="fas fa-rotate mr-1"></i>New link
         </button>
@@ -3179,6 +3189,11 @@ function albumCard(al) {
           ? `<button type="button" onclick="setAlbumStatus('${al.id}','revoked')" class="text-xs px-3 py-1.5 rounded-lg bg-red-600/15 text-red-300 hover:bg-red-600/25 transition">Withdraw</button>`
           : `<button type="button" onclick="setAlbumStatus('${al.id}','live')" class="text-xs px-3 py-1.5 rounded-lg bg-green-600/15 text-green-300 hover:bg-green-600/25 transition">Publish</button>`}
         <button type="button" onclick="openAlbumForm('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition ml-auto">Edit</button>
+        ${/* Deleting is the owner's alone — the server route carries adminOnly,
+             so a manager seeing this button would only ever get a 403. */''}
+        ${isOwner() ? `<button type="button" onclick="deleteAlbum('${al.id}')" title="Delete this album permanently"
+                class="text-xs px-2.5 py-1.5 rounded-lg bg-gray-800 text-gray-500 hover:bg-red-600/20 hover:text-red-300 transition">
+          <i class="fas fa-trash"></i></button>` : ''}
       </div>
     </div>`;
 }
@@ -3239,7 +3254,11 @@ async function openAlbumForm(id = null) {
 
         <label style="display:block;margin-bottom:4px;color:#9ca3af">PIN (optional, 4–8 digits)</label>
         <input id="alPin" class="swal2-input" style="margin:0 0 4px;width:100%" inputmode="numeric" placeholder="${existing?.pinRequired ? 'A PIN is set — type a new one to change it' : 'Leave blank for no PIN'}">
-        <p style="color:#6b7280;font-size:11px;margin:0">Useful when the link will be forwarded around a family group.</p>
+        <p style="color:#6b7280;font-size:11px;margin:0 0 12px">Useful when the link will be forwarded around a family group.</p>
+
+        <label style="display:block;margin-bottom:4px;color:#9ca3af">Link expires <span style="color:#6b7280">— optional</span></label>
+        <input id="alExpires" type="date" class="swal2-input" style="margin:0 0 4px;width:100%" value="${existing?.expiresAt ? String(existing.expiresAt).slice(0, 10) : ''}">
+        <p style="color:#6b7280;font-size:11px;margin:0">After this date the link answers the same 404 as a withdrawn one. Leave blank and it does not expire.</p>
       </div>`,
     showCancelButton: true,
     confirmButtonText: existing ? 'Save' : 'Create album',
@@ -3255,6 +3274,9 @@ async function openAlbumForm(id = null) {
         eventDate: document.getElementById('alDate').value || null,
         bookingId: document.getElementById('alBooking').value || null,
         message: document.getElementById('alMessage').value.trim(),
+        // Sent even when blank: '' becomes null server-side, which is how an
+        // expiry already set gets cleared again.
+        expiresAt: document.getElementById('alExpires').value || null,
         pin,
       };
     },
@@ -3318,6 +3340,56 @@ async function rotateAlbumLink(id) {
 }
 
 // ── Photos in an album ────────────────────────────────────────────────
+//
+// Everything the server can do to an album item is reachable from here. It
+// could not be before: the grid rendered `isHidden` as a faded tile and offered
+// no way to change it, and the detail route's own comment says the dashboard is
+// handed hidden items precisely "so the owner can put one back". Same for
+// captions, which become the alt text on the client's page, and for the cover,
+// which is the first thing the client sees.
+
+const albumThumb = (r) => r?.thumb?.url || r?.card?.url || r?.poster?.url || r?.web?.url || '';
+
+// One tile. Kept as its own function so a single action can repaint just that
+// tile instead of reopening the dialog and throwing away the owner's scroll
+// position halfway down a hundred photographs.
+function albumItemTile(i, coverAssetId) {
+  const isCover = coverAssetId && i.assetId === coverAssetId;
+  const src = albumThumb(i.renditions);
+  const ready = i.status === 'ready';
+
+  return `
+    <div class="al-tile" data-item="${escapeHtml(i.id)}" data-asset="${escapeHtml(i.assetId)}"
+         style="border:1px solid ${isCover ? '#facc15' : '#374151'};border-radius:9px;overflow:hidden;background:#0b0b12">
+      <div style="position:relative;aspect-ratio:1;${i.isHidden ? 'opacity:.3' : ''}">
+        ${src
+          ? `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+          : `<div style="width:100%;height:100%;display:grid;place-items:center;color:#6b7280;font-size:10px;text-align:center;padding:4px">${escapeHtml(ready ? 'no preview' : (i.status || 'processing'))}</div>`}
+        ${isCover ? '<span style="position:absolute;top:3px;left:3px;background:#facc15;color:#14110a;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px">COVER</span>' : ''}
+        ${i.isHidden ? '<span style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.75);color:#9ca3af;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">HIDDEN</span>' : ''}
+      </div>
+
+      <div style="display:flex;gap:2px;padding:3px;background:#12121f">
+        <button type="button" data-act="hide" title="${i.isHidden ? 'Show this to the client' : 'Hide this from the client'}"
+                style="flex:1;padding:4px 0;border:none;border-radius:5px;background:#1f2937;color:${i.isHidden ? '#6b7280' : '#d1d5db'};cursor:pointer;font-size:11px">
+          <i class="fas ${i.isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i>
+        </button>
+        <button type="button" data-act="cover" title="${ready ? 'Use as the album cover' : 'Still processing — cannot be the cover yet'}" ${ready ? '' : 'disabled'}
+                style="flex:1;padding:4px 0;border:none;border-radius:5px;background:${isCover ? '#facc15' : '#1f2937'};color:${isCover ? '#14110a' : (ready ? '#d1d5db' : '#4b5563')};cursor:${ready ? 'pointer' : 'not-allowed'};font-size:11px">
+          <i class="fas fa-star"></i>
+        </button>
+        <button type="button" data-act="remove" title="Remove from this album"
+                style="flex:1;padding:4px 0;border:none;border-radius:5px;background:#1f2937;color:#d1d5db;cursor:pointer;font-size:11px">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+
+      <input type="text" data-act="caption" value="${escapeHtml(i.caption || '')}" maxlength="160"
+             placeholder="Caption…" title="Becomes the alt text on the client's page"
+             style="width:100%;border:none;border-top:1px solid #1f2937;background:#0b0b12;color:#cbd5e1;font-size:10.5px;padding:5px 6px">
+    </div>`;
+}
+
 async function openAlbumItems(id) {
   const [detail, pool] = await Promise.all([
     apiRequest('GET', `/api/admin/albums/${id}`),
@@ -3328,32 +3400,38 @@ async function openAlbumItems(id) {
 
   if (!pool?._error) { albumsUI.pool = pool.data || []; albumsUI.poolLoaded = true; }
 
-  const inAlbum = new Set((detail.data.items || []).map(i => i.assetId));
+  // Held locally so an action can repaint from it without refetching the whole
+  // album for a one-field change.
+  const album = detail.data;
+  let items = album.items || [];
+  let coverAssetId = album.coverAssetId || null;
+
+  const inAlbum = new Set(items.map(i => i.assetId));
   const available = albumsUI.pool.filter(a => !inAlbum.has(a.assetId));
 
-  const thumb = (r) => r?.thumb?.url || r?.card?.url || r?.poster?.url || r?.web?.url || '';
+  const gridStyle = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;max-height:260px;overflow:auto;padding:2px';
 
   const res = await Swal.fire({
-    title: escapeHtml(detail.data.title),
-    width: 720, background: '#1e1e2a', color: '#fff',
+    title: escapeHtml(album.title),
+    width: 760, background: '#1e1e2a', color: '#fff',
     html: `
       <div style="text-align:left;font-size:13px">
-        <p style="color:#9ca3af;margin:0 0 10px">In this album (${detail.data.items.length})</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;max-height:210px;overflow:auto;padding:2px">
-          ${detail.data.items.length ? detail.data.items.map(i => `
-            <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;${i.isHidden ? 'opacity:.35' : ''}">
-              ${thumb(i.renditions) ? `<img src="${escapeHtml(thumb(i.renditions))}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:grid;place-items:center;color:#6b7280;font-size:10px">processing</div>'}
-              <button type="button" data-remove="${i.id}" title="Remove from album"
-                      style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:5px;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:10px">✕</button>
-            </div>`).join('') : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>'}
+        <p style="color:#9ca3af;margin:0 0 4px">In this album (<span id="alCount">${items.length}</span>)</p>
+        <p style="color:#6b7280;font-size:11px;margin:0 0 10px">
+          <i class="fas fa-eye"></i> show/hide · <i class="fas fa-star"></i> cover · <i class="fas fa-xmark"></i> remove.
+          A hidden photo stays in the album but the client never sees it.
+        </p>
+        <div id="alItems" style="${gridStyle}">
+          ${items.length ? items.map(i => albumItemTile(i, coverAssetId)).join('')
+                         : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>'}
         </div>
 
         <p style="color:#9ca3af;margin:16px 0 10px">Add from the library (${available.length} available)</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;max-height:210px;overflow:auto;padding:2px">
+        <div style="${gridStyle}">
           ${available.length ? available.map(a => `
             <label style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;cursor:pointer;display:block">
-              <input type="checkbox" class="al-pick" value="${a.assetId}" style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#7c3aed">
-              ${thumb(a.renditions) ? `<img src="${escapeHtml(thumb(a.renditions))}" style="width:100%;height:100%;object-fit:cover">` : ''}
+              <input type="checkbox" class="al-pick" value="${escapeHtml(a.assetId)}" style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#7c3aed">
+              ${albumThumb(a.renditions) ? `<img src="${escapeHtml(albumThumb(a.renditions))}" alt="" style="width:100%;height:100%;object-fit:cover">` : ''}
             </label>`).join('')
             : `<p style="color:#6b7280;grid-column:1/-1">
                  Nothing available. Photos appear here after they are uploaded through the
@@ -3363,20 +3441,87 @@ async function openAlbumItems(id) {
       </div>`,
     showCancelButton: true, confirmButtonText: 'Add selected', confirmButtonColor: '#7c3aed',
     didOpen: () => {
-      // Removal is immediate rather than batched with the Add action — the two
-      // are different intentions and pairing them means an accidental ✕ is only
-      // undone by cancelling the whole dialog.
-      Swal.getHtmlContainer().addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-remove]');
+      const root = Swal.getHtmlContainer();
+      const tileFor = (sel) => root.querySelector(sel);
+
+      // Removal stays immediate rather than batched with Add — the two are
+      // different intentions, and pairing them would mean an accidental ✕ is
+      // only undone by cancelling the whole dialog.
+      root.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-act]');
         if (!btn) return;
+        const tile = btn.closest('.al-tile');
+        if (!tile) return;
+        const itemId = tile.dataset.item;
+        const item = items.find((x) => x.id === itemId);
+        if (!item) return;
+
+        const act = btn.dataset.act;
         btn.disabled = true;
-        const del = await apiRequest('DELETE', `/api/admin/albums/${id}/items/${btn.dataset.remove}`);
-        if (del?._error) { btn.disabled = false; return; }
-        btn.closest('div[style*="position:relative"]')?.remove();
-        albumsUI.loaded = false;
+
+        if (act === 'remove') {
+          const del = await apiRequest('DELETE', `/api/admin/albums/${id}/items/${itemId}`);
+          if (del?._error) { btn.disabled = false; return showToast(del.message || 'Could not remove', 'error'); }
+          items = items.filter((x) => x.id !== itemId);
+          // The cover pointer must not outlive the photograph it points at.
+          if (coverAssetId && item.assetId === coverAssetId) {
+            coverAssetId = null;
+            await apiRequest('PUT', `/api/admin/albums/${id}`, { coverAssetId: null });
+          }
+          tile.remove();
+          const count = document.getElementById('alCount');
+          if (count) count.textContent = items.length;
+          albumsUI.loaded = false;
+          return;
+        }
+
+        if (act === 'hide') {
+          const next = !item.isHidden;
+          const upd = await apiRequest('PATCH', `/api/admin/albums/${id}/items/${itemId}`, { isHidden: next });
+          if (upd?._error) { btn.disabled = false; return showToast(upd.message || 'Could not update', 'error'); }
+          item.isHidden = next;
+          tile.outerHTML = albumItemTile(item, coverAssetId);
+          albumsUI.loaded = false;
+          return;
+        }
+
+        if (act === 'cover') {
+          const previous = coverAssetId;
+          const next = previous === item.assetId ? null : item.assetId;
+          const upd = await apiRequest('PUT', `/api/admin/albums/${id}`, { coverAssetId: next });
+          if (upd?._error) { btn.disabled = false; return showToast(upd.message || 'Could not set cover', 'error'); }
+          coverAssetId = next;
+          // Repaint the old cover too, or two tiles wear the badge at once.
+          if (previous && previous !== next) {
+            const prevItem = items.find((x) => x.assetId === previous);
+            const prevTile = tileFor(`.al-tile[data-asset="${CSS.escape(previous)}"]`);
+            if (prevItem && prevTile) prevTile.outerHTML = albumItemTile(prevItem, coverAssetId);
+          }
+          const own = tileFor(`.al-tile[data-item="${CSS.escape(itemId)}"]`);
+          if (own) own.outerHTML = albumItemTile(item, coverAssetId);
+          albumsUI.loaded = false;
+        }
       });
+
+      // Captions save on blur rather than per keystroke: one request per edit
+      // instead of one per letter, and blur is the moment the owner is done.
+      // Capture phase, because blur does not bubble.
+      root.addEventListener('blur', async (e) => {
+        const input = e.target.closest?.('input[data-act="caption"]');
+        if (!input) return;
+        const tile = input.closest('.al-tile');
+        const item = items.find((x) => x.id === tile?.dataset.item);
+        if (!item) return;
+        const value = input.value.trim();
+        if (value === (item.caption || '')) return;
+        const upd = await apiRequest('PATCH', `/api/admin/albums/${id}/items/${item.id}`, { caption: value });
+        if (upd?._error) { input.value = item.caption || ''; return showToast(upd.message || 'Could not save caption', 'error'); }
+        item.caption = value || null;
+        input.style.borderTop = '1px solid #22c55e';
+        setTimeout(() => { input.style.borderTop = '1px solid #1f2937'; }, 900);
+      }, true);
     },
-    preConfirm: () => [...document.querySelectorAll('.al-pick:checked')].map(c => c.value),
+    preConfirm: () => [...document.querySelectorAll('.al-pick:checked')].map((c) => c.value),
   });
 
   if (res.isConfirmed && res.value?.length) {
@@ -3387,6 +3532,157 @@ async function openAlbumItems(id) {
 
   albumsUI.loaded = false;
   renderAlbums();
+}
+
+// ── Album → public gallery ────────────────────────────────────────────
+//
+// The payoff for collecting consent, and the reason the "Consented to public
+// use" tile on this screen is worth counting at all. Until now the number went
+// up and nothing could be done with it.
+//
+// The server checks consent again next to the effect and answers 403 without
+// it. This dialog exists so the owner never gets that far without knowing why,
+// and so the promoted rows are chosen deliberately rather than in bulk.
+async function publishAlbumToGallery(id) {
+  const detail = await apiRequest('GET', `/api/admin/albums/${id}`);
+  if (detail?._error) return Swal.fire({ icon: 'error', title: 'Could not open', text: detail.message, background: '#1e1e2a', color: '#fff' });
+
+  const album = detail.data;
+  if (!album.publicConsent) {
+    return Swal.fire({
+      icon: 'info', title: 'Not yet',
+      html: `<p style="font-size:13px;color:#cbd5e1">
+               ${escapeHtml(album.clientName || 'This client')} has not agreed to their photographs being
+               shown publicly. They tick that box on their own album page — it is deliberately not
+               something this screen can grant on their behalf.
+             </p>`,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+
+  // Only what can actually be promoted. Hidden means the client was not meant
+  // to see it, and anything still processing has no rendition to publish.
+  const eligible = (album.items || []).filter((i) => !i.isHidden && i.status === 'ready');
+  if (!eligible.length) {
+    return Swal.fire({
+      icon: 'info', title: 'Nothing eligible',
+      text: 'Only visible, fully processed photographs can go to the gallery. Hidden ones and anything still processing are not offered.',
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+
+  if (!galleryCategoriesLoaded) await loadGalleryCategories();
+
+  const res = await Swal.fire({
+    title: 'Send to the public gallery',
+    width: 720, background: '#1e1e2a', color: '#fff',
+    html: `
+      <div style="text-align:left;font-size:13px">
+        <p style="color:#cbd5e1;margin:0 0 10px">
+          <i class="fas fa-heart" style="color:#f472b6"></i>
+          ${escapeHtml(album.clientName || 'The client')} agreed to public use${album.consentAt ? ' on ' + new Date(album.consentAt).toLocaleDateString() : ''}.
+        </p>
+        <p style="color:#9ca3af;margin:0 0 10px">Choose the photographs (${eligible.length} eligible)</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:230px;overflow:auto;padding:2px">
+          ${eligible.map((i) => `
+            <label style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #374151;cursor:pointer;display:block">
+              <input type="checkbox" class="al-promote" value="${escapeHtml(i.assetId)}" style="position:absolute;top:4px;left:4px;z-index:2;width:16px;height:16px;accent-color:#f472b6">
+              ${albumThumb(i.renditions) ? `<img src="${escapeHtml(albumThumb(i.renditions))}" alt="" style="width:100%;height:100%;object-fit:cover">` : ''}
+            </label>`).join('')}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Category</label>
+            <select id="alPubCat" class="swal2-input" style="margin:0;width:100%">${galleryCategoryOptions()}</select>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;color:#9ca3af">Service</label>
+            <select id="alPubSvc" class="swal2-input" style="margin:0;width:100%">
+              <option value="">${album.services?.length ? escapeHtml(album.services[0].name) + ' — from the booking' : 'None'}</option>
+              ${galleryServiceOptions()}
+            </select>
+          </div>
+        </div>
+
+        <p style="color:#6b7280;font-size:11px;margin:12px 0 0">
+          They arrive <strong style="color:#9ca3af">unpublished</strong>. Consent to being shown is not the
+          same as you having chosen the shot, so you still pick which ones go live on the Gallery tab.
+        </p>
+      </div>`,
+    showCancelButton: true, confirmButtonText: 'Send to gallery', confirmButtonColor: '#7c3aed',
+    preConfirm: () => {
+      const picked = [...document.querySelectorAll('.al-promote:checked')].map((c) => c.value);
+      if (!picked.length) { Swal.showValidationMessage('Choose at least one photograph.'); return false; }
+      return {
+        assetIds: picked,
+        category: document.getElementById('alPubCat').value || undefined,
+        serviceSlug: document.getElementById('alPubSvc').value || undefined,
+      };
+    },
+  });
+  if (!res.isConfirmed) return;
+
+  const out = await apiRequest('POST', `/api/admin/albums/${id}/publish-to-gallery`, res.value);
+  if (out?._error) {
+    return Swal.fire({
+      icon: out.status === 403 ? 'warning' : 'error',
+      title: out.status === 403 ? 'Consent withdrawn' : 'Could not send',
+      text: out.message,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+
+  // store.gallery is loaded once at boot, so it now has rows it has never seen.
+  // Refetch rather than leaving the Gallery tab to show a stale library the
+  // moment this dialog offers to send the owner there.
+  const fresh = await loadAllGalleryPages();
+  if (!fresh?._error) store.gallery = fresh.data || store.gallery;
+
+  Swal.fire({
+    icon: 'success',
+    title: `${out.data.added} sent to the gallery`,
+    html: '<p style="font-size:13px;color:#cbd5e1">Waiting <strong style="color:#facc15">unpublished</strong> on the Gallery tab. Publish the ones you want on the site.</p>',
+    background: '#1e1e2a', color: '#fff',
+    confirmButtonText: 'Open the Gallery tab', confirmButtonColor: '#7c3aed',
+    showCancelButton: true, cancelButtonText: 'Stay here',
+  }).then((r) => { if (r.isConfirmed) switchTab('gallery'); });
+}
+
+// Delete, not withdraw. Withdraw is the reversible one and is what the owner
+// almost always means; this is for an album created by mistake.
+async function deleteAlbum(id) {
+  const al = albumsUI.list.find((x) => x.id === id);
+  const ok = await Swal.fire({
+    title: 'Delete this album?',
+    icon: 'warning',
+    html: `<p style="font-size:13px;color:#cbd5e1;text-align:left">
+             <strong style="color:#fff">${escapeHtml(al?.title || 'This album')}</strong> is removed
+             permanently, along with its photo list and the record of who opened it.
+           </p>
+           <p style="font-size:12.5px;color:#9ca3af;text-align:left;margin-top:10px">
+             The photographs themselves stay in your media library — only this hand-over goes.
+             If you only want the client's link to stop working, use
+             <strong style="color:#fff">Withdraw</strong> instead: that one can be undone.
+           </p>`,
+    showCancelButton: true, confirmButtonText: 'Delete permanently', confirmButtonColor: '#ef4444',
+    cancelButtonText: 'Keep it',
+    background: '#1e1e2a', color: '#fff',
+  });
+  if (!ok.isConfirmed) return;
+
+  const res = await apiRequest('DELETE', `/api/admin/albums/${id}`);
+  if (res?._error) {
+    return Swal.fire({
+      icon: 'error',
+      title: res.status === 403 ? 'Not your call' : 'Could not delete',
+      text: res.status === 403 ? 'Only the business owner can delete an album.' : res.message,
+      background: '#1e1e2a', color: '#fff',
+    });
+  }
+  albumsUI.loaded = false;
+  renderAlbums();
+  showToast('Album deleted', 'success');
 }
 
 function renderGallery() {

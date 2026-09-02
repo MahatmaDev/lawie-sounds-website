@@ -96,6 +96,36 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     
     .tab-active { border-bottom-color: var(--gold) !important; color: var(--gold) !important; }
+
+    /* ── Text on a gold fill ──────────────────────────────────────────────
+       The palette remap above aliases purple/violet/yellow/amber/orange onto
+       the gold ramp, so bg-purple-600 paints #facc15 and bg-yellow-500 paints
+       #eab308. The body is text-gray-200 (#d9d9e6), and nothing in the class
+       strings overrides it — so a solid gold button rendered near-white text
+       on near-yellow at about 1.4:1 and the label simply vanished. Hovering
+       darkened the fill to #eab308, which was just enough to see it. That is
+       what "only visible on hover" was.
+
+       Rather than patch the thirty-odd call sites one at a time, anything
+       sitting on a solid gold fill gets ink text here. #14110a is the same
+       value .btn-primary uses on the public site, so the two surfaces agree.
+       The doubled class is for specificity only: it has to beat a text-white
+       written inline on the same element, whichever order Tailwind's CDN
+       happens to inject its sheet in.
+
+       400-700 only. 800 and 900 are the dark end of the ramp (#a16207,
+       #713f12) and correctly keep light text. The /opacity variants are
+       separate class names and are never matched. ── */
+    .bg-purple-400.bg-purple-400, .bg-purple-500.bg-purple-500,
+    .bg-purple-600.bg-purple-600, .bg-purple-700.bg-purple-700,
+    .bg-violet-400.bg-violet-400, .bg-violet-500.bg-violet-500,
+    .bg-violet-600.bg-violet-600, .bg-violet-700.bg-violet-700,
+    .bg-yellow-400.bg-yellow-400, .bg-yellow-500.bg-yellow-500,
+    .bg-yellow-600.bg-yellow-600, .bg-yellow-700.bg-yellow-700,
+    .bg-amber-400.bg-amber-400,  .bg-amber-500.bg-amber-500,
+    .bg-amber-600.bg-amber-600,  .bg-amber-700.bg-amber-700,
+    .bg-orange-400.bg-orange-400, .bg-orange-500.bg-orange-500,
+    .bg-orange-600.bg-orange-600, .bg-orange-700.bg-orange-700 { color: #14110a; }
     .modal-enter { animation: modalFadeIn 0.2s ease-out; }
     @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     

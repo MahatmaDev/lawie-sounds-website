@@ -157,7 +157,19 @@
       </form>
     </div>
 
-    <div class="text-center mt-6">
+    <!-- Three messages on this page tell the owner to "contact your developer"
+         and none of them said how. That advice is only useful next to a way to
+         act on it, so the route out sits here permanently rather than only
+         appearing in the error state that mentions it. -->
+    <div class="text-center mt-6 space-y-2">
+      <p class="text-xs text-gray-500">
+        Locked out or something looks wrong?
+        <a href="https://wa.me/254711939907?text=Hi%20Kelvin%2C%20I%27m%20having%20trouble%20with%20the%20Lawie%20Sounds%20dashboard%3A"
+           target="_blank" rel="noopener noreferrer"
+           class="transition font-medium whitespace-nowrap hover:underline" style="color:var(--wa)">
+          <i class="fab fa-whatsapp"></i> WhatsApp the developer
+        </a>
+      </p>
       <p class="text-xs text-gray-500">&copy; 2026 Lawie Sounds. <a href="../index.html" class="text-yellow-400 hover:text-yellow-300 transition">← Back to Website</a></p>
     </div>
   </div>

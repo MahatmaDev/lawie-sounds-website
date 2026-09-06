@@ -36,8 +36,8 @@
   <!-- The shared design system: tokens, header, footer, buttons, cards and
        the timestamp atoms. This page adds only the sticky filter bar and
        the masonry strip, which exist nowhere else. -->
-  <link rel="stylesheet" href="/css/theme.css">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/theme.css?v=2026-09-06">
+  <link rel="stylesheet" href="/css/app.css?v=2026-09-06">
 
   <style>
     /* The filter bar stays reachable while the grid scrolls — with nine
@@ -466,11 +466,16 @@
   }
 
   // ── Card ─────────────────────────────────────────────────────────
+  // Features are {icon, title, desc} objects in the database. A few older rows
+  // are plain strings. Rendering the object straight into a template printed
+  // "[object Object]" in three bullets on every card.
+  const featureLabel = (f) => (typeof f === 'string' ? f : (f && (f.title || f.desc)) || '');
+
   function serviceCard(s) {
     const slug = esc(s.slug || s.id);
     const on = picked.has(s.slug);
     const desc = s.shortDesc || s.short_desc || 'Professional event service by Lawie Sounds.';
-    const feats = (s.features || []).slice(0, 3);
+    const feats = (s.features || []).map(featureLabel).filter(Boolean).slice(0, 3);
     const pkgs = (s.packages || []);
     // A service added in the last fortnight is worth pointing at: it is the
     // clearest signal on the page that this list is maintained by people.
@@ -483,9 +488,9 @@
                onerror="this.onerror=null;this.src='/IMAGES/LOGO/2.jpg'">
           <span class="svc-cat">${esc(s.category || 'Service')}</span>
           ${fresh ? '<span class="stamp-new" style="position:absolute;top:12px;right:12px;z-index:3">New</span>' : ''}
-          <span class="svc-icon"><i class="fas ${esc(s.icon || 'fa-star')}"></i></span>
         </div>
         <div class="svc-body">
+          <span class="svc-icon"><i class="fas ${esc(s.icon || 'fa-star')}"></i></span>
           <h3>${esc(s.name)}</h3>
           <p class="svc-desc">${esc(desc.length > 118 ? desc.slice(0, 118).trimEnd() + '…' : desc)}</p>
           ${feats.length ? `<ul class="svc-feats">${feats.map(f => `<li><i class="fas fa-check"></i>${esc(f)}</li>`).join('')}</ul>` : ''}
@@ -507,7 +512,7 @@
   function matches(s) {
     if (activeFilter !== 'all' && (s.category || 'Other') !== activeFilter) return false;
     if (!searchQuery) return true;
-    return [s.name, s.shortDesc || s.short_desc, s.category, ...(s.features || [])]
+    return [s.name, s.shortDesc || s.short_desc, s.category, ...(s.features || []).map(featureLabel)]
       .filter(Boolean).join(' ').toLowerCase().includes(searchQuery);
   }
 

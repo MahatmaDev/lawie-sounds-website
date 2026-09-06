@@ -17,7 +17,7 @@
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/theme.css?v=2026-09-06">
   <script>
     /* ══════════════════════════════════════════════════════════════════════
        THE PALETTE, REMAPPED AT SOURCE
@@ -2190,6 +2190,38 @@
         const btn = document.querySelector(`.tab-service[data-tab="${key}"]`);
         if (btn) _activateServiceTab(btn);
       };
+
+      // An icon name that is not in the icon set renders as nothing at all —
+      // no error, no placeholder, just a blank space on the website. That is
+      // how "fa-drone" reached production on the drone service and stayed
+      // there: it is a perfectly well-formed name for an icon that does not
+      // exist. The browser can answer this exactly, so ask it.
+      const iconInput = document.getElementById('serviceIcon');
+      const iconPrev  = document.getElementById('iconPreview');
+      if (iconInput && iconPrev) {
+        let iconWarn = document.getElementById('svcIconWarn');
+        if (!iconWarn) {
+          iconWarn = document.createElement('p');
+          iconWarn.id = 'svcIconWarn';
+          iconWarn.className = 'text-xs text-yellow-400 mt-1 hidden';
+          iconInput.parentElement.parentElement.appendChild(iconWarn);
+        }
+        const checkIcon = () => {
+          const name = iconInput.value.trim();
+          iconPrev.className = 'fas ' + name + ' text-purple-400 w-5 text-center';
+          // The glyph is delivered through ::before. "none" means Font Awesome
+          // has no such name, so the website would show empty space.
+          const glyph = getComputedStyle(iconPrev, '::before').content;
+          const missing = !!name && (glyph === 'none' || glyph === '""' || glyph === "''");
+          iconWarn.textContent = missing
+            ? `There is no icon called "${name}" — it will show as blank space on the website. Try fa-headphones, fa-camera, fa-helicopter.`
+            : '';
+          iconWarn.classList.toggle('hidden', !missing);
+        };
+        iconInput.addEventListener('input', checkIcon);
+        // Font Awesome loads from a CDN, so the first check has to wait for it.
+        setTimeout(checkIcon, 400);
+      }
 
       // One pass over the commerce inputs rather than a permission check woven
       // through every field's markup. A disabled input that says why is honest;

@@ -43,8 +43,8 @@
        the timestamp atoms live in one file so every page agrees about what
        gold is and what a card looks like. Only what is unique to the
        homepage stays below. -->
-  <link rel="stylesheet" href="/css/theme.css">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/theme.css?v=2026-09-06">
+  <link rel="stylesheet" href="/css/app.css?v=2026-09-06">
 
   <style>
     /* ══════════════════════════════════════════════════════════════
@@ -952,10 +952,15 @@
     return `<div class="svc-price">Ask us for a price${note}</div>`;
   }
 
+  // Features are {icon, title, desc} objects in the database. A few older rows
+  // are plain strings. Rendering the object straight into a template printed
+  // "[object Object]" in three bullets on every card.
+  const featureLabel = (f) => (typeof f === 'string' ? f : (f && (f.title || f.desc)) || '');
+
   function serviceCard(s) {
     const slug  = esc(s.slug || s.id);
     const on    = picked.has(s.slug);
-    const feats = (s.features || []).slice(0, 3);
+    const feats = (s.features || []).map(featureLabel).filter(Boolean).slice(0, 3);
     const desc  = s.shortDesc || s.short_desc || 'Professional event service by Lawie Sounds.';
     return `
       <article class="svc reveal${on ? ' picked' : ''}" data-slug="${slug}" data-cat="${esc(s.category || 'Other')}">
@@ -963,9 +968,9 @@
           <img src="${esc(serviceImage(s))}" alt="${esc(s.name)} by Lawie Sounds" loading="lazy" width="480" height="300"
                onerror="this.onerror=null;this.src='/IMAGES/LOGO/2.jpg'">
           <span class="svc-cat">${esc(s.category || 'Service')}</span>
-          <span class="svc-icon"><i class="fas ${esc(s.icon || 'fa-star')}"></i></span>
         </div>
         <div class="svc-body">
+          <span class="svc-icon"><i class="fas ${esc(s.icon || 'fa-star')}"></i></span>
           <h3>${esc(s.name)}</h3>
           <p class="svc-desc">${esc(desc.length > 118 ? desc.slice(0, 118).trimEnd() + '…' : desc)}</p>
           ${feats.length ? `<ul class="svc-feats">${feats.map(f => `<li><i class="fas fa-check"></i>${esc(f)}</li>`).join('')}</ul>` : ''}

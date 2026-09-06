@@ -330,8 +330,16 @@ img { max-width: 100%; }
   letter-spacing: .09em; text-transform: uppercase; color: var(--text);
   background: rgba(8,8,15,.7); backdrop-filter: blur(8px); border: 1px solid var(--line-hi);
 }
+/* The badge deliberately overhangs the photograph. It used to be a child of
+   .svc-media, which needs overflow:hidden to contain the image zoom on hover —
+   so the bottom 22px of the badge, which is where the glyph sits, was clipped
+   away. The icon was invisible at rest and reappeared on hover only because
+   the hover transform scaled the glyph back up into the few pixels that were
+   not being clipped. It now hangs off the top of .svc-body, which clips
+   nothing, so the whole badge is drawn at every state. */
+.svc-body { position: relative; }
 .svc-icon {
-  position: absolute; right: 14px; bottom: -22px; z-index: 3;
+  position: absolute; right: 14px; top: -26px; z-index: 3;
   width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
   background: var(--gold); color: #14110a; font-size: 20px; box-shadow: var(--sh-2);
   transition: transform .3s cubic-bezier(.2,.9,.3,1.4);

@@ -358,7 +358,7 @@
   <a href="/book" style="background:var(--gold);color:#14110a"><i class="fas fa-calendar-check"></i>Get a quote</a>
 </div>
 
-<script src="/js/site.js"></script>
+<script src="/js/site.js?v=2026-09-06"></script>
 <script>
 (() => {
   'use strict';
@@ -666,7 +666,15 @@
 
   // A price edited in the dashboard reaches this page the next time the
   // visitor looks at it, without a socket and without a poll.
-  LS.onReturn(async () => {
+  //
+  // Guarded, and it must stay guarded. site.js is cached for a day with a
+  // week of stale-while-revalidate, so a returning visitor runs TODAY's page
+  // against YESTERDAY's shared script. Calling a helper that only exists in
+  // the new one threw at the top level of this block, which killed the whole
+  // script — the grid never rendered and the skeleton span forever. Refreshing
+  // does not fix it, because the stale copy is what the browser keeps serving.
+  // Every use of a newly-added LS.* helper needs this shape.
+  LS.onReturn?.(async () => {
     const res = await api('/api/services');
     const live = (res?.data || []).filter(s => s.isActive !== false);
     if (!live.length) return;

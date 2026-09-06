@@ -244,7 +244,7 @@
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.min.js"></script>
-  <script src="/js/site.js"></script>
+  <script src="/js/site.js?v=2026-09-06"></script>
 
   <script>
   // ============================================================
@@ -818,7 +818,7 @@
     // Packages and prices are the reason this page exists, so it checks for a
     // newer copy whenever the visitor returns to the tab rather than showing
     // them whatever was true when they opened it.
-    LS.onReturn(async () => {
+    LS.onReturn?.(async () => {
       const fresh = await fetchService(slug);
       if (!fresh) return;
       const same = JSON.stringify([fresh.packages, fresh.features, fresh.faqs, fresh.shortDesc, fresh.longDesc])

@@ -296,8 +296,21 @@
   function fmtKES(n) { return Number(n).toLocaleString('en-KE'); }
   function stars(n) { const r = Math.round(Math.max(0,Math.min(5,n||5))); return '★'.repeat(r) + '☆'.repeat(5-r); }
 
+  // /s/<slug> is a REWRITE, not a redirect: the address bar keeps /s/drone-services
+  // and the query string this page used to read is empty, so every short URL —
+  // which is what the services grid, the homepage footer, the sitemap and every
+  // link ever shared point at — fell through to the default and rendered DJ &
+  // MC Services under the wrong heading. The path is checked first because it
+  // is the canonical form; ?service= stays supported for older links.
   function getSlugFromUrl() {
-    return new URLSearchParams(window.location.search).get('service') || 'dj-mc-services';
+    const fromPath = location.pathname.match(/^\/s\/([^/]+)/);
+    if (fromPath) return decodeURIComponent(fromPath[1]);
+    const fromQuery = new URLSearchParams(location.search).get('service');
+    if (fromQuery) return fromQuery;
+    // No slug at all is a mis-typed address, not a request for one particular
+    // service. Send them to the list rather than guessing.
+    location.replace('/services');
+    return '';
   }
 
   // Start fetching the moment this script is parsed, rather than waiting for
@@ -315,7 +328,8 @@
   // Nothing else changes: init() awaits this same promise.
   const _servicePreload = (() => {
     try {
-      const slug = new URLSearchParams(window.location.search).get('service') || 'dj-mc-services';
+      const slug = getSlugFromUrl();
+      if (!slug) return Promise.resolve(null);
       return fetch(`/api/services/${encodeURIComponent(slug)}`)
         .then(r => (r.ok ? r.json() : null))
         .then(j => (j && j.success && j.data ? j.data : null))

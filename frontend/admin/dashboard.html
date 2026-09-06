@@ -8153,9 +8153,41 @@ async function duplicateMarketingBanner(id) {
               </details>`;
           }).join('')}</div>`}
 
-        <div class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-4">
-          <p class="text-sm text-gray-300"><i class="fas fa-circle-question text-purple-400 mr-2"></i>Stuck on something not covered here?</p>
-          <p class="text-xs text-gray-500 mt-1">Call the office on +254 703 925 826 — it is quicker than guessing, and tells us which guide to add next.</p>
+        <!-- Two problems, two numbers. "Ask the developer" was in these guides
+             for months without a number attached to it, which is the same as
+             not saying it. Both routes are tappable on a phone, which is what
+             this screen is actually read on. -->
+        <div class="mt-6 grid sm:grid-cols-2 gap-3">
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <p class="text-sm font-semibold text-white"><i class="fas fa-building text-purple-400 mr-2"></i>A question about the business</p>
+            <p class="text-xs text-gray-500 mt-1 mb-3">A client, a booking, a price, what to do about an event.</p>
+            <div class="flex flex-wrap gap-2">
+              <a href="tel:+254703925826" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 transition">
+                <i class="fas fa-phone text-xs"></i> +254 703 925 826
+              </a>
+              <a href="tel:+254733925826" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-400 transition">
+                <i class="fas fa-phone text-xs"></i> +254 733 925 826
+              </a>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <p class="text-sm font-semibold text-white"><i class="fas fa-screwdriver-wrench text-purple-400 mr-2"></i>Something on this screen is wrong</p>
+            <p class="text-xs text-gray-500 mt-1 mb-3">A button that does nothing, a figure that cannot be right, a page that will not load. Kelvin Ndegwa, who built this.</p>
+            <div class="flex flex-wrap gap-2">
+              <a href="tel:+254711939907" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 transition">
+                <i class="fas fa-phone text-xs"></i> +254 711 939 907
+              </a>
+              <a href="https://wa.me/254711939907?text=Lawie%20Sounds%20dashboard%20—%20something%20is%20not%20working%3A" target="_blank" rel="noopener"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600/15 hover:bg-green-600/25 text-sm text-green-400 transition">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+              </a>
+              <a href="mailto:ndegwak6@gmail.com?subject=Lawie%20Sounds%20dashboard" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 transition">
+                <i class="fas fa-envelope text-xs"></i> Email
+              </a>
+            </div>
+            <p class="text-xs text-gray-600 mt-3">Send a screenshot, the time it happened, and what you expected — that usually settles it without a call back.</p>
+          </div>
         </div>`;
     }
 

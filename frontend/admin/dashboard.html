@@ -5228,6 +5228,11 @@ function marketingOffers(offers) {
           </div>
 
           <div class="flex gap-1.5 flex-wrap flex-shrink-0">
+            ${st.label === 'Ended' || st.label === 'Fully claimed' ? '' : `
+            <button type="button" onclick="createBannerForOffer('${o.id}')" title="Put this code on the homepage banner"
+              class="px-3 py-1.5 rounded-lg text-xs bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 transition">
+              <i class="fas fa-bullhorn mr-1"></i>Advertise
+            </button>`}
             <button type="button" onclick="toggleOffer('${o.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${o.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
               ${o.isActive ? 'Pause' : 'Resume'}
             </button>
@@ -5674,90 +5679,311 @@ async function saveOffer() {
   showToast(currentEditId ? 'Offer updated' : 'Offer created', 'success');
 }
 
-function openMarketingForm(id) {
-    const banner = id ? store.marketingBanners.find(b => b.id === id) : null;
+// ── Banner form ────────────────────────────────────────────────
+// Priority is the field this form was missing. The public homepage shows the
+// highest-priority live banner and only that one, so without a control here a
+// second banner could never be reached — and every edit silently reset the
+// priority of the banner that was reachable back to 0.
+const BANNER_MAX_MESSAGE = 160;   // matches validateBanner() on the server
+
+function openMarketingForm(id = null, prefill = {}) {
+    const banner = id ? (store.marketingBanners || []).find(b => b.id === id) : null;
     currentEditId = banner?.id || null;
+    const v = (key, fallback = '') => (banner ? (banner[key] ?? fallback) : (prefill[key] ?? fallback));
+
     document.getElementById('modalTitle').textContent = banner ? 'Edit banner' : 'New banner';
+
+    // A banner usually exists to carry an offer. Naming the offer here records
+    // which campaign the banner belongs to, so its views and clicks can be read
+    // against the redemptions of that code rather than guessed at.
+    const offerOpts = (store.offers || []).map(o =>
+      `<option value="${escapeHtml(o.id)}" ${v('offerId') === o.id ? 'selected' : ''}>${escapeHtml(o.code.trim())} — ${escapeHtml(o.label)}</option>`).join('');
+
+    // Every other live banner, so "priority 3" means something concrete rather
+    // than being a number typed into a vacuum.
+    const rivals = (store.marketingBanners || []).filter(b => b.id !== banner?.id && isLiveBanner(b));
+
     document.getElementById('modalForm').innerHTML = `
-        <div><label for="bannerName" class="block text-sm mb-1">Banner Name (internal)</label><input type="text" id="bannerName" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" placeholder="e.g., April Special" value="${escapeHtml(banner?.name || '')}"></div>
-        <div><label for="bannerMessage" class="block text-sm mb-1">Message *</label><textarea id="bannerMessage" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" rows="2" required placeholder="🎉 Special offer...">${escapeHtml(banner?.message || '')}</textarea></div>
-        <div><label for="bannerCtaText" class="block text-sm mb-1">CTA Button Text</label><input type="text" id="bannerCtaText" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(banner?.ctaText || 'Learn More')}"></div>
-        <div><label for="bannerCtaLink" class="block text-sm mb-1">CTA Link</label><input type="text" id="bannerCtaLink" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${escapeHtml(banner?.ctaLink || '/book')}"></div>
-        <div><label for="bannerStartDate" class="block text-sm mb-1">Start Date</label><input type="date" id="bannerStartDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${banner?.startDate || new Date().toISOString().split('T')[0]}"></div>
-        <div><label for="bannerEndDate" class="block text-sm mb-1">End Date (optional)</label><input type="date" id="bannerEndDate" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700" value="${banner?.endDate || ''}"></div>
-        <div><label class="flex items-center gap-2"><input type="checkbox" id="bannerActive" ${(banner ? banner.isActive : true) ? 'checked' : ''}> <span class="text-sm">Active</span></label></div>
-    `;
+        <div class="pb-3 border-b border-gray-700">
+          <p class="text-sm text-gray-400">The strip across the top of every page. Visitors see one banner at a time — the live one with the highest priority.</p>
+        </div>
+
+        <div>
+          <label for="bannerMessage" class="block text-sm mb-1">Message *</label>
+          <textarea id="bannerMessage" rows="2" maxlength="${BANNER_MAX_MESSAGE}" placeholder="🎉 10% off September bookings — code AUG10"
+            class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">${escapeHtml(v('message'))}</textarea>
+          <div class="flex justify-between items-center mt-1">
+            <p class="text-xs text-gray-600">One line on a phone. Lead with the thing worth reading.</p>
+            <span id="bannerCount" class="text-xs text-gray-600"></span>
+          </div>
+          <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="message"></p>
+        </div>
+
+        <!-- The real bar, not a description of it. Judged as the visitor sees it. -->
+        <div>
+          <p class="text-xs text-gray-500 mb-1.5">How it will look:</p>
+          <div class="rounded-lg px-3 py-2 flex items-center gap-3 flex-wrap" style="background:linear-gradient(90deg,#facc15,#f59e0b)">
+            <p id="bannerPreviewMsg" class="text-sm font-bold text-black flex-1 min-w-0"></p>
+            <span id="bannerPreviewCta" class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/85 text-yellow-300 whitespace-nowrap"></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="bannerCtaText" class="block text-sm mb-1">Button text</label>
+            <input type="text" id="bannerCtaText" maxlength="40" value="${escapeHtml(v('ctaText', 'Learn More'))}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+          </div>
+          <div>
+            <label for="bannerCtaLink" class="block text-sm mb-1">Button goes to</label>
+            <input type="text" id="bannerCtaLink" value="${escapeHtml(v('ctaLink', '/book'))}" placeholder="/book"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <p class="text-xs text-gray-600 mt-1">A page on this site (/book, /services) or a full https:// address.</p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="ctaLink"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label for="bannerStartDate" class="block text-sm mb-1">Starts</label>
+            <input type="date" id="bannerStartDate" value="${v('startDate', mktToday())}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="startDate"></p>
+          </div>
+          <div>
+            <label for="bannerEndDate" class="block text-sm mb-1">Ends <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+            <input type="date" id="bannerEndDate" value="${v('endDate')}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="endDate"></p>
+          </div>
+          <div>
+            <label for="bannerPriority" class="block text-sm mb-1">Priority</label>
+            <input type="number" id="bannerPriority" min="0" max="100" step="1" value="${v('priority', 0)}"
+              class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <p class="text-xs text-gray-600 mt-1">Higher wins.</p>
+          </div>
+        </div>
+
+        <div id="bannerRivals" class="hidden rounded-lg px-3 py-2 text-xs" style="background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);color:#fde047"></div>
+
+        <div>
+          <label for="bannerOffer" class="block text-sm mb-1">Advertising an offer? <span class="text-gray-600 font-normal text-xs">(optional)</span></label>
+          <select id="bannerOffer" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+            <option value="">Not tied to a code</option>
+            ${offerOpts}
+          </select>
+          <p class="text-xs text-gray-600 mt-1">Recording the code here lets you read this banner's clicks against that offer's redemptions.</p>
+        </div>
+
+        <div>
+          <label for="bannerName" class="block text-sm mb-1">Internal name <span class="text-gray-600 font-normal text-xs">(only you see this)</span></label>
+          <input type="text" id="bannerName" maxlength="120" value="${escapeHtml(v('name'))}" placeholder="September push"
+            class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="bannerActive" class="accent-green-500" ${(banner ? banner.isActive : (prefill.isActive !== false)) ? 'checked' : ''}>
+          <span class="text-sm">Active — show this on the site within the dates above</span>
+        </label>
+
+        ${banner && (banner.views || 0) > 0
+          ? `<p class="text-xs text-gray-500 pt-2 border-t border-gray-800">
+               Seen ${banner.views.toLocaleString()} time${banner.views === 1 ? '' : 's'} so far. Editing the message keeps those figures, so the
+               before-and-after will be mixed together — duplicate it instead if you want a clean comparison.
+             </p>` : ''}`;
+
+    const sync = () => {
+        const msg = document.getElementById('bannerMessage').value.trim();
+        const cta = document.getElementById('bannerCtaText').value.trim() || 'Learn More';
+        const count = document.getElementById('bannerCount');
+
+        document.getElementById('bannerPreviewMsg').textContent = msg || 'Your message appears here';
+        document.getElementById('bannerPreviewCta').textContent = cta;
+        count.textContent = `${msg.length}/${BANNER_MAX_MESSAGE}`;
+        count.className = `text-xs ${msg.length > BANNER_MAX_MESSAGE - 20 ? 'text-yellow-400' : 'text-gray-600'}`;
+
+        // Being outranked is the one way a banner can be saved, look correct and
+        // still never appear. Say so while it can still be changed.
+        const box  = document.getElementById('bannerRivals');
+        const mine = Number(document.getElementById('bannerPriority').value) || 0;
+        const over = rivals.filter(b => (b.priority || 0) >= mine);
+        const on   = document.getElementById('bannerActive').checked;
+        if (on && over.length) {
+            const top = over.reduce((a, b) => ((b.priority || 0) > (a.priority || 0) ? b : a));
+            box.innerHTML = `⚠ ${over.length} live banner${over.length === 1 ? '' : 's'} rank${over.length === 1 ? 's' : ''} at or above this priority —
+              “${escapeHtml((top.message || '').slice(0, 60))}${(top.message || '').length > 60 ? '…' : ''}” at priority ${top.priority || 0} shows instead.
+              Set a priority above ${top.priority || 0} to put this one in front.`;
+            box.classList.remove('hidden');
+        } else {
+            box.classList.add('hidden');
+        }
+    };
+    ['bannerMessage','bannerCtaText','bannerPriority'].forEach(idd =>
+        document.getElementById(idd).addEventListener('input', sync));
+    document.getElementById('bannerActive').addEventListener('change', sync);
+    sync();
+
     document.getElementById('formModal').classList.remove('hidden');
 }
 
+// Opens the banner form already written for an offer. The point of the offers
+// tab is codes that get used, and a code nobody is told about does not.
+function createBannerForOffer(offerId) {
+    const o = (store.offers || []).find(x => x.id === offerId);
+    if (!o) return;
+    marketingUI.view = 'banners';
+    renderMarketing();
+    openMarketingForm(null, {
+        message:  `${discountText(o)} — use code ${o.code.trim()}${o.endsOn ? ` before ${o.endsOn}` : ''}`,
+        ctaText:  'Claim this offer',
+        ctaLink:  '/book',
+        name:     o.label,
+        offerId:  o.id,
+        startDate: o.startsOn > mktToday() ? o.startsOn : mktToday(),
+        endDate:  o.endsOn || '',
+        priority: 1,
+    });
+}
+
 async function saveMarketingBanner() {
-    const msg = document.getElementById('bannerMessage').value?.trim();
-    if (!msg) { Swal.fire({ icon: 'warning', title: 'Message required', background: '#1e1e2a', color: '#fff' }); return; }
+    document.querySelectorAll('#modalForm .field-err').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
+
     const payload = {
         type: 'banner',
-        name: document.getElementById('bannerName').value || 'Unnamed',
-        message: msg,
-        ctaText: document.getElementById('bannerCtaText').value || 'Learn More',
-        ctaLink: document.getElementById('bannerCtaLink').value || '/book',
+        name: document.getElementById('bannerName').value.trim() || 'Unnamed',
+        message: document.getElementById('bannerMessage').value.trim(),
+        ctaText: document.getElementById('bannerCtaText').value.trim() || 'Learn More',
+        ctaLink: document.getElementById('bannerCtaLink').value.trim() || '/book',
         isActive: document.getElementById('bannerActive').checked,
         startDate: document.getElementById('bannerStartDate').value || null,
         endDate: document.getElementById('bannerEndDate').value || null,
-        priority: 0
+        priority: Number(document.getElementById('bannerPriority').value) || 0,
+        offerId: document.getElementById('bannerOffer').value || null,
     };
+
     const isEdit = !!currentEditId;
-    const result = isEdit
+    const btn = document.getElementById('saveModalBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const res = isEdit
         ? await apiRequest('PUT', '/api/admin/banners/' + currentEditId, payload)
         : await apiRequest('POST', '/api/admin/banners', payload);
-    if (!result?.data) {
-        const detail = result?._error ? result.message + (result.status ? ' (HTTP ' + result.status + ')' : '') : 'Unexpected response';
-        Swal.fire({ icon: 'error', title: 'Failed to Save Banner', html: '<p>' + detail + '</p><p class="text-sm text-gray-400 mt-2">Check Vercel env vars: SUPABASE_URL, SUPABASE_SERVICE_KEY</p>', background: '#1e1e2a', color: '#fff' });
+
+    btn.disabled = false; btn.textContent = 'Save';
+
+    if (res?._error) {
+        // The server names the field it objected to. Marking that input is the
+        // difference between a fixable form and a manager guessing.
+        if (res.fields) {
+            Object.entries(res.fields).forEach(([f, m]) => {
+                const el = document.querySelector(`#modalForm .field-err[data-for="${f}"]`);
+                if (el) { el.textContent = m; el.classList.remove('hidden'); }
+            });
+            return;
+        }
+        Swal.fire({ icon: 'error', title: 'Could not save banner', text: res.message, background: '#1e1e2a', color: '#fff' });
         return;
     }
+
     if (!store.marketingBanners) store.marketingBanners = [];
     if (isEdit) {
-        const idx = store.marketingBanners.findIndex(b => b.id === currentEditId);
-        if (idx > -1) store.marketingBanners[idx] = result.data;
+        store.marketingBanners = store.marketingBanners.map(b => b.id === currentEditId ? res.data : b);
     } else {
-        store.marketingBanners.unshift(result.data);
+        store.marketingBanners.unshift(res.data);
     }
+
     closeModal();
+    await loadGuidance();       // a live banner clears the "nothing running" advice
     renderMarketing();
-    Swal.fire({ icon: 'success', title: isEdit ? 'Banner Updated!' : 'Banner Created!', text: isEdit ? 'Changes saved.' : 'Your banner is now live on the homepage', timer: 2000, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    showToast(isEdit ? 'Banner updated' : (isLiveBanner(res.data) ? 'Banner created — it is live now' : 'Banner created'), 'success');
 }
 
-function toggleMarketingBanner(id) {
-    if (!store.marketingBanners.find(b => b.id === id)) return;
+async function toggleMarketingBanner(id) {
+    const before = (store.marketingBanners || []).find(b => b.id === id);
+    if (!before) return;
+
+    // Optimistic, then reconciled against what the server actually stored —
+    // a failed toggle used to leave the dashboard claiming a state the site
+    // did not have.
     store.marketingBanners = store.marketingBanners.map(b => b.id === id ? { ...b, isActive: !b.isActive } : b);
-    apiRequest('PATCH', `/api/admin/banners/${id}/toggle`);
     renderMarketing();
+
+    const res = await apiRequest('PATCH', `/api/admin/banners/${id}/toggle`);
+    if (res?._error) {
+        store.marketingBanners = store.marketingBanners.map(b => b.id === id ? before : b);
+        renderMarketing();
+        Swal.fire({ icon: 'error', title: 'Could not change', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+    }
+    store.marketingBanners = store.marketingBanners.map(b => b.id === id ? res.data : b);
+    renderMarketing();
+    showToast(res.data.isActive ? 'Banner activated' : 'Banner paused', 'success');
 }
 
 async function deleteMarketingBanner(id) {
-    const result = await Swal.fire({ title: 'Delete banner?', text: 'This action cannot be undone', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' });
-    if (result.isConfirmed) {
-        store.marketingBanners = store.marketingBanners.filter(b => b.id !== id);
-        await apiRequest('DELETE', `/api/admin/banners/${id}`);
-        renderMarketing();
-        Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    const b = (store.marketingBanners || []).find(x => x.id === id);
+    if (!b) return;
+    const views = b.views || 0;
+
+    // Views and clicks live on the row, so deleting a banner deletes the only
+    // record of how the message performed. Pausing keeps it, and the same
+    // choice is offered here as on an offer that has been redeemed.
+    const first = await Swal.fire({
+        title: views ? 'This banner has a record' : 'Delete this banner?',
+        html: views
+          ? `<p style="color:#9ca3af">It has been seen ${views.toLocaleString()} time${views === 1 ? '' : 's'} and clicked ${(b.clicks || 0).toLocaleString()} time${(b.clicks || 0) === 1 ? '' : 's'}. Deleting erases how this message performed.</p>
+             <p style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Pausing takes it off the site and keeps the figures.</p>`
+          : `<p style="color:#9ca3af">Nobody has seen this one, so nothing is lost.</p>`,
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: views ? 'Delete anyway' : 'Delete',
+        denyButtonText: 'Pause instead', showDenyButton: !!views && b.isActive,
+        confirmButtonColor: '#ef4444', background: '#1e1e2a', color: '#fff',
+    });
+
+    if (first.isDenied) { await toggleMarketingBanner(id); return; }
+    if (!first.isConfirmed) return;
+
+    const res = await apiRequest('DELETE', `/api/admin/banners/${id}`);
+    if (res?._error) {
+        Swal.fire({ icon: 'error', title: 'Could not delete', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
     }
+    store.marketingBanners = store.marketingBanners.filter(x => x.id !== id);
+    await loadGuidance();       // removing the last live banner brings the advice back
+    renderMarketing();
+    showToast('Banner deleted', 'success');
 }
 
-function duplicateMarketingBanner(id) {
-    const original = store.marketingBanners.find(b => b.id === id);
+// The copy is built from named fields, not by spreading the original. Spreading
+// sent the row's id, createdAt and accumulated views/clicks to the server and
+// then put a locally-invented id in the list, so every button on the new card
+// addressed a banner that did not exist until the page was reloaded.
+async function duplicateMarketingBanner(id) {
+    const original = (store.marketingBanners || []).find(b => b.id === id);
     if (!original) return;
-    
-    const duplicated = {
-        ...original,
-        id: Date.now().toString(),
-        name: `${original.name} (Copy)`,
-        isActive: false,
-        createdAt: new Date().toISOString()
-    };
-    
-    store.marketingBanners.push(duplicated);
-    apiRequest('POST', '/api/admin/banners', duplicated);
+
+    const res = await apiRequest('POST', '/api/admin/banners', {
+        type: original.type || 'banner',
+        name: `${original.name || 'Unnamed'} (Copy)`,
+        message: original.message,
+        ctaText: original.ctaText || 'Learn More',
+        ctaLink: original.ctaLink || '/book',
+        startDate: original.startDate || null,
+        endDate: original.endDate || null,
+        priority: original.priority || 0,
+        offerId: original.offerId || null,
+        isActive: false,            // a copy is a draft; it must not start showing
+    });
+
+    if (res?._error) {
+        Swal.fire({ icon: 'error', title: 'Could not duplicate', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+    }
+
+    store.marketingBanners.unshift(res.data);
+    marketingUI.bannerFilter = 'all';   // the copy is paused, so "Live" would hide it
     renderMarketing();
-    Swal.fire({ icon: 'success', title: 'Banner Duplicated!', text: 'Edit the copy to activate it', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' });
+    showToast('Copy created — paused, with its own view count', 'success');
 }
 
     // ==================== ENQUIRIES ====================
@@ -8898,7 +9124,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.setWorkFilter = setWorkFilter; window.reloadWorkLog = reloadWorkLog; window.setWorkStatus = setWorkStatus; window.rejectWorkItem = rejectWorkItem; window.invoiceWorkItem = invoiceWorkItem; window.viewWorkHistory = viewWorkHistory; window.deleteWorkItem = deleteWorkItem; window.openWorkItemForm = openWorkItemForm; window.saveWorkItem = saveWorkItem; window.exportWorkLogCsv = exportWorkLogCsv; window.renderTraining = renderTraining; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.savePoster = savePoster; window.setPosterSource = setPosterSource; window.clearPosterMedia = clearPosterMedia; window.updatePosterPreview = updatePosterPreview; window._posterLinkChanged = _posterLinkChanged; window.handlePosterFile = handlePosterFile; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.setWorkFilter = setWorkFilter; window.reloadWorkLog = reloadWorkLog; window.setWorkStatus = setWorkStatus; window.rejectWorkItem = rejectWorkItem; window.invoiceWorkItem = invoiceWorkItem; window.viewWorkHistory = viewWorkHistory; window.deleteWorkItem = deleteWorkItem; window.openWorkItemForm = openWorkItemForm; window.saveWorkItem = saveWorkItem; window.exportWorkLogCsv = exportWorkLogCsv; window.renderTraining = renderTraining; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.saveMarketingBanner = saveMarketingBanner; window.createBannerForOffer = createBannerForOffer; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.savePoster = savePoster; window.setPosterSource = setPosterSource; window.clearPosterMedia = clearPosterMedia; window.updatePosterPreview = updatePosterPreview; window._posterLinkChanged = _posterLinkChanged; window.handlePosterFile = handlePosterFile; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

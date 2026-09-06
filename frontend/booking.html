@@ -659,9 +659,16 @@
   const DRAFT_KEY  = 'lawie_booking_draft_v2';
   const TOTAL_STEPS = 4;
 
-  // Single source of truth for the service list. `slug` matches services-data.js
-  // so a service page can deep-link here with ?service=<slug> and pre-select it.
-  const SERVICES = [
+  // The services a client can tick. These are the LAST RESORT only: the real
+  // list is loaded from /api/services below, so a service the owner adds in the
+  // dashboard can be enquired about the same minute. Before that, this array
+  // was the only list, which meant a tenth service could be created, published
+  // and advertised while remaining impossible to actually ask for.
+  //
+  // Kept as an offline fallback rather than deleted: an enquiry form that
+  // renders no services when the API is briefly unreachable loses the enquiry,
+  // and these nine are stable enough to stand in for the length of an outage.
+  const FALLBACK_SERVICES = [
     { slug: 'dj-mc-services',  name: 'DJ & MC Services',      icon: 'fa-headphones' },
     { slug: 'led-screens',     name: 'LED Screens',           icon: 'fa-tv' },
     { slug: 'power-lighting',  name: 'Power & Lighting',      icon: 'fa-lightbulb' },
@@ -688,16 +695,44 @@
   let submitting  = false;
 
   // ===================== SERVICE CHECKBOXES =====================
-  // Rendered from SERVICES so the list never drifts between the markup and the
-  // prefill logic.
-  $('servicesGroup').innerHTML = SERVICES.map(s => `
-    <label class="service-card flex items-center p-3.5 border border-[var(--line)] rounded-xl cursor-pointer ">
-      <input type="checkbox" name="services" value="${s.name}" data-slug="${s.slug}"
-             class="w-5 h-5 accent-yellow-500 rounded flex-shrink-0">
-      <span class="ml-3 flex items-center gap-2 text-sm font-medium text-[var(--text)]">
-        <i class="fas ${s.icon} text-[var(--text-muted)] w-4 text-center" aria-hidden="true"></i>${s.name}
-      </span>
-    </label>`).join('');
+  // `SERVICES` is what the form is currently offering. It starts as the offline
+  // fallback so the form is usable on the first paint, then is replaced by the
+  // live list the moment /api/services answers.
+  let SERVICES = FALLBACK_SERVICES;
+
+  function renderServiceChoices() {
+    const chosen = new Set(
+      [...document.querySelectorAll('#servicesGroup input[name="services"]:checked')]
+        .map(cb => cb.dataset.slug)
+    );
+
+    $('servicesGroup').innerHTML = SERVICES.map(s => `
+      <label class="service-card flex items-center p-3.5 border border-[var(--line)] rounded-xl cursor-pointer ">
+        <input type="checkbox" name="services" value="${esc(s.name)}" data-slug="${esc(s.slug)}"
+               class="w-5 h-5 accent-yellow-500 rounded flex-shrink-0" ${chosen.has(s.slug) ? 'checked' : ''}>
+        <span class="ml-3 flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+          <i class="fas ${esc(s.icon || 'fa-star')} text-[var(--text-muted)] w-4 text-center" aria-hidden="true"></i>${esc(s.name)}
+        </span>
+      </label>`).join('');
+  }
+
+  // Live list. Anything already ticked stays ticked across the swap, including
+  // a deep-linked ?service= selection, so a slow network cannot silently clear
+  // what the visitor chose.
+  async function loadLiveServices() {
+    try {
+      const res = await fetch('/api/services');
+      if (!res.ok) return;
+      const json = await res.json();
+      const live = (json.data || [])
+        .filter(s => s.slug && s.name)
+        .map(s => ({ slug: s.slug, name: s.name, icon: s.icon || 'fa-star' }));
+      if (!live.length) return;
+      SERVICES = live;
+      renderServiceChoices();
+      applyServicePrefill();          // a deep link may name a service only the live list has
+    } catch {}
+  }
 
   // ===================== VALIDATION =====================
   // Mirrors the server rules in backened/src/server.js. The server is still the
@@ -1058,7 +1093,12 @@
   const wantedSlugs = (params.get('service') || '')
     .split(',').map(s => s.trim()).filter(Boolean);
 
-  if (wantedSlugs.length) {
+  // Runs once now and again when the live service list arrives, because a deep
+  // link can name a service that only the live list contains — a brand-new one,
+  // which is exactly the case the old hardcoded array could never satisfy.
+  function applyServicePrefill() {
+    if (!wantedSlugs.length) return;
+
     const matched = wantedSlugs
       .map(slug => SERVICES.find(s => s.slug === slug))
       .filter(Boolean);
@@ -1076,6 +1116,10 @@
       channel = 'service:' + matched.map(m => m.slug).join('+');
     }
   }
+
+  renderServiceChoices();
+  applyServicePrefill();
+  loadLiveServices();
 
   // An explicit ?channel= wins over the derived one. Client albums link here as
   // ?service=a,b&channel=album:<id>, which is what turns "a friend recommended

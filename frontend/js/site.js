@@ -539,9 +539,39 @@
   }
 
   // ── Public surface ────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════
+  // REVALIDATE ON RETURN
+  //
+  // Prices and services change in the dashboard while pages sit open in
+  // other tabs — on a phone left on a service page overnight, on the
+  // laptop of someone comparing suppliers. A socket would keep those in
+  // step to the second, at the cost of a connection per visitor and a
+  // reconnect path to get wrong, to solve a problem measured in one
+  // person editing a price a few times a month.
+  //
+  // The moment that actually matters is the visitor coming BACK to the
+  // tab: that is when they read it again, and it is free to check then.
+  // Anything fresher than `minAge` is left alone so a tab flicked away
+  // and back does not refetch.
+  // ══════════════════════════════════════════════════════════════════
+  function onReturn(fn, minAge = 60000) {
+    let last = Date.now();
+    const run = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - last < minAge) return;
+      last = Date.now();
+      Promise.resolve(fn()).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', run);
+    window.addEventListener('focus', run);
+    // Back/forward cache: Safari and Firefox restore the whole page,
+    // including data fetched an hour ago, without firing either event.
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { last = 0; run(); } });
+  }
+
   window.LS = {
     WA_NUMBER, SITE, BOOK_URL,
-    $, $$, esc, safeHref, api,
+    $, $$, esc, safeHref, api, onReturn,
     timeAgo, prettyDate, prettyDateTime, fullDate, isNew, endsIn, countdown, stamp, hydrateStamps, parseDate,
     observeReveals, scrollToSection, toast, lightbox, track,
     mediaSrc, mediaSrcset,

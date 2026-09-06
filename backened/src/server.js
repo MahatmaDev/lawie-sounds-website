@@ -207,17 +207,27 @@ function toEventDB(b, isUpdate = false) {
   if (!isUpdate) row.booking_count = b.bookingCount || 0;
   return row;
 }
-function toServiceDB(b) {
-  const row = {
-    name: b.name,
-    slug: b.slug || String(b.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-    category: b.category, icon: b.icon,
-    short_desc: b.shortDesc, long_desc: b.longDesc,
-    image: b.mainImage || b.image,
-    is_active: b.isActive !== false,
-    display_order: b.displayOrder || 0,
-    features: b.features || [], faqs: b.faqs || [],
-  };
+// isUpdate builds a PATCH-shaped row: only the keys actually present in the
+// body are written. The previous version always sent every column, so a PUT
+// that did not carry `features` overwrote them with [] — which is how ten
+// services ended up in production with no features and no FAQs while the
+// public pages quietly served hardcoded copies of both.
+function toServiceDB(b, isUpdate = false) {
+  const row = {};
+  const put = (col, val, present) => { if (!isUpdate || present) row[col] = val; };
+
+  put('name', b.name, b.name !== undefined);
+  put('slug', b.slug || String(b.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      b.slug !== undefined || b.name !== undefined);
+  put('category', b.category, b.category !== undefined);
+  put('icon', b.icon, b.icon !== undefined);
+  put('short_desc', b.shortDesc, b.shortDesc !== undefined);
+  put('long_desc', b.longDesc, b.longDesc !== undefined);
+  put('image', b.mainImage || b.image, b.mainImage !== undefined || b.image !== undefined);
+  put('is_active', b.isActive !== false, b.isActive !== undefined);
+  put('display_order', b.displayOrder || 0, b.displayOrder !== undefined);
+  put('features', b.features || [], b.features !== undefined);
+  put('faqs', b.faqs || [], b.faqs !== undefined);
 
   // Packages live in service_packages now. Writing the JSONB column here would
   // resurrect the old copy every time a service was saved and give two
@@ -782,7 +792,11 @@ app.get('/api/admin/auth/config', (_, res) => res.json({
 }));
 
 // Services (active only — full data so service-detail pages render correctly)
-app.get('/api/services', publicCache(60), async (req, res) => {
+// 30s at the CDN rather than 60, with a shorter stale window: this is the
+// pricing surface, and the gap between the owner changing a price and a
+// visitor seeing it is the one delay on this site with money attached to it.
+// Pages also re-check when the visitor returns to the tab (LS.onReturn).
+app.get('/api/services', publicCache(30, 60), async (req, res) => {
   const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('display_order');
   if (error) return handleError(res, error);
 
@@ -807,7 +821,7 @@ app.get('/api/services', publicCache(60), async (req, res) => {
 });
 
 // Single service by slug or UUID (for service-detail.html)
-app.get('/api/services/:slug', publicCache(60), async (req, res) => {
+app.get('/api/services/:slug', publicCache(30, 60), async (req, res) => {
   const { slug } = req.params;
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
   const { data, error } = await supabase.from('services').select('*')
@@ -1484,23 +1498,178 @@ app.delete('/api/admin/events/:id', adminAuth, async (req, res) => {
 });
 
 // ==================== ADMIN — SERVICES ====================
+// ==================== SERVICES — WHO MAY CHANGE WHAT =========================
+//
+// A service row carries two different kinds of decision, and they belong to
+// two different people:
+//
+//   COPY      what the service is called on the page, how it is described, the
+//             features listed, the questions answered. Marketing work.
+//   COMMERCE  the price display mode, whether the service is on the website at
+//             all, its packages and their prices, and deletion. Owner's call.
+//
+// Gating the whole route by role cannot express that, so the split is by FIELD
+// and it lives here — one table, read by the update route and echoed to the
+// dashboard through /api/admin/services/rights so the UI disables exactly what
+// the server would refuse. A UI that hides a button the server still allows is
+// theatre; a UI that offers one the server refuses is worse.
+const SERVICE_COPY_FIELDS = ['shortDesc', 'longDesc', 'icon', 'mainImage', 'image', 'features', 'faqs', 'budgetNote'];
+const SERVICE_COMMERCE_FIELDS = ['name', 'slug', 'category', 'isActive', 'displayOrder', 'priceDisplay'];
+
+const SERVICE_RIGHTS = {
+  admin:     { create: true,  delete: true,  packages: true, fields: '*' },
+  manager:   { create: false, delete: false, packages: false, fields: SERVICE_COPY_FIELDS },
+  developer: { create: false, delete: false, packages: false, fields: [] },
+};
+const rightsOf = (role) => SERVICE_RIGHTS[role] || SERVICE_RIGHTS.developer;
+
+// Packages, prices and price history are commerce, so they answer to the same
+// rule as the commerce fields rather than to a second, drifting one.
+function requireServiceDelete(req, res, next) {
+  if (!rightsOf(req.admin?.role).delete) {
+    return res.status(403).json({ error: 'Removing a service from the website is the business owner\'s decision. You can ask them to hide it instead.' });
+  }
+  next();
+}
+
+function servicePackageWrite(req, res, next) {
+  if (!rightsOf(req.admin?.role).packages) {
+    return res.status(403).json({ error: 'Packages and prices are the business owner\'s to change.' });
+  }
+  next();
+}
+
+// A slug is a public URL. Changing one breaks every link a client was ever
+// sent, so it is validated like an address rather than like a label.
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+async function validateService(body, { isUpdate = false, id = null } = {}) {
+  const errors = {};
+  const has = (k) => !isUpdate || body[k] !== undefined;
+
+  const name = String(body.name ?? '').trim();
+  if (has('name')) {
+    if (name.length < 2)  errors.name = 'Give the service a name clients would recognise.';
+    if (name.length > 80) errors.name = 'That name is too long for a service card.';
+  }
+
+  const slug = String(body.slug ?? '').trim();
+  if (body.slug !== undefined && slug) {
+    if (!SLUG_RE.test(slug)) errors.slug = 'Use lowercase letters, numbers and hyphens only — it becomes the page address.';
+    if (slug.length > 60)    errors.slug = 'That address is too long.';
+  }
+
+  if (has('shortDesc')) {
+    const s = String(body.shortDesc ?? '').trim();
+    if (s.length > 240) errors.shortDesc = `Keep the summary under 240 characters — it has to fit a card (currently ${s.length}).`;
+  }
+  if (has('longDesc')) {
+    const l = String(body.longDesc ?? '').trim();
+    if (l.length > 6000) errors.longDesc = 'That description is longer than the page can present sensibly.';
+  }
+  if (body.icon !== undefined && body.icon && !/^fa-[a-z0-9-]+$/.test(String(body.icon).trim())) {
+    errors.icon = 'Icons are Font Awesome names, like fa-headphones.';
+  }
+  if (body.priceDisplay !== undefined && !PRICE_DISPLAY_MODES.includes(body.priceDisplay)) {
+    errors.priceDisplay = 'Choose how prices are shown: from, range, or on request.';
+  }
+  const img = body.mainImage ?? body.image;
+  if (img !== undefined && img && !isSafeCtaLink(String(img))) {
+    errors.mainImage = 'Use an uploaded image or a full https:// address.';
+  }
+  if (body.features !== undefined && !Array.isArray(body.features)) errors.features = 'Features must be a list.';
+  if (body.faqs !== undefined && !Array.isArray(body.faqs))         errors.faqs = 'FAQs must be a list.';
+
+  // Two services answering to the same address is not a validation nicety: the
+  // public page resolves by slug and would serve whichever row came back first.
+  const candidate = slug || (name ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '');
+  if (candidate && !errors.slug && !errors.name) {
+    let q = supabase.from('services').select('id, name').eq('slug', candidate);
+    if (id) q = q.neq('id', id);
+    const { data: clash } = await q.maybeSingle();
+    if (clash) errors.slug = `"${clash.name}" already uses the address /s/${candidate}. Give this one a different name or address.`;
+  }
+  return errors;
+}
+
 app.get('/api/admin/services', adminAuth, async (req, res) => {
   const { data, error } = await supabase.from('services').select('*').order('display_order');
   if (error) return handleError(res, error);
   res.json({ success: true, data: data.map(map.service) });
 });
+
+// The dashboard asks what this account may do rather than deciding for itself
+// from the role name. One definition, two consumers.
+app.get('/api/admin/services/rights', adminAuth, (req, res) => {
+  const r = rightsOf(req.admin?.role);
+  res.json({
+    success: true,
+    data: {
+      role: req.admin?.role || 'unknown',
+      create: r.create, delete: r.delete, packages: r.packages,
+      fields: r.fields === '*' ? [...SERVICE_COPY_FIELDS, ...SERVICE_COMMERCE_FIELDS] : r.fields,
+      all: r.fields === '*',
+    },
+  });
+});
+
 app.post('/api/admin/services', adminAuth, async (req, res) => {
+  if (!rightsOf(req.admin?.role).create) {
+    return res.status(403).json({ error: 'Adding a service to the website is the business owner\'s decision.' });
+  }
+  const errors = await validateService(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
   const { data, error } = await supabase.from('services').insert(toServiceDB(req.body)).select().single();
-  if (error) return handleError(res, error);
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'A service already uses that address.', fields: { slug: 'Already in use.' } });
+    return handleError(res, error);
+  }
   res.status(201).json({ success: true, data: map.service(data) });
 });
+
 app.put('/api/admin/services/:id', adminAuth, async (req, res) => {
-  const { data, error } = await supabase.from('services').update(toServiceDB(req.body)).eq('id', req.params.id).select().maybeSingle();
-  if (error) return handleError(res, error);
+  const rights = rightsOf(req.admin?.role);
+  const allowed = rights.fields === '*' ? null : new Set(rights.fields);
+
+  if (allowed) {
+    // Named, not silently dropped. A save that quietly discards half of what
+    // was typed is indistinguishable from a save that worked.
+    const refused = Object.keys(req.body).filter(k =>
+      !allowed.has(k) && SERVICE_COMMERCE_FIELDS.includes(k));
+    if (refused.length) {
+      return res.status(403).json({
+        error: refused.includes('isActive')
+          ? 'Publishing or hiding a service is the business owner\'s decision. Your other changes were not saved either — remove that change and save again.'
+          : `Your account can edit the wording of a service, not ${refused.join(', ')}.`,
+        fields: Object.fromEntries(refused.map(f => [f, 'Your account cannot change this.'])),
+      });
+    }
+    if (!allowed.size) {
+      return res.status(403).json({ error: 'This account has read-only access to services.' });
+    }
+  }
+
+  const errors = await validateService(req.body, { isUpdate: true, id: req.params.id });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
+  }
+
+  const body = allowed
+    ? Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.has(k)))
+    : req.body;
+
+  const { data, error } = await supabase.from('services')
+    .update(toServiceDB(body, true)).eq('id', req.params.id).select().maybeSingle();
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'A service already uses that address.', fields: { slug: 'Already in use.' } });
+    return handleError(res, error);
+  }
   if (!data) return res.status(404).json({ error: 'Service not found' });
   res.json({ success: true, data: map.service(data) });
 });
-app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
+app.delete('/api/admin/services/:id', adminAuth, requireServiceDelete, async (req, res) => {
   const { data: cur } = await supabase.from('services')
     .select('id, name').eq('id', req.params.id).maybeSingle();
   if (!cur) return res.status(404).json({ error: 'Service not found' });
@@ -3094,7 +3263,7 @@ app.get('/api/admin/services/:id/packages', adminAuth, async (req, res) => {
   res.json({ success: true, data: data.map(map.servicePackage) });
 });
 
-app.post('/api/admin/services/:id/packages', adminAuth, async (req, res) => {
+app.post('/api/admin/services/:id/packages', adminAuth, servicePackageWrite, async (req, res) => {
   const errors = validatePackage(req.body);
   if (Object.keys(errors).length) {
     return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
@@ -3128,7 +3297,7 @@ app.post('/api/admin/services/:id/packages', adminAuth, async (req, res) => {
   res.status(201).json({ success: true, data: map.servicePackage(data) });
 });
 
-app.put('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
+app.put('/api/admin/packages/:pkgId', adminAuth, servicePackageWrite, async (req, res) => {
   const errors = validatePackage(req.body, { isUpdate: true });
   if (Object.keys(errors).length) {
     return res.status(400).json({ error: 'Please correct the highlighted fields.', fields: errors });
@@ -3155,7 +3324,7 @@ app.put('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
   res.json({ success: true, data: map.servicePackage(data) });
 });
 
-app.delete('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
+app.delete('/api/admin/packages/:pkgId', adminAuth, servicePackageWrite, async (req, res) => {
   const { data: cur } = await supabase.from('service_packages')
     .select('id').eq('id', req.params.pkgId).maybeSingle();
   if (!cur) return res.status(404).json({ error: 'Package not found' });
@@ -3175,7 +3344,7 @@ app.delete('/api/admin/packages/:pkgId', adminAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-app.patch('/api/admin/services/:id/packages/reorder', adminAuth, async (req, res) => {
+app.patch('/api/admin/services/:id/packages/reorder', adminAuth, servicePackageWrite, async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : null;
   if (!items?.length) return res.status(400).json({ error: 'items array is required' });
 

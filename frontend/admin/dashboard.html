@@ -1540,6 +1540,28 @@
     let servicePerf = null;
     let servicePerfError = null;
 
+    // What THIS account may change, answered by the server rather than inferred
+    // from the role name in the browser. The dashboard used to offer every
+    // service action to every account and let the API refuse afterwards, which
+    // reads to the person as the system breaking rather than as a boundary.
+    // Until it loads, assume the least — an enabled button that turns out to be
+    // forbidden is a worse first impression than one that arrives enabled.
+    let serviceRights = { role: '', create: false, delete: false, packages: false, fields: [], all: false, loaded: false };
+
+    async function loadServiceRights() {
+      const res = await apiRequest('GET', '/api/admin/services/rights');
+      // An older API without this route must not lock the owner out of his own
+      // dashboard, so a failure falls back to full rights and lets the server
+      // remain the authority.
+      serviceRights = res?._error
+        ? { role: 'unknown', create: true, delete: true, packages: true, fields: [], all: true, loaded: true }
+        : Object.assign({ loaded: true }, res.data);
+    }
+
+    // One question, asked the same way everywhere.
+    const mayEditServiceField = (f) => serviceRights.all || (serviceRights.fields || []).includes(f);
+    const readOnlyServices    = () => !serviceRights.all && !(serviceRights.fields || []).length;
+
     const SERVICE_RANGES = { '30d': 30, '90d': 90, '365d': 365 };
     let servicePerfRange = '90d';
 
@@ -1601,7 +1623,7 @@
 
       if (!servicePerf && !servicePerfError) {
         container.innerHTML = `<div class="flex justify-center py-16"><div class="spinner"></div></div>`;
-        await loadServicePerformance();
+        await Promise.all([loadServicePerformance(), serviceRights.loaded ? null : loadServiceRights()]);
       }
 
       const services = store.services || [];
@@ -1632,9 +1654,10 @@
                                         : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}">
                 ${k === '365d' ? '12 months' : k.replace('d', ' days')}
               </button>`).join('')}
+            ${serviceRights.create ? `
             <button type="button" onclick="openServiceForm()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
               <i class="fas fa-plus"></i> New service
-            </button>
+            </button>` : ''}
           </div>
         </div>
 
@@ -1642,7 +1665,15 @@
           ${tab('performance', '📈 Performance')}
           ${tab('content', '📝 Content gaps')}
           ${tab('inactive', '⚫ Inactive')}
-        </div>`;
+        </div>
+
+        ${serviceRights.all || !serviceRights.loaded ? '' : `
+          <div class="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 mb-5 text-xs text-gray-400 flex items-start gap-2.5">
+            <i class="fas fa-circle-info text-purple-400 mt-0.5"></i>
+            <span>${readOnlyServices()
+              ? 'Your account can read the services but not change them.'
+              : 'Your account edits the wording, features and questions on a service. Prices, packages, and whether a service is on the website belong to the business owner.'}</span>
+          </div>`}`;
 
       if (servicePerfError === 'admin-only') {
         container.innerHTML = header + `
@@ -1753,15 +1784,21 @@
                 </div>` : ''}
 
               <div class="flex gap-1.5 flex-wrap flex-shrink-0">
+                <a href="/s/${escapeHtml(s.slug || s.id)}" target="_blank" rel="noopener" title="Open the public page"
+                  class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                  <i class="fas fa-arrow-up-right-from-square"></i>
+                </a>
                 <button type="button" onclick="openServiceForm('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-purple-600 hover:bg-purple-700 transition">
-                  <i class="fas fa-pen mr-1"></i>Edit
+                  <i class="fas fa-pen mr-1"></i>${readOnlyServices() ? 'View' : 'Edit'}
                 </button>
+                ${mayEditServiceField('isActive') ? `
                 <button type="button" onclick="toggleServiceActive('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs transition ${s.isActive ? 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'}">
                   ${s.isActive ? 'Hide' : 'Show'}
-                </button>
+                </button>` : ''}
+                ${serviceRights.delete ? `
                 <button type="button" onclick="deleteService('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs bg-red-600/10 hover:bg-red-600/25 text-red-400 transition">
                   <i class="fas fa-trash"></i>
-                </button>
+                </button>` : ''}
               </div>
             </div>
           </div>`;
@@ -1893,8 +1930,18 @@
             ${(pkg.features||[]).length ? `<p class="text-xs text-gray-500 line-clamp-1">${(pkg.features).slice(0,3).map(f=>escapeHtml(f)).join(' · ')}${pkg.features.length>3?' …':''}</p>` : ''}
           </div>
           <div class="flex gap-1 shrink-0">
+            ${serviceRights.packages ? `
+            <button type="button" onclick="movePackage('${pkg.id}', -1)" title="Move up"
+              class="px-2 py-1 bg-gray-700/60 hover:bg-gray-600 text-gray-300 rounded-lg text-xs transition"><i class="fas fa-arrow-up"></i></button>
+            <button type="button" onclick="movePackage('${pkg.id}', 1)" title="Move down"
+              class="px-2 py-1 bg-gray-700/60 hover:bg-gray-600 text-gray-300 rounded-lg text-xs transition"><i class="fas fa-arrow-down"></i></button>
+            <button type="button" onclick="togglePackageActive('${pkg.id}')" title="${pkg.isActive === false ? 'Show on the website' : 'Hide from the website'}"
+              class="px-2.5 py-1 rounded-lg text-xs transition ${pkg.isActive === false ? 'bg-green-600/20 text-green-400 hover:bg-green-600/40' : 'bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/40'}">
+              ${pkg.isActive === false ? 'Show' : 'Hide'}
+            </button>
             <button type="button" onclick="editPackage('${pkg.id}')" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg text-xs transition">Edit</button>
             <button type="button" onclick="deletePackage('${pkg.id}')" class="px-2.5 py-1 bg-red-600/10 hover:bg-red-600/30 text-red-400 rounded-lg text-xs transition">Delete</button>
+            ` : '<span class="text-xs text-gray-600 px-2">Owner only</span>'}
           </div>
         </div>`).join('') || '<p class="text-gray-500 text-center py-6 text-sm">No packages yet. A visitor comparing suppliers leaves when they cannot find a price — this is the highest-value thing to add.</p>';
 
@@ -1969,6 +2016,8 @@
               <span class="text-xs text-gray-600">URL slug:</span>
               <code class="text-xs text-purple-400 font-mono" id="svcSlugPreview">${escapeHtml(service?.slug || '')}</code>
             </div>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="name"></p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="slug"></p>
           </div>
 
           <!-- How much pricing the public sees, per service.
@@ -1986,6 +2035,7 @@
               <option value="on_request" ${service?.priceDisplay === 'on_request' ? 'selected' : ''}>No prices — "Price on request"</option>
             </select>
             <p id="svcPriceHint" class="text-xs text-gray-500 mt-1.5"></p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="priceDisplay"></p>
           </div>
 
           <div>
@@ -2023,12 +2073,17 @@
           <div>
             <label for="serviceShortDesc" class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Short Description <span class="text-gray-600 font-normal normal-case">(shown on services page)</span></label>
             <textarea id="serviceShortDesc" rows="2" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition resize-none" placeholder="One compelling sentence that makes clients click through…">${escapeHtml(service?.shortDesc || '')}</textarea>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="shortDesc"></p>
           </div>
 
           <!-- Long description -->
           <div>
             <label for="serviceLongDesc" class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Full Description <span class="text-gray-600 font-normal normal-case">(shown on service detail page)</span></label>
             <textarea id="serviceLongDesc" rows="4" class="w-full px-4 py-2.5 bg-gray-800 rounded-xl border border-gray-700 focus:border-purple-500 outline-none text-sm transition resize-none" placeholder="Sell the experience — include equipment specs, what's included, your expertise…">${escapeHtml(service?.longDesc || '')}</textarea>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="longDesc"></p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="icon"></p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="mainImage"></p>
+            <p class="field-err text-xs text-red-400 mt-1 hidden" data-for="isActive"></p>
           </div>
 
           <!-- Cover Image -->
@@ -2080,10 +2135,12 @@
         <!-- ── PACKAGES TAB ── -->
         <div id="tabPackages" class="tab-service-content hidden space-y-3">
           <div id="packagesList" class="space-y-2">${pkgListHtml}</div>
+          ${!serviceRights.packages ? '' : `
           <button type="button" onclick="addPackage()" class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-purple-500 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
             <i class="fas fa-plus text-xs"></i> Add Package
           </button>
           <p class="text-xs text-gray-600 text-center">Add Basic, Standard &amp; Premium tiers — clients convert better with choice.</p>
+          `}
         </div>
 
         <!-- ── FEATURES TAB ── -->
@@ -2126,6 +2183,37 @@
       // Apply active styling to first tab immediately
       const firstTab = document.querySelector('.tab-service[data-tab="basic"]');
       if (firstTab) _activateServiceTab(firstTab);
+
+      // Exposed so a caller can land the owner on a specific tab — saving a new
+      // service opens its Packages tab, because pricing is what they came for.
+      window.setServiceModalTab = (key) => {
+        const btn = document.querySelector(`.tab-service[data-tab="${key}"]`);
+        if (btn) _activateServiceTab(btn);
+      };
+
+      // One pass over the commerce inputs rather than a permission check woven
+      // through every field's markup. A disabled input that says why is honest;
+      // an enabled one that the server then refuses is not.
+      const COMMERCE_INPUTS = {
+        serviceName:      'name',
+        serviceCategory:  'category',
+        svcPriceDisplay:  'priceDisplay',
+        serviceActive:    'isActive',
+      };
+      Object.entries(COMMERCE_INPUTS).forEach(([elId, field]) => {
+        if (mayEditServiceField(field)) return;
+        const el = document.getElementById(elId);
+        if (!el) return;
+        el.disabled = true;
+        el.classList.add('opacity-60', 'cursor-not-allowed');
+        el.title = 'Only the business owner can change this.';
+      });
+      if (readOnlyServices()) {
+        document.querySelectorAll('#modalForm input, #modalForm textarea, #modalForm select')
+          .forEach(el => { el.disabled = true; el.classList.add('opacity-60'); });
+        const save = document.getElementById('saveModalBtn');
+        if (save) { save.disabled = true; save.title = 'This account has read-only access to services.'; }
+      }
 
       // Slug live preview for new services
       const nameInput = document.getElementById('serviceName');
@@ -2326,6 +2414,53 @@
       showToast(wasEdit ? 'Package updated' : 'Package added', 'success');
     }
 
+    // A hidden package stays priced and stays in the sales record, but leaves
+    // the website. It is the answer to "we are not offering that this season",
+    // and the API has supported it from the start — the form showed a "Hidden"
+    // badge with no way to set or clear it, so a package could only be hidden
+    // by the 409 path when someone tried to delete one a client had bought.
+    async function togglePackageActive(pkgId) {
+      const service = store.services.find(s => s.id === currentEditId);
+      const pkg = ((service && service.packages) || []).find(p => p.id === pkgId);
+      if (!pkg) return;
+
+      const res = await apiRequest('PUT', '/api/admin/packages/' + pkgId, { isActive: pkg.isActive === false });
+      if (res?._error) {
+        Swal.fire({ icon: 'error', title: 'Could not change', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      await refreshServicePackages(currentEditId);
+      openServiceForm(currentEditId);
+      setServiceModalTab('packages');
+      showToast(res.data.isActive ? 'Package is on the website' : 'Package hidden from the website', 'success');
+    }
+
+    // Order is what a visitor reads top to bottom, and the cheapest tier first
+    // is a different sales pitch from the most popular tier first. Swaps with
+    // the neighbour and sends both, so two packages can never end up sharing a
+    // position.
+    async function movePackage(pkgId, direction) {
+      const service = store.services.find(s => s.id === currentEditId);
+      const list = [...((service && service.packages) || [])]
+        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+      const i = list.findIndex(p => p.id === pkgId);
+      const j = i + direction;
+      if (i === -1 || j < 0 || j >= list.length) return;
+
+      [list[i], list[j]] = [list[j], list[i]];
+      const items = list.map((p, idx) => ({ id: p.id, displayOrder: (idx + 1) * 10 }));
+
+      const res = await apiRequest('PATCH', `/api/admin/services/${currentEditId}/packages/reorder`, { items });
+      if (res?._error) {
+        Swal.fire({ icon: 'error', title: 'Could not reorder', text: res.message, background: '#1e1e2a', color: '#fff' });
+        return;
+      }
+      await refreshServicePackages(currentEditId);
+      openServiceForm(currentEditId);
+      setServiceModalTab('packages');
+    }
+
     // Re-reads packages for one service from the server rather than trusting the
     // local copy, so what the form shows is what was actually stored.
     async function refreshServicePackages(serviceId) {
@@ -2465,6 +2600,8 @@
     }
 
     async function saveService() {
+      document.querySelectorAll('#modalForm .field-err').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
+
       const name      = document.getElementById('serviceName').value.trim();
       const category  = document.getElementById('serviceCategory').value;
       const icon      = document.getElementById('serviceIcon').value.trim() || 'fa-star';
@@ -2505,28 +2642,70 @@
         faqs: service?.faqs || []
       };
 
+      const wasNew   = !currentEditId;
       const _svcPath = currentEditId ? `/api/admin/services/${currentEditId}` : '/api/admin/services';
+
+      // Send only what this account may change. Sending a commerce field a
+      // manager cannot set would be refused outright — and with it the wording
+      // changes they actually made, which is the worst of both outcomes.
+      // A create always sends everything: only an owner reaches it.
+      if (currentEditId && !serviceRights.all) {
+        Object.keys(newService).forEach(k => {
+          if (k !== 'id' && !mayEditServiceField(k)) delete newService[k];
+        });
+      }
+
+      const btn = document.getElementById('saveModalBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
       const result = await apiRequest(currentEditId ? 'PUT' : 'POST', _svcPath, newService);
-      if (!result?.data) {
-        Swal.fire({ icon: 'error', title: 'Save Failed', text: result?.message || 'Could not save service. Check your API connection.', background: '#1e1e2a', color: '#fff' });
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+
+      if (result?._error) {
+        // The server names the field it objected to — a duplicate address, a
+        // summary too long for the card, a change this account may not make.
+        // Showing that on the field beats "Save Failed" over a form the owner
+        // then has to re-read line by line.
+        if (result.fields) {
+          Object.entries(result.fields).forEach(([f, m]) => {
+            const el = document.querySelector(`#modalForm .field-err[data-for="${f}"]`);
+            if (el) { el.textContent = m; el.classList.remove('hidden'); }
+          });
+          const first = document.querySelector('#modalForm .field-err:not(.hidden)');
+          if (!first) Swal.fire({ icon: 'error', title: 'Could not save', text: result.message, background: '#1e1e2a', color: '#fff' });
+          return;
+        }
+        Swal.fire({
+          icon: result.status === 403 ? 'info' : 'error',
+          title: result.status === 403 ? 'Not your account\'s to change' : 'Could not save service',
+          text: result.message, background: '#1e1e2a', color: '#fff',
+        });
         return;
       }
+
       if (currentEditId) {
         store.services = store.services.map(s => s.id === currentEditId ? result.data : s);
       } else {
         store.services.push(result.data);
       }
+      servicePerf = null;           // readiness, "from" price and the gap list all move
+      updateStats();
+
+      // A new service used to close the form here, and its packages, features
+      // and FAQs tabs are only offered on a saved service — so the one thing
+      // the owner opened the form to do was two navigations away, with no sign
+      // of where to go. Now the form stays open on the service that was just
+      // created, with those tabs unlocked, which is where the work continues.
+      if (wasNew) {
+        openServiceForm(result.data.id);
+        setServiceModalTab('packages');
+        showToast(`"${name}" created — add its packages now`, 'success');
+        renderServices();
+        return;
+      }
+
       closeModal();
       renderServices();
-      updateStats();
-      Swal.fire({
-        icon: 'success',
-        title: currentEditId ? '✏️ Service Updated!' : '🚀 Service is Live!',
-        html: isActive
-          ? `<p style="color:#9ca3af">"${escapeHtml(name)}" is now visible to clients on your website.</p><a href="https://lawie-sounds-website.vercel.app/#services" target="_blank" style="color:#a78bfa;font-size:0.85rem">→ See it live</a>`
-          : `<p style="color:#9ca3af">"${escapeHtml(name)}" saved as Draft — go live when ready.</p>`,
-        timer: 4000, showConfirmButton: false, background: '#1e1e2a', color: '#fff'
-      });
+      showToast(isActive ? `"${name}" updated — live within a minute` : `"${name}" updated (hidden from the site)`, 'success');
     }
 
     // The original index-addressed savePackage lived here. Replaced by the
@@ -2594,7 +2773,13 @@
       editingFaqIndex = null;
     }
 
-    async function deleteService(id) { const result = await Swal.fire({ title: 'Delete service?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete', background: '#1e1e2a', color: '#fff' }); if (result.isConfirmed) { store.services = store.services.filter(s => s.id !== id); await apiRequest('DELETE', `/api/admin/services/${id}`); renderServices(); Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }); } }
+    // The second, naive deleteService that used to live here is gone. Two
+    // functions with one name meant the later declaration won, so the careful
+    // one above — which asks the server first and offers to hide the service
+    // when bookings reference it — was dead code. What actually ran removed the
+    // row from the screen and fired a DELETE it never checked, so a service the
+    // server refused to delete vanished from the dashboard and stayed on the
+    // website until the next reload.
     function editService(id) { openServiceForm(id); }
 
     async function duplicateService(id) {
@@ -9156,7 +9341,7 @@ info@lawiesounds.co.ke | WhatsApp: +254 700 000 000</pre>
     }
     init();
 
-    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.setWorkFilter = setWorkFilter; window.reloadWorkLog = reloadWorkLog; window.setWorkStatus = setWorkStatus; window.rejectWorkItem = rejectWorkItem; window.invoiceWorkItem = invoiceWorkItem; window.viewWorkHistory = viewWorkHistory; window.deleteWorkItem = deleteWorkItem; window.openWorkItemForm = openWorkItemForm; window.saveWorkItem = saveWorkItem; window.exportWorkLogCsv = exportWorkLogCsv; window.renderTraining = renderTraining; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.saveMarketingBanner = saveMarketingBanner; window.createBannerForOffer = createBannerForOffer; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.savePoster = savePoster; window.setPosterSource = setPosterSource; window.clearPosterMedia = clearPosterMedia; window.updatePosterPreview = updatePosterPreview; window._posterLinkChanged = _posterLinkChanged; window.handlePosterFile = handlePosterFile; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
+    window.switchTab = switchTab; window.renderBeta = renderBeta; window.renderUpdates = renderUpdates; window.toggleBetaFeature = toggleBetaFeature; window.markUpdateRead = markUpdateRead; window.markAllUpdatesRead = markAllUpdatesRead; window.setWorkFilter = setWorkFilter; window.reloadWorkLog = reloadWorkLog; window.setWorkStatus = setWorkStatus; window.rejectWorkItem = rejectWorkItem; window.invoiceWorkItem = invoiceWorkItem; window.viewWorkHistory = viewWorkHistory; window.deleteWorkItem = deleteWorkItem; window.openWorkItemForm = openWorkItemForm; window.saveWorkItem = saveWorkItem; window.exportWorkLogCsv = exportWorkLogCsv; window.renderTraining = renderTraining; window.openEventForm = openEventForm; window.saveEvent = saveEvent; window.editEvent = editEvent; window.deleteEvent = deleteEvent; window.duplicateEvent = duplicateEvent; window.exportEventData = exportEventData; window.setEventView = setEventView; window.editService = editService; window.deleteService = deleteService; window.duplicateService = duplicateService; window.openServiceForm = openServiceForm; window.togglePackageActive = togglePackageActive; window.movePackage = movePackage; window.setServiceView = setServiceView; window.setServicePerfRange = setServicePerfRange; window.renderServices = renderServices; window.refreshServicePackages = refreshServicePackages; window.updatePriceDisplayHint = updatePriceDisplayHint; window.deleteService = deleteService; window.toggleServiceActive = toggleServiceActive; window.addPackage = addPackage; window.editPackage = editPackage; window.deletePackage = deletePackage; window.savePackage = savePackage; window.addFeature = addFeature; window.editFeature = editFeature; window.deleteFeature = deleteFeature; window.saveFeature = saveFeature; window.addFaq = addFaq; window.editFaq = editFaq; window.deleteFaq = deleteFaq; window.saveFaq = saveFaq; window.openGalleryForm = openGalleryForm; window.openGalleryEditForm = openGalleryEditForm; window.saveGalleryEdit = saveGalleryEdit; window.saveGalleryItem = saveGalleryItem; window.toggleGalleryFeatured = toggleGalleryFeatured; window.toggleGalleryPublish = toggleGalleryPublish; window.deleteGalleryItem = deleteGalleryItem; window.setGalleryFilter = setGalleryFilter; window.onGallerySearch = onGallerySearch; window.toggleGallerySelect = toggleGallerySelect; window.clearGallerySelection = clearGallerySelection; window.bulkGallery = bulkGallery; window.removeGalleryFile = removeGalleryFile; window.galleryUI = galleryUI; window.approveReview = approveReview; window.deleteReview = deleteReview; window.setReviewFilter = setReviewFilter; window.toggleReviewSelect = toggleReviewSelect; window.clearReviewSelection = clearReviewSelection; window.setReviewStatus = setReviewStatus; window.rejectReview = rejectReview; window.toggleReviewFeatured = toggleReviewFeatured; window.replyToReview = replyToReview; window.bulkReviews = bulkReviews; window.renderReviews = renderReviews; window.openMarketingForm = openMarketingForm; window.saveMarketingBanner = saveMarketingBanner; window.createBannerForOffer = createBannerForOffer; window.toggleMarketingBanner = toggleMarketingBanner; window.duplicateMarketingBanner = duplicateMarketingBanner; window.deleteMarketingBanner = deleteMarketingBanner; window.setMarketingView = setMarketingView; window.setBannerFilter = setBannerFilter; window.renderMarketing = renderMarketing; window.reloadMarketingGuidance = reloadMarketingGuidance; window.openOfferForm = openOfferForm; window.saveOffer = saveOffer; window.toggleOffer = toggleOffer; window.deleteOffer = deleteOffer; window.viewOfferRedemptions = viewOfferRedemptions; window.createOfferForQuietWeeks = createOfferForQuietWeeks; window.marketingUI = marketingUI; window.updateBookingStatus = updateBookingStatus; window.viewBookingDetails = viewBookingDetails; window.deleteBooking = deleteBooking; window.setBookingView = setBookingView; window.openEmployeeForm = openEmployeeForm; window.editEmployee = editEmployee; window.deleteEmployee = deleteEmployee; window.openPayrollForm = openPayrollForm; window.editPayroll = editPayroll; window.deletePayroll = deletePayroll; window.openPosterForm = openPosterForm; window.togglePoster = togglePoster; window.deletePoster = deletePoster; window.savePoster = savePoster; window.setPosterSource = setPosterSource; window.clearPosterMedia = clearPosterMedia; window.updatePosterPreview = updatePosterPreview; window._posterLinkChanged = _posterLinkChanged; window.handlePosterFile = handlePosterFile; window.clearSvcImg = clearSvcImg; window._svcUrlInput = _svcUrlInput; window.renderAnalytics = renderAnalytics; window.destroyAnalyticsCharts = destroyAnalyticsCharts; window.setAnalyticsRange = setAnalyticsRange; window.exportAnalyticsCsv = exportAnalyticsCsv; window.renderEnquiryMoney = renderEnquiryMoney; window.saveAgreedAmount = saveAgreedAmount; window.addPayment = addPayment; window.deletePayment = deletePayment;
   </script>
 </body>
 </html>

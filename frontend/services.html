@@ -664,6 +664,18 @@
     loadMoments();
   }
 
+  // A price edited in the dashboard reaches this page the next time the
+  // visitor looks at it, without a socket and without a poll.
+  LS.onReturn(async () => {
+    const res = await api('/api/services');
+    const live = (res?.data || []).filter(s => s.isActive !== false);
+    if (!live.length) return;
+    SERVICES = live;
+    renderFilters();
+    renderServices();
+    renderTray();
+  }, 60000);
+
   init();
 })();
 </script>

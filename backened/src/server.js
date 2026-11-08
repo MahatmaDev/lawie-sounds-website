@@ -688,58 +688,71 @@ async function removeGalleryObject(storagePath) {
   if (error) console.error(`[GALLERY] orphaned object ${storagePath}: ${error.message}`);
 }
 
-// WhatsApp push notification via CallMeBot (free — each recipient activates once)
-// Setup: WhatsApp +34 644 38 11 72, send: "I allow callmebot to send me messages"
-// Then add ADMIN_PHONE and CALLMEBOT_APIKEY to Vercel env vars.
-//
-// ADMIN_PHONE takes a comma-separated list, and CALLMEBOT_APIKEY takes the
-// matching list in the same order. CallMeBot issues one key per number, so a
-// single key cannot serve two phones — pairing them positionally is what lets
-// the manager and the owner both get the enquiry. One key with several numbers
-// is still accepted and reused for all of them, which is the common case of the
-// same person on two handsets.
-//
-// This is the channel that matters most: nobody opens the admin dashboard every
-// day, but everybody reads WhatsApp. If it is not configured the enquiry is
-// still saved, but it will sit unseen — so say so loudly in the logs rather
-// than returning silently the way this used to.
+// WhatsApp admin alerts use Meta's Cloud API. Since alerts can arrive outside a
+// 24-hour customer-service window, the configured template must be approved and
+// each admin recipient must have opted in to receive these messages.
 let warnedNoWhatsApp = false;
 
 function whatsAppRecipients() {
   const phones = String(process.env.ADMIN_PHONE || '')
     .split(',').map(p => p.trim().replace(/[^\d+]/g, '')).filter(Boolean);
-  const keys = String(process.env.CALLMEBOT_APIKEY || '')
-    .split(',').map(k => k.trim()).filter(Boolean);
-  if (!phones.length || !keys.length) return [];
-  return phones.map((phone, i) => ({ phone, apiKey: keys[i] || keys[0] }));
+  return phones;
 }
 
 async function notifyAdmin(message) {
   const recipients = whatsAppRecipients();
-  if (!recipients.length) {
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || 'v27.0';
+
+  if (!recipients.length || !accessToken || !phoneNumberId || !templateName) {
     if (!warnedNoWhatsApp) {
       warnedNoWhatsApp = true;
       console.warn(
-        '[WHATSAPP] ADMIN_PHONE / CALLMEBOT_APIKEY are not set, so enquiries are ' +
+        '[WHATSAPP] Admin recipient or Meta Cloud API settings are missing, so enquiries are ' +
         'only visible inside the admin dashboard. Set both in the Vercel project ' +
         'settings so new enquiries reach WhatsApp the moment they arrive.'
       );
     }
     return;
   }
-  // Must be awaited: Vercel freezes the serverless function once the response is
-  // sent, so an un-awaited fetch here was routinely cancelled mid-flight. All
-  // recipients go out together, and one failing number must not stop the others
-  // — hence allSettled rather than a sequential loop that throws.
-  await Promise.allSettled(recipients.map(async ({ phone, apiKey }) => {
+  if (!/^v\d+\.\d+$/.test(apiVersion)) {
+    console.error('[WHATSAPP] WHATSAPP_API_VERSION must look like v27.0.');
+    return;
+  }
+
+  // Must be awaited: Vercel can freeze the function after the response. A
+  // failed recipient must not prevent other admins from receiving the alert.
+  await Promise.allSettled(recipients.map(async (phone) => {
     try {
-      await fetch(
-        `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}` +
-        `&text=${encodeURIComponent(message)}&apikey=${encodeURIComponent(apiKey)}`,
-        { signal: AbortSignal.timeout(4000) }
+      const response = await fetch(
+        `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'template',
+            template: {
+              name: templateName,
+              language: { code: process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en_US' },
+              components: [{
+                type: 'body',
+                parameters: [{ type: 'text', text: String(message).slice(0, 900) }],
+              }],
+            },
+          }),
+          signal: AbortSignal.timeout(5000),
+        }
       );
+      if (!response.ok) throw new Error(`Meta API returned HTTP ${response.status}`);
     } catch (e) {
-      console.error(`notifyAdmin failed for ${phone} (non-fatal):`, e.message);
+      console.error(`WhatsApp admin alert failed for ${phone} (non-fatal):`, e.message);
     }
   }));
 }

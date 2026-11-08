@@ -98,6 +98,42 @@
     .microtrust { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
     .microtrust i { color: var(--gold); margin-right: 7px; }
 
+    .hero-services-link {
+      display: inline-flex; align-items: center; gap: 9px;
+      margin-top: 20px; color: #fff; font-size: 14px; font-weight: 700;
+      text-decoration: none; transition: color .2s ease;
+    }
+    .hero-services-link i { color: var(--gold); transition: transform .2s ease; }
+    .hero-services-link:hover { color: var(--gold); }
+    .hero-services-link:hover i { transform: translateY(3px); }
+
+    .service-section-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    }
+    .service-section-head > div { max-width: 760px; }
+    .service-catalog-link { flex: 0 0 auto; min-height: 52px; }
+    .service-reach {
+      display: flex; align-items: center; gap: 14px;
+      margin-top: 28px; padding: 18px 0;
+      border-block: 1px solid var(--line);
+    }
+    .service-reach-icon {
+      width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center;
+      border: 1px solid var(--cool-line); border-radius: 12px;
+      background: var(--cool-soft); color: var(--cool); font-size: 18px;
+    }
+    .service-reach-copy { flex: 1; min-width: 0; }
+    .service-reach-copy strong { display: block; color: var(--text); font-size: 15px; }
+    .service-reach-copy span { display: block; margin-top: 3px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+    .service-reach-link { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+    @media (max-width: 720px) {
+      .service-section-head { align-items: stretch; flex-direction: column; gap: 18px; }
+      .service-catalog-link { width: 100%; justify-content: center; }
+      .service-reach { align-items: flex-start; flex-wrap: wrap; }
+      .service-reach-link { margin-left: 58px; }
+    }
+
     /* Share strip — the shortest possible answer to "send me the link" */
     .share-strip {
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -208,7 +244,7 @@
       <img src="/IMAGES/LOGO/2.jpg" width="42" height="42" alt="" fetchpriority="high">
       <span>
         <span class="brand-name">LAWIE <span class="gold">SOUNDS</span></span>
-        <span class="brand-sub">Nyeri · Kenya</span>
+        <span class="brand-sub">Serving all of Kenya</span>
       </span>
     </a>
 
@@ -284,6 +320,7 @@
           <i class="fab fa-whatsapp" style="font-size:19px"></i>Ask on WhatsApp
         </a>
       </div>
+      <a href="#services" class="hero-services-link"><i class="fas fa-arrow-down" aria-hidden="true"></i>Explore our services</a>
 
       <div class="microtrust">
         <span><i class="fas fa-circle-check"></i>No deposit to enquire</span>
@@ -358,13 +395,27 @@
 <!-- ══════════════ SERVICES ══════════════ -->
 <section id="services" style="padding:88px 0 80px">
   <div class="wrap">
-    <div class="reveal" style="max-width:760px">
-      <span class="eyebrow">What we bring</span>
-      <h2 class="section-title">Everything your event needs, <span class="gold">from one team</span></h2>
-      <p class="section-lead">
-        Pick what you need and we'll price it as a package. Not sure yet? Tick a couple and tell us
-        about the day — we'll spec the rest and say plainly if you don't need something.
-      </p>
+    <div class="reveal service-section-head">
+      <div>
+        <span class="eyebrow">What we bring</span>
+        <h2 class="section-title">Everything your event needs, <span class="gold">from one team</span></h2>
+        <p class="section-lead">
+          Explore every service below, then choose what you need. Not sure yet? Tell us about the day
+          and we'll build the right package together.
+        </p>
+      </div>
+      <a href="/services" class="btn btn-primary service-catalog-link">
+        <i class="fas fa-layer-group" aria-hidden="true"></i>Browse all services<i class="fas fa-arrow-right" style="font-size:12px" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <div class="reveal service-reach" aria-label="Service area">
+      <span class="service-reach-icon"><i class="fas fa-map-location-dot" aria-hidden="true"></i></span>
+      <span class="service-reach-copy">
+        <strong>Now serving events across Kenya</strong>
+        <span>Based in Nyeri, serving the Mount Kenya region and travelling countrywide for your event.</span>
+      </span>
+      <a href="/book" class="service-reach-link">Check your date <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
     </div>
 
     <div class="reveal" style="margin-top:28px">
@@ -383,7 +434,7 @@
     </div>
 
     <div class="reveal" style="margin-top:44px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;text-align:center">
-      <a href="/services" class="btn btn-ghost">Compare all services &amp; packages <i class="fas fa-arrow-right" style="font-size:12px"></i></a>
+      <a href="/services" class="btn btn-ghost">Search services &amp; compare packages <i class="fas fa-arrow-right" style="font-size:12px"></i></a>
       <a href="/book" class="btn btn-dark">Describe my event instead <i class="fas fa-comment-dots"></i></a>
     </div>
   </div>

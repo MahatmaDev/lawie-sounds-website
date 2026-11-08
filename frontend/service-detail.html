@@ -88,6 +88,8 @@
 </head>
 <body>
 
+<a href="#pageContent" class="sr-only focus:not-sr-only skip-link">Skip to main content</a>
+
 <!-- ══════════════ ANNOUNCEMENT BAR (admin-controlled) ══════════════ -->
 <div id="announce" class="announce" hidden>
   <div class="wrap" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:11px">
@@ -664,7 +666,7 @@
             <nav class="crumbs" aria-label="Breadcrumb">
               <a href="/">Home</a><i class="fas fa-chevron-right"></i>
               <a href="/services">Services</a><i class="fas fa-chevron-right"></i>
-              <span>${escHtml(name)}</span>
+              <span aria-current="page">${escHtml(name)}</span>
             </nav>
             <span class="eyebrow" style="margin-top:18px">${escHtml(category)}</span>
             <h1>${escHtml(name)}</h1>
@@ -672,6 +674,7 @@
             ${droneCallout}
             <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px">
               <a href="${escHtml(bookUrl)}" class="btn btn-primary btn-lg"><i class="fas fa-calendar-check"></i>Get a quote</a>
+              <a href="/services" class="btn btn-ghost btn-lg"><i class="fas fa-layer-group" aria-hidden="true"></i>Explore all services</a>
               <a href="/wa" class="btn btn-ghost btn-lg"><i class="fab fa-whatsapp" style="font-size:19px;color:var(--wa)"></i>WhatsApp us</a>
             </div>
           </div>

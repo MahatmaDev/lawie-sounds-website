@@ -3374,10 +3374,10 @@ function albumCard(al) {
       </div>
 
       <div class="flex flex-wrap gap-1.5 mt-3 text-[11px]">
-        <span class="px-2 py-1 rounded bg-gray-800 text-gray-300">${al.itemCount} photo${al.itemCount === 1 ? '' : 's'}</span>
+        <span class="px-2 py-1 rounded bg-gray-800 text-gray-300">${al.itemCount} item${al.itemCount === 1 ? '' : 's'}</span>
         ${al.hiddenCount ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-500">${al.hiddenCount} hidden</span>` : ''}
-        ${al.pinRequired ? '<span class="px-2 py-1 rounded bg-blue-600/15 text-blue-300"><i class="fas fa-lock mr-1"></i>PIN</span>' : ''}
-        ${al.publicConsent ? '<span class="px-2 py-1 rounded bg-pink-600/15 text-pink-300"><i class="fas fa-heart mr-1"></i>Consented</span>' : ''}
+        ${al.passcodeUpdateRequired ? '<span class="px-2 py-1 rounded bg-yellow-600/15 text-yellow-300"><i class="fas fa-key mr-1"></i>Update passcode</span>' : al.pinRequired ? `<span class="px-2 py-1 rounded bg-blue-600/15 text-blue-300"><i class="fas fa-lock mr-1"></i>${al.passcodeType === 'password' ? 'Password' : 'PIN'}</span>` : '<span class="px-2 py-1 rounded bg-yellow-600/15 text-yellow-300"><i class="fas fa-lock-open mr-1"></i>No passcode</span>'}
+        ${al.publicConsent ? `<span class="px-2 py-1 rounded bg-pink-600/15 text-pink-300" title="Consent notice ${escapeHtml(al.consentVersion || '')}"><i class="fas fa-heart mr-1"></i>Consented · v1</span>` : ''}
         ${al.expiresAt ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-400">Expires ${new Date(al.expiresAt).toLocaleDateString()}</span>` : ''}
       </div>
 
@@ -3418,26 +3418,47 @@ function albumCard(al) {
 // The link is displayed once and never again — it is stored hashed. Say so on
 // the same screen, or the owner will close this dialog expecting to find it
 // again in the list.
-function showAlbumLink(url, isNew) {
+function showAlbumLink(url, isNew, accessCode = '') {
   Swal.fire({
     icon: 'success',
     title: isNew ? 'Album created' : 'New link issued',
     html: `
       <p style="font-size:13px;color:#cbd5e1;margin-bottom:12px">
-        ${isNew ? 'Send this link to the client.' : 'The previous link no longer works.'}
+        ${isNew ? 'This album starts as a draft. Add the media and publish it before sending the link and passcode to the client separately.' : 'The previous link no longer works.'}
         <strong style="color:#facc15">It is shown only once</strong> — we store it hashed, so it
         cannot be read back later. Copy it now.
       </p>
       <input id="albumLinkBox" readonly value="${escapeHtml(url)}"
-             style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b0b12;color:#fff;font-size:12px">`,
+             style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b0b12;color:#fff;font-size:12px">
+      ${isNew ? `<p style="font-size:12px;color:#9ca3af;margin:12px 0 5px">Client passcode</p>
+        <input id="albumPasscodeBox" readonly value="${escapeHtml(accessCode)}"
+               style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b0b12;color:#fff;font-size:14px">` : ''}`,
     background: '#1e1e2a', color: '#fff',
     confirmButtonText: 'Copy link', confirmButtonColor: '#7c3aed',
+    showDenyButton: isNew, denyButtonText: 'Copy passcode', denyButtonColor: '#374151',
     showCancelButton: true, cancelButtonText: 'Done',
   }).then(r => {
+    const text = r.isDenied ? accessCode : r.isConfirmed ? url : '';
+    if (!text) return;
+    navigator.clipboard.writeText(text)
+      .then(() => Swal.fire({ icon: 'success', title: r.isDenied ? 'Passcode copied' : 'Link copied', timer: 1200, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }))
+      .catch(() => document.getElementById(r.isDenied ? 'albumPasscodeBox' : 'albumLinkBox')?.select());
+  });
+}
+
+function showAlbumPasscode(accessCode) {
+  Swal.fire({
+    icon: 'success',
+    title: 'Passcode updated',
+    html: `<p style="font-size:13px;color:#cbd5e1;margin-bottom:12px">The album link is unchanged. Send this new passcode to the client separately; it will not be shown again.</p>
+      <input id="albumPasscodeBox" readonly value="${escapeHtml(accessCode)}"
+             style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b0b12;color:#fff;font-size:14px">`,
+    background: '#1e1e2a', color: '#fff', confirmButtonText: 'Copy passcode', confirmButtonColor: '#7c3aed',
+  }).then(r => {
     if (!r.isConfirmed) return;
-    navigator.clipboard.writeText(url)
-      .then(() => Swal.fire({ icon: 'success', title: 'Copied', timer: 1200, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }))
-      .catch(() => document.getElementById('albumLinkBox')?.select());
+    navigator.clipboard.writeText(accessCode)
+      .then(() => Swal.fire({ icon: 'success', title: 'Passcode copied', timer: 1200, showConfirmButton: false, background: '#1e1e2a', color: '#fff' }))
+      .catch(() => document.getElementById('albumPasscodeBox')?.select());
   });
 }
 
@@ -3469,9 +3490,14 @@ async function openAlbumForm(id = null) {
         <label style="display:block;margin-bottom:4px;color:#9ca3af">A note for the client</label>
         <textarea id="alMessage" class="swal2-textarea" style="margin:0 0 12px;width:100%;height:70px" placeholder="Thank you for having us — here are your photographs.">${escapeHtml(existing?.message || '')}</textarea>
 
-        <label style="display:block;margin-bottom:4px;color:#9ca3af">PIN (optional, 4–8 digits)</label>
-        <input id="alPin" class="swal2-input" style="margin:0 0 4px;width:100%" inputmode="numeric" placeholder="${existing?.pinRequired ? 'A PIN is set — type a new one to change it' : 'Leave blank for no PIN'}">
-        <p style="color:#6b7280;font-size:11px;margin:0 0 12px">Useful when the link will be forwarded around a family group.</p>
+        <label style="display:block;margin-bottom:4px;color:#9ca3af" for="alPasscodeType">Client access</label>
+        <select id="alPasscodeType" class="swal2-input" style="margin:0 0 8px;width:100%">
+          <option value="pin" ${(existing?.passcodeType || 'pin') === 'pin' ? 'selected' : ''}>PIN · 6–8 digits</option>
+          <option value="password" ${existing?.passcodeType === 'password' ? 'selected' : ''}>Password · 12+ characters</option>
+        </select>
+        <input id="alPasscode" type="password" class="swal2-input" style="margin:0 0 4px;width:100%" autocomplete="new-password"
+          placeholder="${existing?.passcodeUpdateRequired ? 'Set a new PIN or password to upgrade security' : existing?.pinRequired ? 'Passcode is set — enter a new one to change it' : 'Set a PIN or password'}">
+        <p style="color:#6b7280;font-size:11px;margin:0 0 12px">Required for every album. Share it separately from the link.</p>
 
         <label style="display:block;margin-bottom:4px;color:#9ca3af">Link expires <span style="color:#6b7280">— optional</span></label>
         <input id="alExpires" type="date" class="swal2-input" style="margin:0 0 4px;width:100%" value="${existing?.expiresAt ? String(existing.expiresAt).slice(0, 10) : ''}">
@@ -3483,8 +3509,11 @@ async function openAlbumForm(id = null) {
     preConfirm: () => {
       const title = document.getElementById('alTitle').value.trim();
       if (title.length < 2) { Swal.showValidationMessage('Give the album a title.'); return false; }
-      const pin = document.getElementById('alPin').value.trim();
-      if (pin && !/^\d{4,8}$/.test(pin)) { Swal.showValidationMessage('A PIN must be 4 to 8 digits.'); return false; }
+      const passcodeType = document.getElementById('alPasscodeType').value;
+      const accessCode = document.getElementById('alPasscode').value.trim();
+      if (!existing && !accessCode) { Swal.showValidationMessage('Set a client PIN or password.'); return false; }
+      if (accessCode && passcodeType === 'pin' && !/^\d{6,8}$/.test(accessCode)) { Swal.showValidationMessage('A PIN must be 6 to 8 digits.'); return false; }
+      if (accessCode && passcodeType === 'password' && (accessCode.length < 12 || accessCode.length > 128)) { Swal.showValidationMessage('A password must be between 12 and 128 characters.'); return false; }
       return {
         title,
         clientName: document.getElementById('alClient').value.trim(),
@@ -3494,16 +3523,19 @@ async function openAlbumForm(id = null) {
         // Sent even when blank: '' becomes null server-side, which is how an
         // expiry already set gets cleared again.
         expiresAt: document.getElementById('alExpires').value || null,
-        pin,
+        accessCode,
+        passcodeType,
       };
     },
   });
   if (!form) return;
 
-  // An empty PIN box on EDIT means "leave it alone", not "remove it". Sending
-  // pin:'' would silently unlock an album the owner had deliberately protected.
+  // An empty passcode box on EDIT means "leave it alone", never "remove it".
   const payload = { ...form };
-  if (existing && !form.pin) delete payload.pin;
+  if (existing && !form.accessCode) {
+    delete payload.accessCode;
+    delete payload.passcodeType;
+  }
 
   const res = existing
     ? await apiRequest('PUT', `/api/admin/albums/${existing.id}`, payload)
@@ -3515,7 +3547,8 @@ async function openAlbumForm(id = null) {
 
   albumsUI.loaded = false;
   await renderAlbums();
-  if (!existing) showAlbumLink(res.data.url, true);
+  if (!existing) showAlbumLink(res.data.url, true, form.accessCode);
+  else if (form.accessCode) showAlbumPasscode(form.accessCode);
 }
 
 async function setAlbumStatus(id, status) {
@@ -3534,7 +3567,7 @@ async function setAlbumStatus(id, status) {
     // 409 is the publish guard: an empty album. Say what to do about it.
     return Swal.fire({
       icon: 'warning', title: res.status === 409 ? 'Nothing to show yet' : 'Could not update',
-      text: res.status === 409 ? 'Add some processed photos to this album before publishing it.' : res.message,
+      text: res.message,
       background: '#1e1e2a', color: '#fff',
     });
   }
@@ -3582,6 +3615,7 @@ function albumItemTile(i, coverAssetId) {
         ${src
           ? `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover">`
           : `<div style="width:100%;height:100%;display:grid;place-items:center;color:#6b7280;font-size:10px;text-align:center;padding:4px">${escapeHtml(ready ? 'no preview' : (i.status || 'processing'))}</div>`}
+        ${i.kind === 'video' ? '<span style="position:absolute;right:4px;top:4px;background:rgba(0,0,0,.75);color:#fff;font-size:9px;padding:2px 5px;border-radius:4px"><i class="fas fa-film"></i> VIDEO</span>' : ''}
         ${isCover ? '<span style="position:absolute;top:3px;left:3px;background:#facc15;color:#14110a;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px">COVER</span>' : ''}
         ${i.isHidden ? '<span style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.75);color:#9ca3af;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">HIDDEN</span>' : ''}
       </div>
@@ -3643,6 +3677,15 @@ async function openAlbumItems(id) {
                          : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>'}
         </div>
 
+        <div style="margin-top:16px;padding:12px;border:1px solid #374151;border-radius:9px;background:#11111b">
+          <label for="alUploadFiles" style="display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border-radius:7px;background:#272737;color:#e5e7eb;cursor:pointer;font-size:12px">
+            <i class="fas fa-cloud-arrow-up"></i> Upload privately to this album
+          </label>
+          <input id="alUploadFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/tiff,video/mp4,video/webm,video/quicktime" style="display:none">
+          <p style="color:#6b7280;font-size:11px;margin:7px 0 0">These files go straight to private storage and will not appear in the public gallery.</p>
+          <p id="alUploadStatus" aria-live="polite" style="color:#9ca3af;font-size:11px;margin:6px 0 0"></p>
+        </div>
+
         <p style="color:#9ca3af;margin:16px 0 10px">Add from the library (${available.length} available)</p>
         <div style="${gridStyle}">
           ${available.length ? available.map(a => `
@@ -3651,8 +3694,7 @@ async function openAlbumItems(id) {
               ${albumThumb(a.renditions) ? `<img src="${escapeHtml(albumThumb(a.renditions))}" alt="" style="width:100%;height:100%;object-fit:cover">` : ''}
             </label>`).join('')
             : `<p style="color:#6b7280;grid-column:1/-1">
-                 Nothing available. Photos appear here after they are uploaded through the
-                 gallery with cloud storage switched on.
+                 Nothing available. Upload privately above or use ready media from the library.
                </p>`}
         </div>
       </div>`,
@@ -3737,6 +3779,48 @@ async function openAlbumItems(id) {
         input.style.borderTop = '1px solid #22c55e';
         setTimeout(() => { input.style.borderTop = '1px solid #1f2937'; }, 900);
       }, true);
+
+      root.querySelector('#alUploadFiles')?.addEventListener('change', async (e) => {
+        const files = [...(e.target.files || [])];
+        const input = e.target;
+        const status = root.querySelector('#alUploadStatus');
+        const confirm = Swal.getConfirmButton();
+        input.disabled = true;
+        if (confirm) confirm.disabled = true;
+
+        for (const file of files) {
+          try {
+            const uploaded = await uploadViaPipeline(file, { title: file.name }, (fraction, note) => {
+              if (status) status.textContent = `${file.name} · ${note} · ${Math.round(fraction * 100)}%`;
+            });
+            if (!uploaded) throw new Error('Private cloud storage is not configured. Please contact the administrator.');
+
+            const added = await apiRequest('POST', `/api/admin/albums/${id}/items`, { assetIds: [uploaded.assetId] });
+            if (added?._error) throw new Error(added.message || 'The upload completed but could not be added to this album.');
+
+            const fresh = await apiRequest('GET', `/api/admin/albums/${id}`);
+            if (!fresh?._error) {
+              items = fresh.data.items || [];
+              coverAssetId = fresh.data.coverAssetId || null;
+              const grid = root.querySelector('#alItems');
+              if (grid) grid.innerHTML = items.length
+                ? items.map(item => albumItemTile(item, coverAssetId)).join('')
+                : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>';
+              const count = root.querySelector('#alCount');
+              if (count) count.textContent = items.length;
+            }
+            albumsUI.loaded = false;
+            albumsUI.poolLoaded = false;
+            if (status) status.textContent = `${file.name} · added to this album${uploaded.processed ? '' : ' · processing continues in the background'}`;
+          } catch (error) {
+            if (status) status.textContent = `${file.name} · ${error.message || 'Upload failed'}`;
+          }
+        }
+
+        input.value = '';
+        input.disabled = false;
+        if (confirm) confirm.disabled = false;
+      });
     },
     preConfirm: () => [...document.querySelectorAll('.al-pick:checked')].map((c) => c.value),
   });

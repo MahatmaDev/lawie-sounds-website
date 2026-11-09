@@ -3,37 +3,29 @@
 //
 //  WHY TWO BUCKETS AND NOT ONE
 //  ---------------------------
-//  Because they have opposite access rules and opposite lifetimes, and a single
-//  bucket cannot hold both without one of them being wrong:
+//  Because they have different lifetimes and read patterns:
 //
 //    masters      private, never public, read ~once (by the worker), on a
 //                 retention window. Losing one loses a photograph.
-//    derivatives  public, CDN-cached, read constantly, kept while published,
-//                 and reproducible from a master at any time.
+//    derivatives  reproducible browser-sized copies, also private in AWS. The
+//                 API issues time-limited URLs only for media its caller may see.
 //
 //  Putting them together means either the masters are reachable by URL, or the
 //  derivatives are not cacheable by the CDN. Two buckets costs nothing — object
 //  storage is priced by byte, not by bucket — and makes the retention sweep a
 //  bucket-scoped operation, so a bad prefix can never reach the derived copies.
 //
-//  WHY CLOUDFLARE R2 AND NOT SUPABASE STORAGE
+//  STORAGE PROVIDERS
 //  ------------------------------------------
-//  Egress. Supabase Storage bills roughly $0.09/GB out; R2 bills zero. A
-//  gallery is almost pure egress — every visitor downloads, nobody uploads —
-//  so egress is the entire bill at scale. At 200 GB of viewing a month that is
-//  the difference between ~$18 and ~$0. Storage itself is $0.015/GB-month
-//  either way, near enough.
-//
-//  Supabase Storage is NOT removed. It still holds everything uploaded before
-//  this pipeline existed, the driver below falls back to it when R2 is not
-//  configured, and nothing already live changes. A storage migration that
-//  requires a flag day is a storage migration that does not happen.
+//  The signer targets AWS S3 by default and continues to accept R2/MinIO
+//  endpoints during migration. Supabase Storage remains in place for legacy
+//  uploads; the new media pipeline stores object keys in Postgres, not URLs.
 // ============================================================================
 
 const crypto = require('crypto');
 const { presign } = require('./sigv4');
 
-const MASTER_RETENTION_MONTHS = Number(process.env.MASTER_RETENTION_MONTHS || 12);
+const MASTER_RETENTION_MONTHS = Number(process.env.MASTER_RETENTION_MONTHS ?? 12);
 
 // The upload ceiling. Camera RAW and 4K reels are big; 512 MB covers both
 // without letting a mistake fill the bucket.
@@ -58,19 +50,27 @@ function kindForMime(mime) {
 }
 
 function config() {
+  const explicitEndpoint = process.env.MEDIA_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT;
+  const legacyR2 = Boolean(process.env.R2_ENDPOINT) && !explicitEndpoint &&
+    !process.env.MEDIA_S3_REGION && !process.env.AWS_S3_REGION && !process.env.AWS_REGION;
+  const region = process.env.MEDIA_S3_REGION || process.env.AWS_S3_REGION ||
+    process.env.AWS_REGION || (legacyR2 ? process.env.R2_REGION : '') || 'us-east-1';
+  const pathStyle = process.env.MEDIA_S3_PATH_STYLE || process.env.AWS_S3_PATH_STYLE ||
+    (legacyR2 ? process.env.R2_PATH_STYLE : undefined);
   return {
-    endpoint:        process.env.R2_ENDPOINT || '',
-    accessKeyId:     process.env.R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
-    // R2 requires the literal 'auto'. MinIO wants whatever it was started with.
-    region:          process.env.R2_REGION || 'auto',
-    masters:         process.env.R2_BUCKET_MASTERS || 'lawie-masters',
-    derivatives:     process.env.R2_BUCKET_DERIVATIVES || 'lawie-derivatives',
-    // The CDN hostname the derivatives bucket is published under. Without it we
-    // fall back to presigned GETs, which work but are uncacheable and expire —
-    // fine for a smoke test, wrong for a live gallery.
-    publicBase:      (process.env.R2_PUBLIC_BASE || '').replace(/\/+$/, ''),
-    pathStyle:       process.env.R2_PATH_STYLE !== 'false',
+    endpoint:        explicitEndpoint || (legacyR2 ? process.env.R2_ENDPOINT : '') ||
+      `https://s3.${region}.amazonaws.com`,
+    accessKeyId:     process.env.MEDIA_S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.MEDIA_S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || '',
+    region,
+    masters:         process.env.MEDIA_S3_BUCKET_MASTERS || process.env.AWS_S3_BUCKET_MASTERS ||
+      (legacyR2 ? process.env.R2_BUCKET_MASTERS : '') || 'lawie-masters',
+    derivatives:     process.env.MEDIA_S3_BUCKET_DERIVATIVES || process.env.AWS_S3_BUCKET_DERIVATIVES ||
+      (legacyR2 ? process.env.R2_BUCKET_DERIVATIVES : '') || 'lawie-derivatives',
+    // AWS buckets stay private. R2's public base remains supported for existing
+    // deployments; album access always uses privateUrl() regardless.
+    publicBase:      (legacyR2 ? process.env.R2_PUBLIC_BASE || '' : '').replace(/\/+$/, ''),
+    pathStyle:       pathStyle === undefined ? legacyR2 : pathStyle !== 'false',
   };
 }
 
@@ -85,7 +85,7 @@ function isConfigured() {
 function requireConfig() {
   if (!isConfigured()) {
     throw Object.assign(
-      new Error('Object storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.'),
+      new Error('Object storage is not configured. Set MEDIA_S3_ACCESS_KEY_ID and MEDIA_S3_SECRET_ACCESS_KEY.'),
       { statusCode: 503 }
     );
   }
@@ -114,7 +114,7 @@ function masterKey(assetId, mime, when = new Date()) {
 
 function renditionKey(assetId, variant, format) {
   // Flat under the asset id: deleting an asset's derivatives is a prefix
-  // delete, and the CDN path stays short.
+  // delete, and object paths stay short.
   return `d/${assetId}/${variant}.${format}`;
 }
 
@@ -162,13 +162,16 @@ function attachmentUrl(bucket, key, filename, ttl = 900) {
   });
 }
 
-// The URL a browser actually loads. Public and cacheable when a CDN base is
-// configured; a short-lived signed URL otherwise, so the gallery still renders
-// on a half-configured deploy rather than showing broken images.
+// Published gallery rows may use the legacy public R2 base. AWS defaults to
+// signed URLs, keeping every object private even when its key is known.
 function publicUrl(key) {
   const c = config();
   if (c.publicBase) return `${c.publicBase}/${key}`;
   return downloadUrl(c.derivatives, key, 3600);
+}
+
+function privateUrl(key, ttl = 3600) {
+  return downloadUrl(config().derivatives, key, ttl);
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +227,7 @@ async function deleteObject(bucket, key) {
 module.exports = {
   config, isConfigured, requireConfig,
   masterKey, renditionKey, newAssetId, masterExpiry,
-  uploadUrl, downloadUrl, deleteUrl, publicUrl, attachmentUrl,
+  uploadUrl, downloadUrl, deleteUrl, publicUrl, privateUrl, attachmentUrl,
   head, getObject, putObject, deleteObject,
   kindForMime, MIME_EXT, MAX_UPLOAD_BYTES, MASTER_RETENTION_MONTHS,
 };

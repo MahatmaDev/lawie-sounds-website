@@ -212,6 +212,45 @@ test('rendition keys are deterministic, so a re-run overwrites', () => {
   assert.strictEqual(a, 'd/abc/thumb.webp');
 });
 
+test('AWS private rendition URLs override stale R2 public settings', () => {
+  const names = [
+    'MEDIA_S3_ENDPOINT', 'MEDIA_S3_REGION', 'MEDIA_S3_ACCESS_KEY_ID',
+    'MEDIA_S3_SECRET_ACCESS_KEY', 'MEDIA_S3_BUCKET_DERIVATIVES',
+    'MEDIA_S3_PATH_STYLE', 'R2_ENDPOINT', 'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_DERIVATIVES', 'R2_PUBLIC_BASE',
+    'R2_REGION', 'R2_PATH_STYLE', 'AWS_REGION', 'AWS_S3_REGION',
+  ];
+  const saved = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  Object.assign(process.env, {
+    MEDIA_S3_ENDPOINT: 'https://s3.af-south-1.amazonaws.com',
+    MEDIA_S3_REGION: 'af-south-1',
+    MEDIA_S3_ACCESS_KEY_ID: 'aws-access',
+    MEDIA_S3_SECRET_ACCESS_KEY: 'aws-secret',
+    MEDIA_S3_BUCKET_DERIVATIVES: 'private-derivatives',
+    MEDIA_S3_PATH_STYLE: 'false',
+    R2_ENDPOINT: 'https://old-account.r2.cloudflarestorage.com',
+    R2_ACCESS_KEY_ID: 'old-access',
+    R2_SECRET_ACCESS_KEY: 'old-secret',
+    R2_BUCKET_DERIVATIVES: 'old-derivatives',
+    R2_PUBLIC_BASE: 'https://cdn.example.test',
+    R2_REGION: 'auto',
+    R2_PATH_STYLE: 'true',
+  });
+  try {
+    const url = new URL(store.privateUrl('d/asset/web.webp'));
+    assert.strictEqual(url.hostname, 'private-derivatives.s3.af-south-1.amazonaws.com');
+    assert.strictEqual(url.pathname, '/d/asset/web.webp');
+    assert.strictEqual(url.searchParams.get('X-Amz-Expires'), '3600');
+    assert.ok(url.searchParams.get('X-Amz-Credential').startsWith('aws-access/'));
+    assert.ok(url.searchParams.has('X-Amz-Signature'));
+  } finally {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
 test('unknown mime types do not produce a key with no extension', () => {
   assert.ok(store.masterKey('id', 'application/zip').endsWith('.bin'));
 });

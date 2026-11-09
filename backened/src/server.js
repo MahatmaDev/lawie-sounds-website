@@ -104,6 +104,15 @@ function adminOnly(req, res, next) {
   next();
 }
 
+function mediaManager(req, res, next) {
+  if (!['admin', 'manager'].includes(req.admin?.role)) {
+    return res.status(403).json({ error: 'Forbidden — administrator or manager access required' });
+  }
+  next();
+}
+
+const ALBUM_CONSENT_VERSION = 'public-use-v1';
+
 // ==================== MAPPING (DB snake_case → API camelCase) ====================
 const map = {
   event: (r) => r && ({ id: r.id, title: r.title, date: r.date, venue: r.venue, price: r.price, totalSeats: r.total_seats, seatsLeft: r.seats_left, description: r.description, image: r.image, status: r.status, isActive: r.is_active, bookingCount: r.booking_count, createdAt: r.created_at }),
@@ -116,7 +125,7 @@ const map = {
   // Callers pass either an album_view row or a raw albums row (the latter comes
   // back from insert/update). pin_required exists only on the view, so it is
   // derived when absent — and pin_hash itself is never copied out either way.
-  album: (r) => r && ({ id: r.id, title: r.title, clientName: r.client_name, eventDate: r.event_date, status: r.status, tokenHint: r.token_hint, message: r.message, expiresAt: r.expires_at, pinRequired: r.pin_required !== undefined ? r.pin_required : r.pin_hash != null, publicConsent: r.public_consent, consentAt: r.consent_at, viewCount: r.view_count ?? 0, lastViewedAt: r.last_viewed_at, itemCount: r.item_count ?? 0, hiddenCount: r.hidden_count ?? 0, services: r.services || [], originalsUntil: r.originals_until ?? null, bookingId: r.booking_id, coverAssetId: r.cover_asset_id, createdAt: r.created_at, createdBy: r.created_by }),
+  album: (r) => r && ({ id: r.id, title: r.title, clientName: r.client_name, eventDate: r.event_date, status: r.status, tokenHint: r.token_hint, message: r.message, expiresAt: r.expires_at, pinRequired: r.pin_required !== undefined ? r.pin_required : r.pin_hash != null, passcodeType: r.passcode_type || null, passcodeUpdateRequired: Number(r.passcode_version ?? 1) < 2, publicConsent: r.public_consent === true && r.consent_version === ALBUM_CONSENT_VERSION, consentAt: r.consent_at, consentVersion: r.consent_version || null, viewCount: r.view_count ?? 0, lastViewedAt: r.last_viewed_at, itemCount: r.item_count ?? 0, hiddenCount: r.hidden_count ?? 0, services: r.services || [], originalsUntil: r.originals_until ?? null, bookingId: r.booking_id, coverAssetId: r.cover_asset_id, createdAt: r.created_at, createdBy: r.created_by }),
   // renditions is attached by attachAssets() before mapping, not read from the
   // gallery table. A row with renditions should be rendered from them; imageUrl
   // stays as the fallback for every row written before the media pipeline.
@@ -862,7 +871,7 @@ app.get('/api/services/:slug', publicCache(30, 60), async (req, res) => {
   // The service page's gallery is the strongest proof this business has that it
   // can do the job, so it gets renditions too rather than falling back to the
   // full-size image_url the way it did before the media pipeline.
-  await attachAssets(gallery || []);
+  await attachAssets(gallery || [], { publicMedia: true });
   // Packages come from service_packages now. Served under the same `packages`
   // key and the same shape the pages already read, so the public frontend needs
   // no change and the JSONB column can be retired without a flag day.
@@ -948,7 +957,7 @@ app.get('/api/gallery', publicCache(60), async (req, res) => {
   const { data, error, count } = await q;
   if (error) return handleError(res, error);
 
-  await attachAssets(data);
+  await attachAssets(data, { publicMedia: true });
 
   res.json({
     success: true,
@@ -1850,15 +1859,39 @@ app.post('/api/admin/gallery/bulk', adminAuth, async (req, res) => {
   if (!patches[action]) {
     return res.status(400).json({ error: `action must be one of: ${Object.keys(patches).join(', ')}, delete` });
   }
+  if (action === 'publish') {
+    const { data: linked, error: linkedError } = await supabase.from('gallery')
+      .select('consent_album_id').in('id', ids).not('consent_album_id', 'is', null);
+    if (linkedError) return handleError(res, linkedError);
+    const albumIds = [...new Set((linked || []).map(row => row.consent_album_id).filter(Boolean))];
+    if (albumIds.length) {
+      const { data: albums, error: albumsError } = await supabase.from('albums')
+        .select('id, public_consent, consent_version').in('id', albumIds);
+      if (albumsError) return handleError(res, albumsError);
+      const allowed = new Set((albums || [])
+        .filter(album => album.public_consent === true && album.consent_version === ALBUM_CONSENT_VERSION)
+        .map(album => album.id));
+      if (albumIds.some(albumId => !allowed.has(albumId))) {
+        return res.status(403).json({ error: 'At least one item has no current client consent and cannot be published.' });
+      }
+    }
+  }
   const { data, error } = await supabase.from('gallery').update(patches[action]).in('id', ids).select();
-  if (error) return handleError(res, error);
+  if (error) return handleError(res, error, /source album has no current client consent/.test(error.message || '') ? 403 : 500);
   res.json({ success: true, data: { affected: data.length, items: data.map(map.gallery) } });
 });
 
 app.put('/api/admin/gallery/:id', adminAuth, async (req, res) => {
   const { data: cur } = await supabase.from('gallery')
-    .select('storage_path, image_url').eq('id', req.params.id).maybeSingle();
+    .select('storage_path, image_url, consent_album_id').eq('id', req.params.id).maybeSingle();
   if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+  if (req.body?.isPublished === true && cur.consent_album_id) {
+    const { data: album } = await supabase.from('albums')
+      .select('public_consent, consent_version').eq('id', cur.consent_album_id).maybeSingle();
+    if (album?.public_consent !== true || album?.consent_version !== ALBUM_CONSENT_VERSION) {
+      return res.status(403).json({ error: 'This client has withdrawn public-use consent for this media.' });
+    }
+  }
 
   // On edit the file is optional — the form may only be changing a caption.
   const errors = await validateGallery(req.body, { requireImage: false });
@@ -1887,11 +1920,18 @@ app.patch('/api/admin/gallery/:id/feature', adminAuth, async (req, res) => {
 });
 
 app.patch('/api/admin/gallery/:id/publish', adminAuth, async (req, res) => {
-  const { data: cur } = await supabase.from('gallery').select('is_published').eq('id', req.params.id).maybeSingle();
+  const { data: cur } = await supabase.from('gallery').select('is_published, consent_album_id').eq('id', req.params.id).maybeSingle();
   if (!cur) return res.status(404).json({ error: 'Gallery item not found' });
+  if (!cur.is_published && cur.consent_album_id) {
+    const { data: album } = await supabase.from('albums')
+      .select('public_consent, consent_version').eq('id', cur.consent_album_id).maybeSingle();
+    if (album?.public_consent !== true || album?.consent_version !== ALBUM_CONSENT_VERSION) {
+      return res.status(403).json({ error: 'This client has withdrawn public-use consent for this media.' });
+    }
+  }
   const { data, error } = await supabase.from('gallery')
     .update({ is_published: !cur.is_published }).eq('id', req.params.id).select().single();
-  if (error) return handleError(res, error);
+  if (error) return handleError(res, error, /source album has no current client consent/.test(error.message || '') ? 403 : 500);
   res.json({ success: true, data: map.gallery(data) });
 });
 
@@ -1934,8 +1974,8 @@ app.delete('/api/admin/gallery/:id', adminAuth, async (req, res) => {
 function mediaConfigured(req, res, next) {
   if (media.isConfigured()) return next();
   res.status(503).json({
-    error: 'Cloud storage is not configured yet. Set R2_ENDPOINT, R2_ACCESS_KEY_ID and ' +
-           'R2_SECRET_ACCESS_KEY, or keep using the existing gallery upload.',
+    error: 'Cloud storage is not configured yet. Set MEDIA_S3_ACCESS_KEY_ID and ' +
+           'MEDIA_S3_SECRET_ACCESS_KEY, or keep using the existing gallery upload.',
   });
 }
 
@@ -1951,7 +1991,7 @@ async function confirmMasterUpload(asset) {
 // resolved to URLs here, at the edge of the system, rather than being stored as
 // URLs — a stored URL bakes in today's CDN hostname, and moving domains would
 // mean rewriting every row.
-function renditionUrls(renditions) {
+function renditionUrls(renditions, { publicMedia = false } = {}) {
   if (!renditions || typeof renditions !== 'object') return null;
   // Resolving a key to a URL needs the endpoint. Callers reached through
   // mediaConfigured cannot get here unconfigured, but the public album route
@@ -1962,7 +2002,7 @@ function renditionUrls(renditions) {
   for (const [variant, r] of Object.entries(renditions)) {
     if (!r?.key) continue;
     out[variant] = {
-      url: media.publicUrl(r.key),
+      url: publicMedia ? media.publicUrl(r.key) : media.privateUrl(r.key),
       width: r.width, height: r.height, bytes: r.bytes, format: r.format,
     };
   }
@@ -1988,7 +2028,7 @@ function expectedUrls(assetId, kind) {
 // PostgREST cannot traverse a foreign key into one. At a page size of 24 the
 // second query is a single indexed IN lookup, which is cheaper than the N+1 an
 // embedded resource would produce anyway.
-async function attachAssets(rows) {
+async function attachAssets(rows, { publicMedia = false } = {}) {
   const ids = [...new Set(rows.map(r => r.asset_id).filter(Boolean))];
   if (!ids.length || !media.isConfigured()) return rows;
 
@@ -2008,12 +2048,14 @@ async function attachAssets(rows) {
   for (const row of rows) {
     const asset = row.asset_id && byId.get(row.asset_id);
     if (!asset || asset.status !== 'ready') continue;
-    row.renditions = renditionUrls(asset.renditions);
+    row.renditions = renditionUrls(asset.renditions, { publicMedia: publicMedia && row.is_published !== false });
     row.width  = row.width  || asset.width;
     row.height = row.height || asset.height;
   }
   return rows;
 }
+
+app.use('/api/admin/media', adminAuth, mediaManager);
 
 app.post('/api/admin/media/upload-url', adminAuth, mediaConfigured, async (req, res) => {
   const { fileName, mimeType, fileSize, checksum } = req.body || {};
@@ -2233,9 +2275,7 @@ function newAlbumToken() {
   return crypto.randomBytes(ALBUM_TOKEN_BYTES).toString('base64url');
 }
 
-// scrypt rather than a fast hash: a 4-digit PIN has 10,000 possibilities, so
-// the only thing standing between a leaked table and every PIN is how long each
-// guess takes.
+// scrypt slows offline guesses against either the short PIN or password hash.
 function hashPin(pin) {
   const salt = crypto.randomBytes(16);
   const hash = crypto.scryptSync(String(pin), salt, 32);
@@ -2267,8 +2307,7 @@ const albumLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a moment.' },
   standardHeaders: true, legacyHeaders: false,
 });
-// A PIN is four digits. Without a limiter here the whole keyspace is reachable
-// in under a minute.
+// Limit passcode guesses before the scrypt work is reached.
 const albumPinLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 10,
   message: { error: 'Too many incorrect PINs. Please wait 15 minutes, or ask us to resend the link.' },
@@ -2285,21 +2324,31 @@ async function albumByToken(token) {
     .from('albums').select('*').eq('token_hash', hashAlbumToken(token)).maybeSingle();
 
   if (!data) return null;
+  if (!data.pin_hash) return null;
+  if (Number(data.passcode_version ?? 1) < 2) return null;
   if (data.status !== 'live') return null;
   if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
   return data;
 }
 
-function albumSession(albumId) {
-  return jwt.sign({ albumId, scope: 'album' }, ALBUM_SECRET, { expiresIn: `${ALBUM_SESSION_HOURS}h` });
+function albumSession(album) {
+  const credential = crypto.createHash('sha256').update(String(album.pin_hash)).digest('hex');
+  return jwt.sign({ albumId: album.id, credential, scope: 'album' }, ALBUM_SECRET, { expiresIn: `${ALBUM_SESSION_HOURS}h` });
 }
 
-function hasAlbumSession(req, albumId) {
+function validAlbumPasscode(value, type) {
+  if (type === 'pin') return /^\d{6,8}$/.test(value);
+  if (type === 'password') return value.length >= 12 && value.length <= 128;
+  return false;
+}
+
+function hasAlbumSession(req, album) {
   const key = req.headers['x-album-key'];
   if (!key) return false;
   try {
     const decoded = jwt.verify(String(key), ALBUM_SECRET);
-    return decoded.scope === 'album' && decoded.albumId === albumId;
+    const credential = crypto.createHash('sha256').update(String(album.pin_hash)).digest('hex');
+    return decoded.scope === 'album' && decoded.albumId === album.id && decoded.credential === credential;
   } catch { return false; }
 }
 
@@ -2352,15 +2401,18 @@ app.get('/api/albums/:token', albumLimiter, async (req, res) => {
   // confirm that a guessed token was once real.
   if (!album) return res.status(404).json({ error: 'This album link is not available. Please ask us for a new one.' });
 
+  res.set('Cache-Control', 'private, no-store');
+
   const { data: view } = await supabase.from('album_view').select('*').eq('id', album.id).maybeSingle();
 
-  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+  if (!hasAlbumSession(req, album)) {
     return res.json({
       success: true,
       data: {
         locked: true,
         title: view?.title,
         clientName: view?.client_name,
+        passcodeType: album.passcode_type || 'pin',
         eventDate: view?.event_date,
         itemCount: view?.item_count ?? 0,
       },
@@ -2384,7 +2436,7 @@ app.get('/api/albums/:token', albumLimiter, async (req, res) => {
       clientName: view?.client_name,
       eventDate: view?.event_date,
       message: view?.message,
-      publicConsent: view?.public_consent,
+      publicConsent: view?.public_consent === true && view?.consent_version === ALBUM_CONSENT_VERSION,
       originalsUntil: view?.originals_until,
       // The loop back to bookings: what was actually set up at this event.
       services: view?.services || [],
@@ -2396,12 +2448,11 @@ app.get('/api/albums/:token', albumLimiter, async (req, res) => {
 app.post('/api/albums/:token/unlock', albumPinLimiter, async (req, res) => {
   const album = await albumByToken(req.params.token);
   if (!album) return res.status(404).json({ error: 'This album link is not available.' });
-  if (!album.pin_hash) return res.json({ success: true, data: { key: albumSession(album.id) } });
-
-  if (!verifyPin(req.body?.pin, album.pin_hash)) {
-    return res.status(401).json({ error: 'That PIN does not match. Check the message we sent you.' });
+  const passcode = String(req.body?.passcode ?? req.body?.pin ?? '');
+  if (!verifyPin(passcode, album.pin_hash)) {
+    return res.status(401).json({ error: 'That passcode does not match. Check the message we sent you.' });
   }
-  res.json({ success: true, data: { key: albumSession(album.id) } });
+  res.json({ success: true, data: { key: albumSession(album) } });
 });
 
 // Consent is the CLIENT's to give, so it is granted here and nowhere else. The
@@ -2409,14 +2460,21 @@ app.post('/api/albums/:token/unlock', albumPinLimiter, async (req, res) => {
 app.post('/api/albums/:token/consent', albumLimiter, async (req, res) => {
   const album = await albumByToken(req.params.token);
   if (!album) return res.status(404).json({ error: 'This album link is not available.' });
-  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+  if (!hasAlbumSession(req, album)) {
     return res.status(401).json({ error: 'Please enter the PIN first.' });
   }
 
   const granted = req.body?.consent === true;
-  const { error } = await supabase.from('albums')
-    .update({ public_consent: granted, consent_at: granted ? new Date().toISOString() : null })
-    .eq('id', album.id);
+  if (granted && req.body?.version !== ALBUM_CONSENT_VERSION) {
+    return res.status(409).json({ error: 'The consent notice has changed. Refresh this page and review it again.' });
+  }
+  const { error } = await supabase.rpc('record_album_consent', {
+    p_album: album.id,
+    p_granted: granted,
+    p_version: ALBUM_CONSENT_VERSION,
+    p_ip_hash: hashIp(req),
+    p_user_agent: String(req.headers['user-agent'] || '').slice(0, 300),
+  });
   if (error) return handleError(res, error);
 
   res.json({ success: true, data: { publicConsent: granted } });
@@ -2430,7 +2488,7 @@ app.get('/api/albums/:token/download/:assetId', albumLimiter, async (req, res) =
 
   const album = await albumByToken(req.params.token);
   if (!album) return res.status(404).json({ error: 'This album link is not available.' });
-  if (album.pin_hash && !hasAlbumSession(req, album.id)) {
+  if (!hasAlbumSession(req, album)) {
     return res.status(401).json({ error: 'Please enter the PIN first.' });
   }
 
@@ -2471,6 +2529,8 @@ app.get('/api/albums/:token/download/:assetId', albumLimiter, async (req, res) =
 });
 
 // ── Admin ───────────────────────────────────────────────────────────────────
+app.use('/api/admin/albums', adminAuth, mediaManager);
+
 app.get('/api/admin/albums', adminAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('album_view').select('*').order('created_at', { ascending: false }).limit(200);
@@ -2516,9 +2576,12 @@ app.post('/api/admin/albums', adminAuth, async (req, res) => {
   const title = String(req.body?.title || '').trim();
   if (title.length < 2) return res.status(400).json({ fields: { title: 'Give the album a title.' } });
 
-  const pin = String(req.body?.pin || '').trim();
-  if (pin && !/^\d{4,8}$/.test(pin)) {
-    return res.status(400).json({ fields: { pin: 'A PIN must be 4 to 8 digits, or leave it blank.' } });
+  const passcodeType = req.body?.passcodeType || 'pin';
+  const passcode = String(req.body?.accessCode ?? req.body?.pin ?? '').trim();
+  if (!validAlbumPasscode(passcode, passcodeType)) {
+    return res.status(400).json({ fields: { accessCode: passcodeType === 'password'
+      ? 'Use a password between 12 and 128 characters.'
+      : 'Set a PIN of 6 to 8 digits.' } });
   }
 
   const token = newAlbumToken();
@@ -2531,7 +2594,9 @@ app.post('/api/admin/albums', adminAuth, async (req, res) => {
     booking_id:  req.body?.bookingId || null,
     message:     req.body?.message?.trim() || null,
     expires_at:  req.body?.expiresAt || null,
-    pin_hash:    pin ? hashPin(pin) : null,
+    pin_hash:    hashPin(passcode),
+    passcode_type: passcodeType,
+    passcode_version: 2,
     created_by:  req.admin?.username || req.admin?.role || null,
   }).select().single();
   if (error) return handleError(res, error);
@@ -2567,12 +2632,17 @@ app.put('/api/admin/albums/:id', adminAuth, async (req, res) => {
 
   // Deliberately absent: public_consent. It belongs to the client, and the only
   // route that can set it is the one they use.
-  if (req.body.pin !== undefined) {
-    const pin = String(req.body.pin || '').trim();
-    if (pin && !/^\d{4,8}$/.test(pin)) {
-      return res.status(400).json({ fields: { pin: 'A PIN must be 4 to 8 digits, or leave it blank to remove it.' } });
+  if (req.body.accessCode !== undefined || req.body.pin !== undefined) {
+    const passcodeType = req.body.passcodeType || 'pin';
+    const passcode = String(req.body.accessCode ?? req.body.pin ?? '').trim();
+    if (!validAlbumPasscode(passcode, passcodeType)) {
+      return res.status(400).json({ fields: { accessCode: passcodeType === 'password'
+        ? 'Use a password between 12 and 128 characters.'
+        : 'Set a PIN of 6 to 8 digits. An album passcode cannot be removed.' } });
     }
-    patch.pin_hash = pin ? hashPin(pin) : null;
+    patch.pin_hash = hashPin(passcode);
+    patch.passcode_type = passcodeType;
+    patch.passcode_version = 2;
   }
 
   // A body naming no editable field is a no-op, not a failure. It happens for a
@@ -2667,7 +2737,7 @@ app.post('/api/admin/albums/:id/publish-to-gallery', adminAuth, async (req, res)
   const { data: album } = await supabase.from('album_view').select('*').eq('id', req.params.id).maybeSingle();
   if (!album) return res.status(404).json({ error: 'Album not found' });
 
-  if (!album.public_consent) {
+  if (!album.public_consent || album.consent_version !== ALBUM_CONSENT_VERSION) {
     return res.status(403).json({
       error: 'This client has not agreed to their photos being shown publicly. ' +
              'Ask them to tick the box on their album page first.',
@@ -2701,6 +2771,7 @@ app.post('/api/admin/albums/:id/publish-to-gallery', adminAuth, async (req, res)
       event_date: album.event_date,
       alt_text: album.title,
       width: a.width, height: a.height,
+      consent_album_id: album.id,
       // Into the moderation queue, not straight onto the front page. Consent to
       // being shown is not the same as the owner having chosen the shot.
       is_published: false,
@@ -2749,7 +2820,7 @@ async function uniqueShowcaseSlug(base) {
 // Attach the highlight media to a set of showcases in one query rather than one
 // per card — the listing page shows a cover each, and N+1 there is the whole
 // page's latency.
-async function attachShowcaseCovers(rows) {
+async function attachShowcaseCovers(rows, { publicMedia = false } = {}) {
   const ids = rows.map(r => r.id);
   if (!ids.length) return rows;
 
@@ -2758,7 +2829,7 @@ async function attachShowcaseCovers(rows) {
     .in('showcase_id', ids).eq('is_highlight', true).eq('is_published', true)
     .order('display_order', { ascending: true });
 
-  await attachAssets(media || []);
+  await attachAssets(media || [], { publicMedia: true });
 
   const byShowcase = new Map();
   for (const m of media || []) {
@@ -2803,7 +2874,7 @@ app.get('/api/showcases', publicCache(120), async (req, res) => {
     .range(offset, offset + limit - 1);
   if (error) return handleError(res, error);
 
-  await attachShowcaseCovers(data || []);
+  await attachShowcaseCovers(data || [], { publicMedia: true });
   res.json({
     success: true,
     data: (data || []).map(map.showcase),
@@ -2821,7 +2892,7 @@ app.get('/api/showcases/:slug', publicCache(120), async (req, res) => {
     .select('*').eq('showcase_id', data.id).eq('is_highlight', true).eq('is_published', true)
     .order('display_order', { ascending: true }).order('created_at', { ascending: true });
 
-  await attachAssets(media || []);
+  await attachAssets(media || [], { publicMedia: true });
 
   // Fire and forget: a view counter must never delay or fail the page.
   supabase.rpc('bump_showcase_view', { p_slug: req.params.slug })
@@ -2857,7 +2928,7 @@ app.get('/api/admin/showcases/:id', adminAuth, async (req, res) => {
   const { data: media } = await supabase.from('gallery')
     .select('*').eq('showcase_id', req.params.id)
     .order('is_highlight', { ascending: false }).order('display_order');
-  await attachAssets(media || []);
+  await attachAssets(media || [], { publicMedia });
 
   res.json({ success: true, data: { ...map.showcase(data), media: (media || []).map(map.gallery) } });
 });

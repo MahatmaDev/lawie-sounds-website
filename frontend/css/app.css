@@ -496,8 +496,10 @@ img { max-width: 100%; }
 .foot-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 40px; }
 .foot-links { display: grid; gap: 11px; }
 .foot-social { display: flex; gap: 10px; margin-top: 18px; }
-.foot-social a { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text-muted); }
+.foot-social a { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.08); border: 1px solid var(--line-hi); color: var(--text); }
+.foot-social .fab { position: static; inset: auto; z-index: auto; display: block; color: currentColor; font-size: 18px; line-height: 1; }
 .foot-social a:hover { background: var(--gold); color: #14110a; border-color: var(--gold); }
+.foot-social a:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .foot-bottom { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--text-faint); }
 @media (max-width: 860px) { .foot-grid { grid-template-columns: 1fr 1fr; gap: 32px; } }
 @media (max-width: 520px) { .foot-grid { grid-template-columns: 1fr; } }
@@ -510,11 +512,11 @@ img { max-width: 100%; }
   background: rgba(8,8,15,.95); backdrop-filter: blur(18px); border-top: 1px solid var(--line);
 }
 .mobile-bar a { min-height: 46px; border-radius: 999px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; }
-@media (max-width: 640px) { .mobile-bar { display: grid; } body { padding-bottom: 72px; } .fab { display: none !important; } }
+@media (max-width: 640px) { .mobile-bar { display: grid; } body { padding-bottom: 72px; } .floating-actions { display: none !important; } }
 
-.fab { position: fixed; right: 20px; bottom: 20px; z-index: 55; display: flex; flex-direction: column; gap: 11px; }
-.fab a, .fab button { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; box-shadow: var(--sh-2); transition: transform .2s; text-decoration: none; }
-.fab a:hover, .fab button:hover { transform: scale(1.1); }
+.floating-actions { position: fixed; right: 20px; bottom: 20px; z-index: 55; display: flex; flex-direction: column; gap: 11px; }
+.floating-actions a, .floating-actions button { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; box-shadow: var(--sh-2); transition: transform .2s; text-decoration: none; }
+.floating-actions a:hover, .floating-actions button:hover { transform: scale(1.1); }
 
 /* ── Lightbox ───────────────────────────────────────────────────────── */
 #lightbox { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: rgba(4,4,10,.94); backdrop-filter: blur(6px); padding: 20px; }

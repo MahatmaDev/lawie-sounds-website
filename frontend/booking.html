@@ -56,11 +56,14 @@
       outline: none; border-color: var(--gold-line);
       background: rgba(255,255,255,.07); box-shadow: 0 0 0 4px rgba(250,204,21,.08);
     }
-    .form-select { appearance: none; padding-right: 42px;
+    .form-select { appearance: none; padding-right: 42px; color-scheme: dark;
       background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
       background-position: calc(100% - 20px) 22px, calc(100% - 14px) 22px;
       background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
     .form-select option { background: var(--card); color: var(--text); }
+    .form-select option:hover, .form-select option:focus {
+      background: var(--gold); color: #14110a;
+    }
 
     /* An invalid field is marked by colour AND by an error message that
        names the problem — colour alone fails for anyone who cannot see it
@@ -1139,7 +1142,7 @@
   // through so the team sees exactly which package the client clicked.
   const selectedPackage = params.get('package') || null;
   if (selectedPackage) {
-    $('prefillName').textContent = (wantedSlug ? $('prefillName').textContent + ' — ' : '') + selectedPackage + ' package';
+    $('prefillName').textContent = (wantedSlugs.length ? $('prefillName').textContent + ' — ' : '') + selectedPackage + ' package';
     $('prefillNotice').classList.remove('hidden');
   }
 

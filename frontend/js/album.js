@@ -153,7 +153,7 @@
         .join('');
       const slugs = album.services.map(service => service.slug).join(',');
       $('quoteSame').href =
-        `/book?service=${encodeURIComponent(slugs)}&channel=${encodeURIComponent(`album:${album.id}`)}`;
+        `/book?service=${encodeURIComponent(slugs)}&channel=${encodeURIComponent(`album:${album.id}`)}#booking-form`;
       $('setup').classList.remove('hidden');
     } else {
       $('setup').classList.add('hidden');

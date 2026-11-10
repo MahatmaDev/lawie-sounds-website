@@ -10,6 +10,9 @@ name: Supabase keep-alive
 # the project awake. No secrets required.
 
 on:
+  push:
+    branches:
+      - master
   schedule:
     # 06:17 UTC daily (off the top-of-hour to avoid GitHub's busy cron slots).
     # GitHub may delay scheduled runs under load; daily gives huge margin
@@ -26,12 +29,8 @@ jobs:
           set -euo pipefail
           URL="https://lawie-sounds-website.vercel.app/api/gallery?keepalive=$(date +%s)"
           echo "Pinging $URL"
-          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" --max-time 30 "$URL")
-          echo "HTTP $code"
-          head -c 300 /tmp/resp.json || true
-          echo
-          if [ "$code" != "200" ]; then
-            echo "::error::Keep-alive ping failed (HTTP $code) - Supabase may be paused or the API is down."
-            exit 1
-          fi
-          echo "Keep-alive OK"
+          curl --fail --silent --show-error --max-time 30 "$URL" \
+            --output /tmp/resp.json
+          jq -e '.success == true and (.data | type == "array")' /tmp/resp.json >/dev/null
+          rows=$(jq '.data | length' /tmp/resp.json)
+          echo "Keep-alive OK: DB-backed gallery returned $rows rows."

@@ -50,7 +50,7 @@ for (const name of ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']) {
   }
 }
 if (!store.isConfigured()) {
-  console.error('[worker] object storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.');
+  console.error('[worker] object storage is not configured. Set MEDIA_S3_ACCESS_KEY_ID and MEDIA_S3_SECRET_ACCESS_KEY (or the legacy R2 credentials).');
   process.exit(1);
 }
 

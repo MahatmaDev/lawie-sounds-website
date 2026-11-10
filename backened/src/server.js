@@ -2327,7 +2327,7 @@ async function albumByToken(token) {
   if (!data.pin_hash) return null;
   if (Number(data.passcode_version ?? 1) < 2) return null;
   if (data.status !== 'live') return null;
-  if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
+  if (data.expires_at && Date.parse(data.expires_at) <= Date.now()) return null;
   return data;
 }
 
@@ -2340,6 +2340,21 @@ function validAlbumPasscode(value, type) {
   if (type === 'pin') return /^\d{6,8}$/.test(value);
   if (type === 'password') return value.length >= 12 && value.length <= 128;
   return false;
+}
+
+function parseAlbumExpiry(value) {
+  if (value === undefined || value === null || value === '') return { valid: true, value: null };
+  if (typeof value !== 'string') return { valid: false, value: null };
+
+  const match = value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?Z$/);
+  if (!match) return { valid: false, value: null };
+  const date = new Date(value);
+  const milliseconds = Number((match[2] || '').padEnd(3, '0') || 0);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 19) !== match[1] ||
+      date.getUTCMilliseconds() !== milliseconds) {
+    return { valid: false, value: null };
+  }
+  return { valid: true, value: date.toISOString() };
 }
 
 function hasAlbumSession(req, album) {
@@ -2412,6 +2427,7 @@ app.get('/api/albums/:token', albumLimiter, async (req, res) => {
         locked: true,
         title: view?.title,
         clientName: view?.client_name,
+        expiresAt: album.expires_at,
         passcodeType: album.passcode_type || 'pin',
         eventDate: view?.event_date,
         itemCount: view?.item_count ?? 0,
@@ -2435,6 +2451,7 @@ app.get('/api/albums/:token', albumLimiter, async (req, res) => {
       title: view?.title,
       clientName: view?.client_name,
       eventDate: view?.event_date,
+      expiresAt: album.expires_at,
       message: view?.message,
       publicConsent: view?.public_consent === true && view?.consent_version === ALBUM_CONSENT_VERSION,
       originalsUntil: view?.originals_until,
@@ -2576,6 +2593,14 @@ app.post('/api/admin/albums', adminAuth, async (req, res) => {
   const title = String(req.body?.title || '').trim();
   if (title.length < 2) return res.status(400).json({ fields: { title: 'Give the album a title.' } });
 
+  const expiry = parseAlbumExpiry(req.body?.expiresAt);
+  if (!expiry.valid) {
+    return res.status(400).json({ fields: { expiresAt: 'Use a valid ISO 8601 UTC timestamp for the deadline.' } });
+  }
+  if (expiry.value && Date.parse(expiry.value) <= Date.now()) {
+    return res.status(400).json({ fields: { expiresAt: 'Choose a deadline in the future, or leave it blank.' } });
+  }
+
   const passcodeType = req.body?.passcodeType || 'pin';
   const passcode = String(req.body?.accessCode ?? req.body?.pin ?? '').trim();
   if (!validAlbumPasscode(passcode, passcodeType)) {
@@ -2593,7 +2618,7 @@ app.post('/api/admin/albums', adminAuth, async (req, res) => {
     event_date:  req.body?.eventDate || null,
     booking_id:  req.body?.bookingId || null,
     message:     req.body?.message?.trim() || null,
-    expires_at:  req.body?.expiresAt || null,
+    expires_at:  expiry.value,
     pin_hash:    hashPin(passcode),
     passcode_type: passcodeType,
     passcode_version: 2,
@@ -2619,7 +2644,22 @@ app.put('/api/admin/albums/:id', adminAuth, async (req, res) => {
   if (req.body.clientName !== undefined) patch.client_name = req.body.clientName?.trim() || null;
   if (req.body.eventDate !== undefined)  patch.event_date = req.body.eventDate || null;
   if (req.body.message !== undefined)    patch.message = req.body.message?.trim() || null;
-  if (req.body.expiresAt !== undefined)  patch.expires_at = req.body.expiresAt || null;
+  if (req.body.expiresAt !== undefined) {
+    const expiry = parseAlbumExpiry(req.body.expiresAt);
+    if (!expiry.valid) {
+      return res.status(400).json({ fields: { expiresAt: 'Use a valid ISO 8601 UTC timestamp for the deadline.' } });
+    }
+    if (expiry.value && Date.parse(expiry.value) <= Date.now()) {
+      const { data: current, error } = await supabase.from('albums')
+        .select('expires_at').eq('id', req.params.id).maybeSingle();
+      if (error) return handleError(res, error);
+      if (!current) return res.status(404).json({ error: 'Album not found' });
+      if (!current.expires_at || Date.parse(current.expires_at) !== Date.parse(expiry.value)) {
+        return res.status(400).json({ fields: { expiresAt: 'Choose a deadline in the future, or leave it blank.' } });
+      }
+    }
+    patch.expires_at = expiry.value;
+  }
   if (req.body.bookingId !== undefined)  patch.booking_id = req.body.bookingId || null;
   if (req.body.coverAssetId !== undefined) patch.cover_asset_id = req.body.coverAssetId || null;
 

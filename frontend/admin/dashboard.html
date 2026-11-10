@@ -3352,14 +3352,77 @@ function albumStat(label, value, icon, tone) {
   </div>`;
 }
 
+function albumNairobiDateTime(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-KE', {
+    timeZone: 'Africa/Nairobi',
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short',
+  }).format(date);
+}
+
+function albumCalendarDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return '';
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) return '';
+  return new Intl.DateTimeFormat('en-KE', {
+    timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric',
+  }).format(date);
+}
+
+function albumNairobiDateTimeInput(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Nairobi', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${fields.year}-${fields.month}-${fields.day}T${fields.hour}:${fields.minute}`;
+}
+
+function albumNairobiOffsetMinutes(date) {
+  const part = new Intl.DateTimeFormat('en', {
+    timeZone: 'Africa/Nairobi', timeZoneName: 'longOffset',
+  }).formatToParts(date).find(item => item.type === 'timeZoneName');
+  const match = part?.value.match(/^GMT([+-])(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === '-' ? -minutes : minutes;
+}
+
+function parseAlbumNairobiDateTime(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const [year, month, day, hour, minute] = [yearText, monthText, dayText, hourText, minuteText].map(Number);
+  if (year < 100 || month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+
+  const wallClockAsUtc = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  if (wallClockAsUtc.getUTCFullYear() !== year || wallClockAsUtc.getUTCMonth() !== month - 1 ||
+      wallClockAsUtc.getUTCDate() !== day) return null;
+  const offset = albumNairobiOffsetMinutes(wallClockAsUtc);
+  if (offset === null) return null;
+  const instant = new Date(wallClockAsUtc.getTime() - offset * 60_000);
+  return albumNairobiDateTimeInput(instant.toISOString()) === value ? instant : null;
+}
+
 function albumCard(al) {
+  const expired = al.status === 'live' && al.expiresAt &&
+    Number.isFinite(Date.parse(al.expiresAt)) && Date.parse(al.expiresAt) <= Date.now();
+  const displayStatus = expired ? 'expired' : al.status;
   const badge = { live: 'bg-green-600/20 text-green-400 border-green-600/30',
                   draft: 'bg-gray-700/40 text-gray-300 border-gray-600/40',
-                  revoked: 'bg-red-600/20 text-red-400 border-red-600/30' }[al.status];
+                  revoked: 'bg-red-600/20 text-red-400 border-red-600/30',
+                  expired: 'bg-red-600/20 text-red-300 border-red-600/30' }[displayStatus];
 
+  const lastViewed = al.lastViewedAt ? albumNairobiDateTime(al.lastViewedAt) : '';
   const seen = al.viewCount
-    ? `Opened ${al.viewCount}×${al.lastViewedAt ? ' · last ' + new Date(al.lastViewedAt).toLocaleDateString() : ''}`
+    ? `Opened ${al.viewCount}×${lastViewed ? ' · last ' + lastViewed : ''}`
     : 'Not opened yet';
+  const expiry = al.expiresAt ? albumNairobiDateTime(al.expiresAt) : '';
+  const created = al.createdAt ? albumNairobiDateTime(al.createdAt) : '';
 
   return `
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col">
@@ -3367,10 +3430,10 @@ function albumCard(al) {
         <div class="min-w-0">
           <h3 class="font-bold truncate">${escapeHtml(al.title)}</h3>
           <p class="text-xs text-gray-400 mt-0.5 truncate">
-            ${al.clientName ? escapeHtml(al.clientName) : 'No client name'}${al.eventDate ? ' · ' + new Date(al.eventDate).toLocaleDateString() : ''}
+            ${al.clientName ? escapeHtml(al.clientName) : 'No client name'}${al.eventDate ? ' · ' + escapeHtml(albumCalendarDate(al.eventDate)) : ''}
           </p>
         </div>
-        <span class="text-[10px] font-bold uppercase px-2 py-1 rounded border ${badge} flex-shrink-0">${al.status}</span>
+        <span class="text-[10px] font-bold uppercase px-2 py-1 rounded border ${badge} flex-shrink-0">${displayStatus}</span>
       </div>
 
       <div class="flex flex-wrap gap-1.5 mt-3 text-[11px]">
@@ -3378,12 +3441,13 @@ function albumCard(al) {
         ${al.hiddenCount ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-500">${al.hiddenCount} hidden</span>` : ''}
         ${al.passcodeUpdateRequired ? '<span class="px-2 py-1 rounded bg-yellow-600/15 text-yellow-300"><i class="fas fa-key mr-1"></i>Update passcode</span>' : al.pinRequired ? `<span class="px-2 py-1 rounded bg-blue-600/15 text-blue-300"><i class="fas fa-lock mr-1"></i>${al.passcodeType === 'password' ? 'Password' : 'PIN'}</span>` : '<span class="px-2 py-1 rounded bg-yellow-600/15 text-yellow-300"><i class="fas fa-lock-open mr-1"></i>No passcode</span>'}
         ${al.publicConsent ? `<span class="px-2 py-1 rounded bg-pink-600/15 text-pink-300" title="Consent notice ${escapeHtml(al.consentVersion || '')}"><i class="fas fa-heart mr-1"></i>Consented · v1</span>` : ''}
-        ${al.expiresAt ? `<span class="px-2 py-1 rounded bg-gray-800 text-gray-400">Expires ${new Date(al.expiresAt).toLocaleDateString()}</span>` : ''}
+        ${expiry ? `<span class="px-2 py-1 rounded ${expired ? 'bg-red-600/15 text-red-300' : 'bg-gray-800 text-gray-300'}">${expired ? 'Expired' : 'Expires'} ${escapeHtml(expiry)}</span>` : ''}
       </div>
 
       <p class="text-xs mt-3 ${al.viewCount ? 'text-gray-400' : 'text-yellow-500/80'}">
         <i class="fas ${al.viewCount ? 'fa-eye' : 'fa-clock'} mr-1"></i>${escapeHtml(seen)}
       </p>
+      ${created ? `<p class="text-[11px] text-gray-500 mt-1">Created ${escapeHtml(created)}</p>` : ''}
 
       <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
         <button type="button" onclick="openAlbumItems('${al.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition">
@@ -3484,7 +3548,7 @@ async function openAlbumForm(id = null) {
         <label style="display:block;margin-bottom:4px;color:#9ca3af">Link it to the booking <span style="color:#6b7280">— this is what puts "the same setup" on their page</span></label>
         <select id="alBooking" class="swal2-input" style="margin:0 0 12px;width:100%">
           <option value="">No booking</option>
-          ${bookings.map(b => `<option value="${b.id}" ${existing?.bookingId === b.id ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(b.eventType || '')} ${b.eventDate ? new Date(b.eventDate).toLocaleDateString() : ''}</option>`).join('')}
+          ${bookings.map(b => `<option value="${b.id}" ${existing?.bookingId === b.id ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(b.eventType || '')} ${b.eventDate ? escapeHtml(albumCalendarDate(b.eventDate)) : ''}</option>`).join('')}
         </select>
 
         <label style="display:block;margin-bottom:4px;color:#9ca3af">A note for the client</label>
@@ -3499,9 +3563,11 @@ async function openAlbumForm(id = null) {
           placeholder="${existing?.passcodeUpdateRequired ? 'Set a new PIN or password to upgrade security' : existing?.pinRequired ? 'Passcode is set — enter a new one to change it' : 'Set a PIN or password'}">
         <p style="color:#6b7280;font-size:11px;margin:0 0 12px">Required for every album. Share it separately from the link.</p>
 
-        <label style="display:block;margin-bottom:4px;color:#9ca3af">Link expires <span style="color:#6b7280">— optional</span></label>
-        <input id="alExpires" type="date" class="swal2-input" style="margin:0 0 4px;width:100%" value="${existing?.expiresAt ? String(existing.expiresAt).slice(0, 10) : ''}">
-        <p style="color:#6b7280;font-size:11px;margin:0">After this date the link answers the same 404 as a withdrawn one. Leave blank and it does not expire.</p>
+        <label style="display:block;margin-bottom:4px;color:#9ca3af" for="alExpires">Link access deadline <span style="color:#6b7280">— optional</span></label>
+        <input id="alExpires" type="datetime-local" step="60"
+          min="${albumNairobiDateTimeInput(new Date((Math.floor(Date.now() / 60_000) + 1) * 60_000).toISOString())}"
+          class="swal2-input" style="margin:0 0 4px;width:100%" value="${existing?.expiresAt ? albumNairobiDateTimeInput(existing.expiresAt) : ''}">
+        <p style="color:#9ca3af;font-size:11px;margin:0 0 12px">Time zone: Africa/Nairobi (EAT, UTC+03:00). The deadline is stored as an exact UTC timestamp. Leave blank for no deadline.</p>
       </div>`,
     showCancelButton: true,
     confirmButtonText: existing ? 'Save' : 'Create album',
@@ -3514,15 +3580,30 @@ async function openAlbumForm(id = null) {
       if (!existing && !accessCode) { Swal.showValidationMessage('Set a client PIN or password.'); return false; }
       if (accessCode && passcodeType === 'pin' && !/^\d{6,8}$/.test(accessCode)) { Swal.showValidationMessage('A PIN must be 6 to 8 digits.'); return false; }
       if (accessCode && passcodeType === 'password' && (accessCode.length < 12 || accessCode.length > 128)) { Swal.showValidationMessage('A password must be between 12 and 128 characters.'); return false; }
+      const expiryInput = document.getElementById('alExpires').value;
+      const unchangedExpiry = Boolean(existing?.expiresAt) &&
+        expiryInput === albumNairobiDateTimeInput(existing.expiresAt);
+      let expiresAt = null;
+      if (expiryInput) {
+        const deadline = unchangedExpiry ? new Date(existing.expiresAt) : parseAlbumNairobiDateTime(expiryInput);
+        if (!deadline || !Number.isFinite(deadline.getTime())) {
+          Swal.showValidationMessage('Enter a valid Nairobi date and time for the deadline.');
+          return false;
+        }
+        if (!unchangedExpiry && deadline.getTime() <= Date.now()) {
+          Swal.showValidationMessage('Choose a deadline in the future. Leave it blank if no deadline is needed.');
+          return false;
+        }
+        expiresAt = deadline.toISOString();
+      }
+
       return {
         title,
         clientName: document.getElementById('alClient').value.trim(),
         eventDate: document.getElementById('alDate').value || null,
         bookingId: document.getElementById('alBooking').value || null,
         message: document.getElementById('alMessage').value.trim(),
-        // Sent even when blank: '' becomes null server-side, which is how an
-        // expiry already set gets cleared again.
-        expiresAt: document.getElementById('alExpires').value || null,
+        expiresAt,
         accessCode,
         passcodeType,
       };

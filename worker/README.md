@@ -126,8 +126,8 @@ the exact names you created):
     "Effect": "Allow",
     "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
     "Resource": [
-      "arn:aws:s3:::lawie-sounds-masters-ACCOUNT/*",
-      "arn:aws:s3:::lawie-sounds-derivatives-ACCOUNT/*"
+      "arn:aws:s3:::lawie-masters/*",
+      "arn:aws:s3:::lawie-derivatives/*"
     ]
   }]
 }

@@ -3739,10 +3739,34 @@ async function setAlbumStatus(id, status) {
 
   const res = await apiRequest('PUT', `/api/admin/albums/${id}`, { status });
   if (res?._error) {
-    // 409 is the publish guard: an empty album. Say what to do about it.
+    const message = res.message || '';
+    if (res.status === 409 && /no visible, processed photographs yet/i.test(message)) {
+      const next = await Swal.fire({
+        icon: 'warning',
+        title: 'Add photos before publishing',
+        text: 'Add at least one visible photo or video and wait for processing to finish. Hidden or still-processing files cannot be shown to the client.',
+        showCancelButton: true,
+        confirmButtonText: 'Manage photos',
+        cancelButtonText: 'Later',
+        confirmButtonColor: '#facc15',
+        background: '#1e1e2a', color: '#fff',
+      });
+      if (next.isConfirmed) await openAlbumItems(id);
+      return;
+    }
+
+    if (res.status === 409 && /a client passcode is required/i.test(message)) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Set a client passcode',
+        text: 'Edit this album and save a PIN or password before publishing it.',
+        background: '#1e1e2a', color: '#fff',
+      });
+    }
+
     return Swal.fire({
-      icon: 'warning', title: res.status === 409 ? 'Nothing to show yet' : 'Could not update',
-      text: res.message,
+      icon: 'warning', title: 'Could not update',
+      text: message || 'Please try again.',
       background: '#1e1e2a', color: '#fff',
     });
   }
@@ -3850,7 +3874,7 @@ async function openAlbumItems(id) {
         </p>
         <div id="alItems" style="${gridStyle}">
           ${items.length ? items.map(i => albumItemTile(i, coverAssetId)).join('')
-                         : '<p style="color:#6b7280;grid-column:1/-1">Nothing added yet.</p>'}
+                         : '<p style="color:#9ca3af;grid-column:1/-1;margin:0">No photos or videos added yet. Upload files below or add ready media from the library. Publishing requires at least one visible, fully processed item.</p>'}
         </div>
 
         <div style="margin-top:16px;padding:12px;border:1px solid #374151;border-radius:9px;background:#11111b">
